@@ -16,12 +16,13 @@ paper_categories = Table(
     Column('category', String, ForeignKey('categories.name'), primary_key=True)
 )
 
-# Paper author association table
+# Paper author association table with order
 paper_authors = Table(
     'paper_authors',
     Base.metadata,
     Column('paper_id', String, ForeignKey('papers.paper_id'), primary_key=True),
-    Column('author', String, ForeignKey('authors.name'), primary_key=True)
+    Column('author', String, ForeignKey('authors.name'), primary_key=True),
+    Column('author_order', Integer, nullable=False, default=0)
 )
 
 class DBPaper(Base):
@@ -36,7 +37,13 @@ class DBPaper(Base):
     updated_date = Column(DateTime, nullable=True)
     
     
-    authors = relationship("DBAuthor", secondary=paper_authors, backref="papers")
+    # Updated relationships with ordering for authors
+    authors = relationship(
+        "DBAuthor", 
+        secondary=paper_authors, 
+        backref="papers",
+        order_by=paper_authors.c.author_order
+    )
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
     
     def __repr__(self):

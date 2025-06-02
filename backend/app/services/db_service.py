@@ -1,13 +1,12 @@
-
 import logging
 from typing import List, Optional
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func, insert, text
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, paper_authors
 from app.db.database import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -30,30 +29,35 @@ class DBService:
         added_ids = []
         async for db in get_async_db():
             try:
+                # First, get all existing paper IDs to avoid unnecessary processing
+                existing_paper_ids = set()
+                paper_ids_to_check = [paper.paper_id for paper in papers]
+                
+                if paper_ids_to_check:
+                    result = await db.execute(
+                        select(DBPaper.paper_id).where(DBPaper.paper_id.in_(paper_ids_to_check))
+                    )
+                    existing_paper_ids = set(result.scalars().all())
+                
+                # Filter out papers that already exist
+                papers_to_add = [
+                    paper for paper in papers 
+                    if paper.paper_id not in existing_paper_ids
+                ]
+                
+                if not papers_to_add:
+                    logger.info("All papers already exist in database, skipping")
+                    return []
+                
+                logger.info(f"Processing {len(papers_to_add)} new papers (skipped {len(papers) - len(papers_to_add)} existing papers)")
+                
                 # Collect all author and category names
                 all_author_names = set()
                 all_category_names = set()
                 
-                papers_to_add = []
-                
-                # filter paper list, avoid duplicate papers
-                for paper in papers:
-                    # Check if paper already exists
-                    result = await db.execute(
-                        select(DBPaper).where(DBPaper.paper_id == paper.paper_id)
-                    )
-                    existing_paper = result.scalars().first()
-                    
-                    if existing_paper:
-                        continue
-                    
-                    # Collect author and category names
+                for paper in papers_to_add:
                     all_author_names.update(paper.authors)
                     all_category_names.update(paper.categories)
-                    papers_to_add.append(paper)
-                
-                if not papers_to_add:
-                    return []
                 
                 # Query existing authors and categories
                 existing_authors = {}
@@ -112,15 +116,29 @@ class DBService:
                         updated_date=paper.updated_date
                     )
                     
-                    # Add author associations
-                    for author_name in paper.authors:
-                        db_paper.authors.append(existing_authors[author_name])
-                    
                     # Add category associations
                     for category_name in paper.categories:
                         db_paper.categories.append(existing_categories[category_name])
                     
                     db.add(db_paper)
+                    await db.flush()  # Flush to get the paper_id
+                    
+                    # Add author associations with order using PostgreSQL's ON CONFLICT DO UPDATE
+                    for order, author_name in enumerate(paper.authors):
+                        await db.execute(
+                            text("""
+                                INSERT INTO paper_authors (paper_id, author, author_order) 
+                                VALUES (:paper_id, :author, :author_order)
+                                ON CONFLICT (paper_id, author) DO UPDATE SET
+                                    author_order = EXCLUDED.author_order
+                            """),
+                            {
+                                "paper_id": paper.paper_id,
+                                "author": author_name,
+                                "author_order": order
+                            }
+                        )
+                    
                     added_ids.append(paper.paper_id)
                 
                 await db.commit()
@@ -160,7 +178,7 @@ class DBService:
                         logger.info(f"Paper with ID {paper_id} not found in database")
                         return None
                     
-                    # Convert to API model
+                    # Convert to API model - authors will now be in correct order due to order_by in relationship
                     paper = Paper(
                         paper_id=db_paper.paper_id,
                         title=db_paper.title,

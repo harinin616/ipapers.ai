@@ -28,8 +28,6 @@ AsyncSessionLocal = sessionmaker(
     class_=AsyncSession
 )
 
-from app.models.db_models import Base
-
 
 # Get database session (asynchronous)
 async def get_async_db():
