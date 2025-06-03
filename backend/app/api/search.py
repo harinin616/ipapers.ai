@@ -6,6 +6,7 @@ from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
 from app.services.llm_service import llm_service
 from app.services.arxiv_search_service import arxivsearch_service
+from app.services import search_log_service
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,11 @@ async def search_papers(search_request: PaperSearchRequest):
                 updated_date=p.updated_date
             ) for p in new_papers
         ]
-        
+        await search_log_service.append_record(
+            query=search_request.query,
+            results=[r.model_dump() for r in paper_responses],
+            user_id=search_request.user_id,
+        )
         return PaperSearchResponse(
             results=paper_responses,
             count=len(paper_responses)
