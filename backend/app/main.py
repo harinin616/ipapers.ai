@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import logging
 
 
-
+from fastapi.responses import HTMLResponse
 from app.api import paper, search, chat, user
 
 # Configure logging
@@ -13,6 +13,7 @@ logging.basicConfig(
     level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/", response_class=HTMLResponse)   # ★ 新增
+async def root():
+    return ""
+
 # Include API routes
 api_app.include_router(paper.router, prefix="/papers", tags=["papers"])
 api_app.include_router(search.router, prefix="/search", tags=["search"])
@@ -39,5 +44,3 @@ api_app.include_router(user.router, prefix="/user", tags=["user"])
 
 # Mount API sub-application to main application
 app.mount("/api", api_app)
-
-
