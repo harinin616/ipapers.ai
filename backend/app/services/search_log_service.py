@@ -21,7 +21,7 @@ async def append_record(query: str, results: list[dict], user_id: int | None = N
     }
     """
     record = {
-        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+      #  "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "user_id": user_id,
         "query": query,
         "results": results,
