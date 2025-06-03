@@ -84,7 +84,7 @@ class LLMService:
                     self.daily_calls = 0
                     self.last_call_date = current_date
                 
-                if self.daily_calls >= 1000:
+                if self.daily_calls >= 2:
                     logger.error("Daily call limit exceeded")
                     return None
                 
