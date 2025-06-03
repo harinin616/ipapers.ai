@@ -58,8 +58,7 @@ async def search_papers(search_request: PaperSearchRequest):
         ]
         await search_log_service.append_record(
             query=search_request.query,
-            results=[r.model_dump() for r in paper_responses],
-            user_id=search_request.user_id,
+            results=[r.model_dump() for r in paper_responses]
         )
         return PaperSearchResponse(
             results=paper_responses,
