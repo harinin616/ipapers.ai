@@ -2,9 +2,12 @@ import os
 import logging
 import asyncio
 from typing import Dict, Any, Optional, List
+from datetime import datetime
+from pathlib import Path
 from openai import AsyncOpenAI, APIConnectionError, RateLimitError, APITimeoutError, APIError
 import dashscope
 from http import HTTPStatus
+from google import genai
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +19,11 @@ class LLMService:
     def __init__(self):
         """Initialize LLM service"""
         # api key and url
-        self.api_key = os.getenv("LLM_API_KEY", "")
+        self.embedding_api_key = os.getenv("EMBEDDING_API_KEY", "")
                  
-        self.api_url = os.getenv("LLM_API_URL", "")
+        self.api_url = os.getenv("EMBEDDING_API_URL", "")
+
+        self.llm_api_key = os.getenv("LLM_API_KEY", "")
 
         # default models and settings
         
@@ -30,67 +35,116 @@ class LLMService:
 
         self.rerank_model=os.getenv("LLM_RERANK_MODEL","")
         self.rerank_topn=int(os.getenv("LLM_RERANK_TOPN", ""))
-        
-        # Default parameters
-        self.max_tokens = 4000 
-        self.conversation_temperature = 0.8
 
-        self.client = AsyncOpenAI(
-            api_key=self.api_key,
+        self.embedding_client = AsyncOpenAI(
+            api_key=self.embedding_api_key,
             base_url=self.api_url
         )
-        if not self.client:
-            raise ValueError("LLM client failed to initialize")
+        if not self.embedding_client:
+            raise ValueError("embedding client failed to initialize")
+        
+        self.llm_client = genai.Client(api_key=self.llm_api_key)
+
+        # Initialize daily call limit and data directory
+        self.daily_calls = 0
+        self.last_call_date = datetime.now().strftime('%Y-%m-%d')
+        self.call_limit_lock = asyncio.Lock()
+        self.data_dir = Path(__file__).parent.parent.parent / "data"
+        self.data_dir.mkdir(exist_ok=True)
+
+    def save_daily_calls(self, date: str, calls: int):
+        """Save daily call count to file"""
+        try:
+            call_log_file = self.data_dir / "llm_daily_calls.log"
+            with open(call_log_file, 'a', encoding='utf-8') as f:
+                f.write(f"{date},{calls}\n")
+            logger.info(f"Saved daily calls for {date}: {calls}")
+        except Exception as e:
+            logger.error(f"Failed to save daily calls: {e}")
 
     async def get_conversation_completion(
         self,
         messages: List[Dict[str, str]],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        stream: Optional[bool] = True,
-        thinking: Optional[bool] = False
+        stream: Optional[bool] = True
     ) -> Optional[Any]:
         """
         call chat model to generate response
         """
         
-        use_temperature = temperature if temperature is not None else self.conversation_temperature
-        use_max_tokens = max_tokens if max_tokens is not None else self.max_tokens
-        
         try:
-            logger.debug(f"Sending conversation request to LLM. Model: {self.conversation_model}, Stream:{stream}")
-        
-            extra_body={
-                "enable_thinking":thinking
-            }
-            # Always use stream mode for LLM responses
-            response = await self.client.chat.completions.create(
-                model=self.conversation_model,
-                messages=messages,
-                temperature=use_temperature,
-                max_tokens=use_max_tokens,
-                stream=stream,    
-                extra_body=extra_body
-            )
+            # Check daily call limit with thread safety
+            async with self.call_limit_lock:
+                current_date = datetime.now().strftime('%Y-%m-%d')
+                if current_date != self.last_call_date:
+                    # Save previous day's call count before resetting
+                    if self.daily_calls > 0:
+                        self.save_daily_calls(self.last_call_date, self.daily_calls)
+                    
+                    # Reset for new day
+                    self.daily_calls = 0
+                    self.last_call_date = current_date
+                
+                if self.daily_calls >= 1000:
+                    logger.error("Daily call limit exceeded")
+                    return None
+                
+                # Increment call counter before making the call
+                self.daily_calls += 1
             
-            logger.debug(f"Returning response for LLM conversation.")
+            # Convert OpenAI format messages to Gemini format
+            gemini_contents = self._convert_messages_to_gemini_format(messages)
+            
+            if stream:
+                # streaming mode
+                response = await self.llm_client.aio.models.generate_content_stream(
+                    model=self.conversation_model,
+                    contents=gemini_contents
+                )
+            else:
+                # non-streaming mode
+                response = await self.llm_client.aio.models.generate_content(
+                    model=self.conversation_model,
+                    contents=gemini_contents
+                )
+            
             return response
             
-        except RateLimitError as e:
-            logger.error(f"LLM API rate limit exceeded: {e}")
-            return None
-        except APITimeoutError as e:
-            logger.error(f"LLM API timeout: {e}")
-            return None
-        except APIConnectionError as e:
-            logger.error(f"LLM API connection error: {e}")
-            return None
-        except APIError as e:
-            logger.error(f"LLM API error: {e}")
-            return None
         except Exception as e:
-             logger.error(f"Unknown error occurred when calling LLM API for conversation: {e.__class__.__name__} - {e}")
+             logger.error(f"Error occurred when calling Gemini API for conversation: {e.__class__.__name__} - {e}")
              return None
+
+    def _convert_messages_to_gemini_format(self, messages: List[Dict[str, str]]) -> str:
+        """
+        Convert OpenAI format messages to Gemini format
+        """
+        try:
+            # Extract all user and assistant messages and combine them
+            conversation_parts = []
+            for message in messages:
+                role = message.get("role", "")
+                content = message.get("content", "")
+                
+                if role == "user":
+                    conversation_parts.append(f"User: {content}")
+                elif role == "assistant":
+                    conversation_parts.append(f"Assistant: {content}")
+                elif role == "system":
+                    conversation_parts.append(f"System: {content}")
+            
+            # Join all parts with newlines
+            gemini_content = "\n".join(conversation_parts)
+            
+            # for single user message, return just the content
+            if len(messages) == 1 and messages[0].get("role") == "user":
+                gemini_content = messages[0].get("content", "")
+                
+            return gemini_content
+            
+        except Exception as e:
+            logger.error(f"Error converting messages to Gemini format: {e}")
+            if messages:
+                return messages[-1].get("content", "")
+            return ""
 
     async def get_embeddings(
         self,
@@ -101,9 +155,6 @@ class LLMService:
         """
         call embedding model to get vector embeddings for texts
         """
-        if not self.client:
-            logger.error("LLM client not initialized")
-            return None
         
         if not texts:
              return []
@@ -119,7 +170,7 @@ class LLMService:
                 logger.info(f"Sending batch {i//self.BATCH_SIZE + 1}/{len(texts)//self.BATCH_SIZE + 1} to LLM")
                 batch_texts = texts[i:i + self.BATCH_SIZE]
                 
-                batch_response = await self.client.embeddings.create(
+                batch_response = await self.embedding_client.embeddings.create(
                     model=self.default_embedding_model,
                     input=batch_texts,
                     encoding_format=encoding_format
@@ -160,7 +211,7 @@ class LLMService:
         documents:List[str],
         query:str
     ) -> List[int]:
-        dashscope.api_key = self.api_key
+        dashscope.api_key = self.embedding_api_key
         response = dashscope.TextReRank.call(
         model="gte-rerank-v2",
         query=query,

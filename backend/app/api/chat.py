@@ -152,8 +152,8 @@ async def delete_file(
     return False
 
 
-@router.post("/attach_paper")
-async def attach_paper(
+@router.post("/get_paper")
+async def get_paper(
     request: Request,
     paper_id: str = Body(embed=True)
 ):
@@ -167,7 +167,7 @@ async def attach_paper(
             detail="User ID not found"
         )
     try:
-        success = await chat_service.attach_paper(user_id, paper_id)
+        success = await chat_service.get_paper(user_id, paper_id)
         
         if not success:
             return False
@@ -175,9 +175,25 @@ async def attach_paper(
         return True
     
     except Exception as e:
-        logger.error(f"Error attaching paper {paper_id} to chat session {user_id}: {str(e)}")
+        logger.error(f"Error getting paper {paper_id} for chat session {user_id}: {str(e)}")
         return False
-
+    
+@router.post("/attach_paper")
+async def attach_paper(
+    request: Request,
+    paper_id: str = Body(embed=True)
+):
+    """
+    Get a paper from the database
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="User ID not found"
+        )
+    await chat_service.attach_paper(user_id, paper_id)
+    return True
 
 @router.post("/process_embeddings")
 async def process_paper_embeddings(

@@ -8,7 +8,6 @@ import type { Paper } from '@/types/paper';
 export interface IApiService {
   getRecentPapers(limit?: number, offset?: number): Promise<Paper[]>;
   countPapers(): Promise<number>;
-  fetchPapers(categories?: string[], maxResults?: number): Promise<{ count: number }>;
   searchPapers(payload: { query: string, limit?: number }): Promise<any>;
   getUserId(): Promise<string>;
   attach_paper(paperId: string): Promise<boolean>;
@@ -17,6 +16,7 @@ export interface IApiService {
   delete_file(paper_id: string): Promise<boolean>;
   get_messages(): Promise<any[]>;
   stream_chat(message: string): Promise<Response>;
+  get_paper(paper_id: string): Promise<boolean>;
 }
 
 /**
@@ -82,26 +82,6 @@ class ApiService implements IApiService {
     }
   }
 
-  /**
-   * Fetch papers from arXiv
-   * @param categories Array of arXiv categories to fetch
-   * @param maxResults Maximum number of results to fetch
-   * @returns Promise with count of fetched papers
-   */
-  async fetchPapers(
-    categories: string[] = ['cs.LG', 'cs.AI', 'cs.CV'],
-    maxResults: number = 50
-  ): Promise<{ count: number }> {
-    try {
-      const response = await this.api.post('/api/papers/fetch', null, {
-        params: { categories, max_results: maxResults }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch papers:', error);
-      throw error;
-    }
-  }
   
   /**
    * Search papers by query
@@ -204,6 +184,16 @@ class ApiService implements IApiService {
       return response; 
     } catch (error) {
       console.error('Failed to stream chat:', error);
+      throw error;
+    }
+  }
+
+  async get_paper(paper_id: string): Promise<boolean> {
+    try {
+      const response = await this.api.post(`/api/chat/get_paper`, { paper_id: paper_id });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get paper:', error);
       throw error;
     }
   }

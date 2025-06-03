@@ -1,6 +1,6 @@
 <template>
   <button @click="attachPaper" class="action-button chat-button">
-    Chat
+    Add To List
   </button>
 </template>
 
@@ -41,12 +41,23 @@ export default defineComponent({
             throw new Error('Failed to attach paper to chat session');
           }
 
-          router.push({ name: 'chat'});
+          // Emit global event to refresh FileList
+          window.dispatchEvent(new CustomEvent('paper-attached', {
+            detail: { paperId: props.paperId }
+          }));
+
+          // router.push({ name: 'chat'});
           
-          // process embeddings in background
+          // process in background
           setTimeout(async () => {
             try {
               // process embeddings
+              const paperResponse = await api.get_paper(props.paperId);
+              if (!paperResponse) {
+                console.error('Failed to get paper');
+                throw new Error('Failed to get paper');
+              }
+
               const embeddingResponse = await api.process_embeddings(props.paperId);
               
               if (!embeddingResponse) {

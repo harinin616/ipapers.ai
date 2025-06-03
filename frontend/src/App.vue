@@ -1,13 +1,19 @@
 <template>
   <div id="app">
-    <header class="app-header">
+    <header class="app-header" ref="appHeaderRef">
       <nav>
         <router-link to="/">Home</router-link>
         <router-link to="/chat">Chat</router-link>
+        <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+          </svg>
+          <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
+        </button>
       </nav>
     </header>
     
-    <main class="app-content">
+    <main class="app-content" :style="appContentStyle">
       <router-view v-slot="{ Component }">
         <keep-alive :include="['HomeView']" :max="5">
           <component :is="Component" :key="$route.fullPath" />
@@ -17,20 +23,46 @@
     
     <footer class="app-footer">
     </footer>
+
+    <FileList
+      ref="fileListRef"
+      v-model:show-files-list="showFilesList"
+      :user_id="userId || ''"
+      class="global-file-list"
+      :style="fileListStyle"
+      @file-selected="handleFileSelected"
+      @pdf-closed="handlePdfClosed"
+      @files-updated="handleFilesUpdated"
+      @update-file-count="(count: number) => fileCount = count"
+      @width-update="updateFileListWidth"
+    />
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted } from 'vue'
+import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import apiService from './services/api'
+import FileList from './components/FileList.vue'
 
 export default defineComponent({
   name: 'App',
-  
+  components: {
+    FileList
+  },
   setup() {
     const router = useRouter();
+    const showFilesList = ref(false);
+    const showPdf = ref(false);
+    const fileListRef = ref(null);
+    const fileCount = ref(0);
+    const userId = ref<string | null>(null);
     
+    const appHeaderRef = ref<HTMLElement | null>(null);
+    const headerHeight = ref(0);
+    const currentFileListActualWidth = ref('');
+    const fallbackFileListWidth = ref('clamp(300px, 30vw, 450px)');
+
     const saveScrollPosition = (path: string): void => {
       sessionStorage.setItem(
         `scrollPos-${path}`,
@@ -38,22 +70,67 @@ export default defineComponent({
       );
     };
     
-    // get or create user ID
     const getOrCreateUserId = async (): Promise<void> => {
-      let userId = localStorage.getItem('X-User-ID');
-      if (!userId) {
-        try {
-          const response = await apiService.getUserId();
-          userId = response;
-          if (userId) {
-             localStorage.setItem('X-User-ID', userId);
+      if (!userId.value) {
+        let fetchedUserId = localStorage.getItem('X-User-ID');
+        if (!fetchedUserId) {
+          try {
+            const response = await apiService.getUserId();
+            fetchedUserId = response;
+            if (fetchedUserId) {
+               localStorage.setItem('X-User-ID', fetchedUserId);
+            }
+          } catch (error) {
+            console.error('Failed to get user ID:', error);
           }
-        } catch (error) {
-          console.error('Failed to get user ID:', error);
+        }
+        if (fetchedUserId) {
+          userId.value = fetchedUserId;
         }
       }
     };
 
+    const toggleFileList = () => {
+      if (showPdf.value && showFilesList.value && fileListRef.value && typeof (fileListRef.value as any).closePdf === 'function') {
+        (fileListRef.value as any).closePdf();
+      } else {
+        showFilesList.value = !showFilesList.value;
+      }
+    };
+
+    const handleFileSelected = () => {
+      showPdf.value = true;
+      if (!showFilesList.value) {
+        showFilesList.value = true;
+      }
+    };
+
+    const handlePdfClosed = () => {
+      showPdf.value = false;
+    };
+
+    const handleFilesUpdated = (count?: number) => {
+      showFilesList.value = true;
+      showPdf.value = true;
+      if (typeof count === 'number') {
+        fileCount.value = count;
+      }
+    };
+    
+    // Handle paper attached event to refresh FileList
+    const handlePaperAttached = () => {
+      if (fileListRef.value && typeof (fileListRef.value as any).loadFiles === 'function') {
+        (fileListRef.value as any).loadFiles();
+      }
+    };
+    
+    watch(showPdf, (isPdfActive) => {
+      if (isPdfActive) {
+        document.body.classList.add('pdf-active-page');
+      } else {
+        document.body.classList.remove('pdf-active-page');
+      }
+    });
     
     onMounted(async () => {
       router.beforeEach((to, from) => {
@@ -61,10 +138,59 @@ export default defineComponent({
       });
       
       await getOrCreateUserId();
-  
+
+      if (appHeaderRef.value) {
+        headerHeight.value = appHeaderRef.value.offsetHeight;
+      }
+      window.addEventListener('resize', updateHeaderHeight);
+      
+      // Listen for paper-attached events
+      window.addEventListener('paper-attached', handlePaperAttached);
+    });
+
+    onBeforeUnmount(() => {
+      document.body.classList.remove('pdf-active-page');
+      window.removeEventListener('resize', updateHeaderHeight);
+      window.removeEventListener('paper-attached', handlePaperAttached);
     });
     
+    const updateHeaderHeight = () => {
+      if (appHeaderRef.value) {
+        headerHeight.value = appHeaderRef.value.offsetHeight;
+      }
+    };
 
+    const fileListStyle = computed(() => ({
+      transform: showFilesList.value ? 'translateX(0)' : 'translateX(100%)',
+      top: headerHeight.value + 'px',
+      height: `calc(100vh - ${headerHeight.value}px)`,
+    }));
+
+    const appContentStyle = computed(() => ({
+      width: showFilesList.value 
+        ? `calc(100% - ${currentFileListActualWidth.value || fallbackFileListWidth.value})` 
+        : '100%',
+    }));
+
+    const updateFileListWidth = (newWidth: string) => {
+      currentFileListActualWidth.value = newWidth;
+    };
+
+    return {
+      showFilesList,
+      showPdf,
+      fileListRef,
+      fileCount,
+      userId,
+      toggleFileList,
+      handleFileSelected,
+      handlePdfClosed,
+      handleFilesUpdated,
+      appHeaderRef,
+      fileListStyle,
+      appContentStyle,
+      updateFileListWidth
+    };
   }
 })
 </script>
@@ -79,6 +205,7 @@ body {
   background-color: #f8f9fa;
   color: #333;
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
 #app {
@@ -92,6 +219,9 @@ body {
   color: white;
   padding: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .app-header h1 {
@@ -102,6 +232,8 @@ body {
 
 .app-header nav {
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
 }
 
 .app-header nav a {
@@ -125,10 +257,10 @@ body {
   flex: 1;
   padding: 0;
   max-width: none;
-  width: 100%;
   margin: 0;
   display: flex;
   flex-direction: column;
+  transition: width 0.3s ease-in-out;
 }
 
 .app-footer {
@@ -137,5 +269,56 @@ body {
   text-align: center;
   font-size: 0.9rem;
   color: #666;
+}
+
+.file-list-toggle-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-list-toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.file-list-toggle-btn .icon-svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.file-list-toggle-btn .file-count-badge {
+  background-color: #f44336;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 8px;
+  margin-left: 6px;
+  font-weight: bold;
+}
+
+.global-file-list {
+  position: fixed;
+  right: 0;
+  width: clamp(300px, 30vw, 450px);
+  background-color: #ffffff;
+  box-shadow: -3px 0 10px rgba(0,0,0,0.15);
+  z-index: 1050;
+  transition: transform 0.3s ease-in-out;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+body.pdf-active-page {
+  --app-max-width: none !important;
+  --container-padding: 0 !important;
 }
 </style> 

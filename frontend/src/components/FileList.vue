@@ -1,9 +1,13 @@
 <template>
-  <div class="files-sidebar" :class="{ 
-    'hidden': !showFilesList, 
-    'active': showFilesList,
-    'pdf-active': showPdf && currentPdfUrl
-  }">
+  <div 
+    ref="fileListRoot"
+    class="files-sidebar" 
+    :class="{ 
+      'hidden': !showFilesList, 
+      'active': showFilesList,
+      'pdf-active': showPdf && currentPdfUrl
+    }"
+  >
     <div v-if="currentPdfUrl && showPdf" class="pdf-view">
       <div class="pdf-header">
         <h3 class="pdf-title" :title="currentFileName">{{ currentFileName }}</h3>
@@ -73,9 +77,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch } from 'vue'
+import { defineComponent, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import api from '../services/api'
-
 
 interface ChatFile {
   file_path: string;
@@ -103,7 +106,9 @@ export default defineComponent({
     'update:showFilesList',
     'file-selected',
     'pdf-closed',
-    'files-updated'
+    'files-updated',
+    'width-update',
+    'update-file-count'
   ],
   
   setup(props, { emit }) {
@@ -113,19 +118,28 @@ export default defineComponent({
     const selectedFileId = ref<string | null>(null)
     const isPdfLoading = ref(false)
     const currentFileName = ref('Document')
+    const fileListRoot = ref<HTMLElement | null>(null)
     
-    // Load user files
+    let resizeObserver: ResizeObserver | null = null
+    
+    const emitCurrentWidth = () => {
+      if (fileListRoot.value && props.showFilesList) {
+        const currentWidth = fileListRoot.value.offsetWidth
+        emit('width-update', `${currentWidth}px`)
+      }
+    }
+    
     const loadFiles = async () => {
       try {
         const response = await api.get_user_files()
         pdfFiles.value = response
         emit('files-updated', pdfFiles.value)
+        emit('update-file-count', pdfFiles.value.length)
       } catch (error) {
         console.error('Failed to load files')
       }
     }
     
-    // Select PDF file
     const handleSelectFile = (file: ChatFile) => {
       isPdfLoading.value = true
       currentFileName.value = file.filename
@@ -135,30 +149,31 @@ export default defineComponent({
       
       emit('file-selected', file)
       
+      nextTick(() => {
+        emitCurrentWidth()
+      })
+      
       if (window.innerWidth <= 768) {
         emit('update:showFilesList', false)
       }
     }
     
-    // Delete file
     const deleteFile = async (file: ChatFile) => {
-      
       try {
         const result = await api.delete_file(file.paper_id)
         if (result) {
           pdfFiles.value = pdfFiles.value.filter(f => f.paper_id !== file.paper_id)
           emit('files-updated', pdfFiles.value)
+          emit('update-file-count', pdfFiles.value.length)
           if (selectedFileId.value === file.paper_id) {
             closePdf()
           }
         }
-        
       } catch (error) {
         console.error('Failed to delete file:', error)
       }
     }
     
-    // Toggle file list display
     const toggleFilesList = () => {
       emit('update:showFilesList', !props.showFilesList)
       
@@ -167,7 +182,6 @@ export default defineComponent({
       }
     }
     
-    // Close PDF viewer
     const closePdf = () => {
       currentPdfUrl.value = null
       selectedFileId.value = null
@@ -175,10 +189,45 @@ export default defineComponent({
       isPdfLoading.value = false
       currentFileName.value = 'Document'
       emit('pdf-closed')
+      
+      nextTick(() => {
+        emitCurrentWidth()
+      })
     }
-
-  
-    loadFiles()
+    
+    watch(() => props.showFilesList, (newValue) => {
+      nextTick(() => {
+        if (newValue) {
+          emitCurrentWidth()
+        } else {
+          emit('width-update', '0px')
+        }
+      })
+    })
+    
+    onMounted(() => {
+      if (fileListRoot.value) {
+        resizeObserver = new ResizeObserver(() => {
+          emitCurrentWidth()
+        })
+        resizeObserver.observe(fileListRoot.value)
+        
+        nextTick(() => {
+          emitCurrentWidth()
+        })
+      }
+      
+      loadFiles()
+    })
+    
+    onBeforeUnmount(() => {
+      if (resizeObserver && fileListRoot.value) {
+        resizeObserver.unobserve(fileListRoot.value)
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
+    })
     
     return {
       pdfFiles,
@@ -187,10 +236,12 @@ export default defineComponent({
       selectedFileId,
       isPdfLoading,
       currentFileName,
+      fileListRoot,
       handleSelectFile,
       deleteFile,
       toggleFilesList,
       closePdf,
+      loadFiles
     }
   }
 })

@@ -59,7 +59,7 @@ class ChatService:
         return messages
     
     async def attach_paper(self, user_id: str, paper_id: str) -> bool:
-        """get paper pdf and related to chat"""
+        """attach paper to chat"""
         if user_id not in self.active_chats:
             self.active_chats[user_id] = {
                 "messages": [],
@@ -71,21 +71,39 @@ class ChatService:
             if paper:
                 paper_title = paper.title
 
-            file_path = await pdf_service.get_pdf(paper_id)
+            year_month = paper_id[:4]
+            year = year_month[:2]
+            month = year_month[2:4]
+            target_dir = pdf_service.pdf_dir / year / month
+            filename = f"{paper_id}.pdf"
+            file_path = target_dir / filename
 
             success = await pdf_service.update_chat_files(user_id, file_path, paper_id, paper_title)
 
             if not success:
                 return False
-
-            self.add_message(
-                user_id,
-                "system",
-                f"Paper {paper_title} is loaded and been processing"
-            )
             
             logger.info(f"Added paper {paper_id} to chat session {user_id}.")
             return True
+                
+        except Exception as e:
+            logger.error(f"Error attaching paper {paper_id} for chat session {user_id}: {str(e)}", exc_info=True)
+            return False
+    
+    async def get_paper(self, user_id: str, paper_id: str) -> bool:
+        """get paper pdf"""
+        if user_id not in self.active_chats:
+            self.active_chats[user_id] = {
+                "messages": [],
+                "files": []
+            }
+        try:
+            file_path = await pdf_service.get_pdf(paper_id)
+
+            if file_path:
+                return file_path
+            else:
+                return None
                 
         except Exception as e:
             logger.error(f"Error getting PDF for paper {paper_id} for chat session {user_id}: {str(e)}", exc_info=True)
@@ -185,8 +203,7 @@ class ChatService:
         try:
             # stream response from LLM
             stream_response = await llm_service.get_conversation_completion(
-                messages=api_messages,
-                temperature=llm_service.conversation_temperature
+                messages=api_messages
             )
             
             if not stream_response:
@@ -197,8 +214,8 @@ class ChatService:
             
             # process each chunk of the stream response
             async for chunk in stream_response:
-                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
+                if chunk.text:
+                    content = chunk.text
                     assistant_response += content
                     # immediately send each token
                     yield content, False

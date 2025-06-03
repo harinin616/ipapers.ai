@@ -1,26 +1,13 @@
 <template>
   <div class="chat-page">
     <div v-if="initialLoading" class="loading">Loading...</div>
-    <div v-else :class="['full-layout', {'pdf-layout': showPdf}]">
+    <div v-else class="full-layout">
       <!-- Chat Area -->
       <div class="chat-view">
         <div class="chat-section">
           <div class="chat-header">
             <div class="header-main">
               <h2>AI Chat</h2>
-              <div class="header-actions">
-                <button 
-                  @click="handleFileListToggle" 
-                  class="file-list-toggle"
-                  :class="{ 'active': showFilesList }"
-                  :title="showFilesList ? 'Hide files' : 'Show files'"
-                >
-                  <svg class="icon-svg" viewBox="0 0 24 24">
-                    <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                  </svg>
-                  <span v-if="fileCount > 0" class="file-count">{{ fileCount }}</span>
-                </button>
-              </div>
             </div>
           </div>
 
@@ -68,16 +55,6 @@
           </div>
         </div>
       </div>
-      
-      <!-- File List Component -->
-      <FileList
-        ref="fileListRef"
-        :chat-id="chatId"
-        v-model:show-files-list="showFilesList"
-        @file-selected="handleFileSelected"
-        @pdf-closed="handlePdfClosed"
-        @files-updated="handleFilesUpdated"
-      />
     </div>
   </div>
 </template>
@@ -89,7 +66,6 @@ import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import { chatSessionStore } from '../stores/chatSession';
-import FileList from '../components/FileList.vue';
 import api from '../services/api'
 
 
@@ -104,10 +80,6 @@ const currentTypingMessageId = ref(null); // Current typing message ID
 const messagesContainer = ref(null);
 const inputField = ref(null);
 
-// PDF file management
-const showFilesList = ref(false);
-const showPdf = ref(false);
-
 // check if paper is processing
 const isPaperProcessing = ref(false);
 
@@ -117,23 +89,8 @@ watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
 }, { immediate: true });
 
 onBeforeUnmount(() => {
-  chatSessionStore.resetProcessingState();  // ensure state is reset before component unmount
+  chatSessionStore.resetProcessingState();
 });
-
-// handle file selected event
-const handleFileSelected = () => {
-  showPdf.value = true;
-};
-
-// handle pdf closed event
-const handlePdfClosed = () => {
-  showPdf.value = false
-};
-
-const handleFilesUpdated = () => {
-  showFilesList.value = true;
-  showPdf.value = true;
-};
 
 // input placeholder
 const inputPlaceholder = computed(() => {
@@ -366,15 +323,6 @@ function scrollToBottom() {
   }
 }
 
-// Watch PDF status, update body class when PDF is active
-watch(() => showPdf.value, (isPdfActive) => {
-  if (isPdfActive) {
-    document.body.classList.add('pdf-active-page');
-  } else {
-    document.body.classList.remove('pdf-active-page');
-  }
-});
-
 // Improve watch to ensure scroll updates when messages change
 watch(
   () => messages.value.map(m => m.content),
@@ -385,22 +333,6 @@ watch(
   },
   { deep: true }
 );
-
-// Remove body class when component is unmounted
-onBeforeUnmount(() => {
-  document.body.classList.remove('pdf-active-page');
-});
-
-// add method in setup
-const handleFileListToggle = () => {
-  if (showPdf.value && fileListRef.value && typeof fileListRef.value.closePdf === 'function') {
-    fileListRef.value.closePdf();
-  } else {
-    showFilesList.value = !showFilesList.value;
-  }
-};
-
-const fileListRef = ref(null);
 </script>
 
 <style scoped>
@@ -423,10 +355,6 @@ const fileListRef = ref(null);
   padding: 12px;
   box-sizing: border-box;
   transition: all 0.3s ease;
-}
-
-.pdf-layout {
-  padding: 8px;
 }
 
 .loading{
@@ -484,30 +412,6 @@ const fileListRef = ref(null);
 .header-actions {
   display: flex;
   gap: 8px;
-}
-
-.file-list-toggle {
-  background: none;
-  border: none;
-  color: #555;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem;
-  position: relative;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-}
-
-.file-list-toggle:hover {
-  background-color: #f0f0f0;
-}
-
-.file-list-toggle.active {
-  color: #3f51b5;
-  background-color: #e8eaf6;
 }
 
 .chat-container {
@@ -710,27 +614,8 @@ button:disabled {
 </style>
 
 <style>
-/* when pdf is active, adjust page layout */
-body.pdf-active-page {
-  --app-max-width: none !important;
-  --container-padding: 0 !important;
-}
-
 body {
   --app-max-width: none !important;
   overflow-x: hidden;
-}
-
-.container, .container-fluid {
-  max-width: none !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  width: 100% !important;
-  margin: 0 !important;
-}
-
-.row {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
 }
 </style> 

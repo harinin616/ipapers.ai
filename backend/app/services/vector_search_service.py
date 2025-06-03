@@ -177,14 +177,18 @@ class VectorSearchService:
                     ]
             response = await llm_service.get_conversation_completion(
                 messages=messages,
-                temperature=llm_service.conversation_temperature,
-                max_tokens=llm_service.max_tokens,
-                stream=False,    
-                thinking=False
+                stream=False
             )
-            json_data=response.choices[0].message.content
-            querys=json.loads(json_data)
-
+                
+            # Use Gemini API response format instead of OpenAI format
+            json_data = response.text  # Gemini API uses response.text instead of response.choices[0].message.content
+            
+            try:
+                querys = json.loads(json_data)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                querys = {"1": query}
+            
 
             # Create a list of coroutines for all queries
             search_tasks = [self.vector_search(querys[q]) for q in querys]
