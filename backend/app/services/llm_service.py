@@ -11,7 +11,7 @@ from google import genai
 
 
 DAILY_LIMIT = int(os.getenv("LLM_CALLS_PER_DAY", "2000"))
-HOURLY_LIMIT = int(os.getenv("LLM_CALLS_PER_HOUR", "1"))
+HOURLY_LIMIT = int(os.getenv("LLM_CALLS_PER_HOUR", "10"))
 logger = logging.getLogger(__name__)
 
 
