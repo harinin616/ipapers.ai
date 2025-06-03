@@ -11,7 +11,7 @@ from google import genai
 
 
 DAILY_LIMIT = int(os.getenv("LLM_CALLS_PER_DAY", "2000"))
-HOURLY_LIMIT = int(os.getenv("LLM_CALLS_PER_HOUR", "10"))
+HOURLY_LIMIT = int(os.getenv("LLM_CALLS_PER_HOUR", "1"))
 logger = logging.getLogger(__name__)
 
 
@@ -93,7 +93,7 @@ class LLMService:
         try:
             # Check daily call limit with thread safety
             async with self.call_limit_lock:
-                current_hour = self._current_hour_str()
+                current_hour = self.current_hour_str()
                 if current_hour != self.last_call_hour:
                     # Save previous hour's call count before resetting
                     if self.hourly_calls > 0:
