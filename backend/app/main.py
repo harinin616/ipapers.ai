@@ -32,7 +32,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/", response_class=HTMLResponse)   # ★ 新增
+@app.get("/", response_class=HTMLResponse)   
+@app.head("/") 
 async def root():
     return ""
 
