@@ -9,7 +9,11 @@ import dashscope
 from http import HTTPStatus
 from google import genai
 
+
+DAILY_LIMIT = int(os.getenv("LLM_CALLS_PER_DAY", "2000"))
+HOURLY_LIMIT = int(os.getenv("LLM_CALLS_PER_HOUR", "1"))
 logger = logging.getLogger(__name__)
+
 
 class LLMService:
     """
@@ -45,7 +49,9 @@ class LLMService:
         
         self.llm_client = genai.Client(api_key=self.llm_api_key)
 
-        # Initialize daily call limit and data directory
+        # initialize call limits
+        self.hourly_calls = 0
+        self.last_call_hour = self.current_hour_str() 
         self.daily_calls = 0
         self.last_call_date = datetime.now().strftime('%Y-%m-%d')
         self.call_limit_lock = asyncio.Lock()
@@ -62,6 +68,19 @@ class LLMService:
         except Exception as e:
             logger.error(f"Failed to save daily calls: {e}")
 
+    @staticmethod
+    def current_hour_str() -> str:
+        return datetime.now().strftime('%Y-%m-%d-%H')
+    
+    def save_hourly_calls(self, hour_str: str, calls: int):
+        try:
+            call_log_file = self.data_dir / "llm_hourly_calls.log"
+            with call_log_file.open('a', encoding='utf-8') as f:
+                f.write(f"{hour_str},{calls}\n")
+            logger.info(f"Saved hourly calls for {hour_str}: {calls}")
+        except Exception as e:
+            logger.error(f"Failed to save hourly calls: {e}")
+        
     async def get_conversation_completion(
         self,
         messages: List[Dict[str, str]],
@@ -74,6 +93,22 @@ class LLMService:
         try:
             # Check daily call limit with thread safety
             async with self.call_limit_lock:
+                current_hour = self._current_hour_str()
+                if current_hour != self.last_call_hour:
+                    # Save previous hour's call count before resetting
+                    if self.hourly_calls > 0:
+                        self.save_hourly_calls(self.last_call_hour, self.hourly_calls)
+
+                    self.hourly_calls = 0
+                    self.last_call_hour = current_hour
+
+                if self.hourly_calls >= HOURLY_LIMIT:
+                    logger.error("Hourly call limit exceeded")
+                    return None
+
+                self.hourly_calls += 1
+
+
                 current_date = datetime.now().strftime('%Y-%m-%d')
                 if current_date != self.last_call_date:
                     # Save previous day's call count before resetting
@@ -84,7 +119,7 @@ class LLMService:
                     self.daily_calls = 0
                     self.last_call_date = current_date
                 
-                if self.daily_calls >= 2:
+                if self.daily_calls >= DAILY_LIMIT:
                     logger.error("Daily call limit exceeded")
                     return None
                 
