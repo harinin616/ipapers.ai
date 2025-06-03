@@ -21,7 +21,7 @@ async def append_record(query: str, results: list[dict], user_id: int | None = N
     }
     """
     record = {
-      #  "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "user_id": user_id,
         "query": query,
         "results": results,
@@ -29,4 +29,5 @@ async def append_record(query: str, results: list[dict], user_id: int | None = N
 
     async with _write_lock:
         with LOG_PATH.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+
