@@ -16,6 +16,8 @@ export interface IApiService {
   delete_file(paper_id: string): Promise<boolean>;
   get_messages(): Promise<any[]>;
   stream_chat(message: string): Promise<Response>;
+  chat_comparison(message: string): Promise<Response>;
+  chat_rwg(message: string): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
 }
@@ -185,6 +187,52 @@ class ApiService implements IApiService {
       return response; 
     } catch (error) {
       console.error('Failed to stream chat:', error);
+      throw error;
+    }
+  }
+
+  async chat_comparison(message: string): Promise<Response> {
+    try {
+      const userId = localStorage.getItem('X-User-ID');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+
+      const response = await fetch(`/api/chat/chat_comparison`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ message: message })
+      });
+      
+      return response; 
+    } catch (error) {
+      console.error('Failed to chat comparison:', error);
+      throw error;
+    }
+  }
+
+  async chat_rwg(message: string): Promise<Response> {
+    try {
+      const userId = localStorage.getItem('X-User-ID');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+
+      const response = await fetch(`/api/chat/chat_rwg`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ message: message })
+      });
+      
+      return response; 
+    } catch (error) {
+      console.error('Failed to chat RWG:', error);
       throw error;
     }
   }
