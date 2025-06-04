@@ -4,6 +4,7 @@
       <nav>
         <router-link to="/">Home</router-link>
         <router-link to="/chat">Chat</router-link>
+        <!-- <router-link to="/review">Review</router-link> -->
         <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
           <svg class="icon-svg" viewBox="0 0 24 24">
             <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />

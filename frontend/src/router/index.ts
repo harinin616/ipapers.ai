@@ -40,6 +40,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/review',
+    name: 'review',
+    component: () => import('../views/Review.vue'),
+    meta: {
+      title: 'Review - DL Paper Monitor',
+      requiresAuth: false
+    }
+  },
+  {
     // Catch all route (404)
     path: '/:pathMatch(.*)*',
     name: 'not-found',
