@@ -46,6 +46,7 @@
           </router-link>
         <button class="close-btn" @click="toggleFilesList">×</button>
       </div>
+       </div>
       
       <div class="pdf-files-list">
         <div 
