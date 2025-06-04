@@ -40,6 +40,10 @@
     <div v-if="!showPdf || !currentPdfUrl" class="pdf-files-panel">
       <div class="panel-header">
         <h3>File List</h3>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <router-link to="/chat" class="chat-button-inside-sidebar">
+              Chat
+          </router-link>
         <button class="close-btn" @click="toggleFilesList">×</button>
       </div>
       
