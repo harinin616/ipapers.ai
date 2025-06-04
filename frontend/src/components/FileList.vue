@@ -544,4 +544,18 @@ export default defineComponent({
     height: 350px;
   }
 }
+.chat-button-inside-sidebar {
+  background-color: #3f51b5;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.chat-button-inside-sidebar:hover {
+  background-color: #303f9f;
+}
+
 </style> 
