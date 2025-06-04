@@ -24,7 +24,7 @@
     <p class="paper-abstract">{{ truncatedAbstract }}</p>
     
     <div class="paper-actions">
-      <a :href="paper.pdf_url" target="_blank" rel="noopener" class="action-button">
+      <a :href="paper.pdf_url" target="_blank" rel="noopener" class="action-button" @click="handlePdfClick">
         Open PDF
       </a>
       <button @click="goToPaperDetail" class="action-button">
@@ -41,6 +41,7 @@ import { useRouter } from 'vue-router'
 import { paperStore } from '../stores/paperStore'
 import type { Paper } from '../types/paper'
 import ChatButton from './ChatButton.vue'
+import api from '../services/api'
 
 export default defineComponent({
   name: 'PaperCard',
@@ -93,17 +94,33 @@ export default defineComponent({
       return abstract.substring(0, 250) + '...';
     });
     
+    // Handle PDF click with tracking
+    const handlePdfClick = async () => {
+      try {
+        await api.click_paper(props.paper.paper_id);
+      } catch (error) {
+        console.error('Failed to record PDF click:', error);
+      }
+    };
     
-    const goToPaperDetail = () => {
-      // Store the paper object in the store before navigation
-      paperStore.setCurrentPaper(props.paper);
-      router.push({ name: 'paper-detail' });
+    const goToPaperDetail = async () => {
+      try {
+        await api.click_paper(props.paper.paper_id);
+        
+        paperStore.setCurrentPaper(props.paper);
+        router.push({ name: 'paper-detail' });
+      } catch (error) {
+        console.error('Failed to record details click:', error);
+        paperStore.setCurrentPaper(props.paper);
+        router.push({ name: 'paper-detail' });
+      }
     };
     
     return {
       authorText,
       formattedDate,
       truncatedAbstract,
+      handlePdfClick,
       goToPaperDetail
     };
   }

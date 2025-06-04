@@ -5,8 +5,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
-import { useRouter } from 'vue-router'
+import { defineComponent } from 'vue' 
 import { chatSessionStore } from '../stores/chatSession'
 import api from '../services/api'
 
@@ -22,11 +21,16 @@ export default defineComponent({
   },
   
   setup(props) {
-    const router = useRouter();
     
     // Start chat with paper
     const attachPaper = async () => {
       try {
+        try {
+          await api.click_paper(props.paperId);
+        } catch (error) {
+          console.error('Failed to record add to list click:', error);
+        }
+        
         chatSessionStore.setProcessingPaper(true);
 
         const user_id = localStorage.getItem('X-User-ID');

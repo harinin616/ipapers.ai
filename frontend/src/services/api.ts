@@ -17,6 +17,7 @@ export interface IApiService {
   get_messages(): Promise<any[]>;
   stream_chat(message: string): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
+  click_paper(paper_id: string): Promise<boolean>;
 }
 
 /**
@@ -194,6 +195,16 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to get paper:', error);
+      throw error;
+    }
+  }
+
+  async click_paper(paper_id: string): Promise<boolean> {
+    try {
+      const response = await this.api.post(`/api/papers/click/${paper_id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to click paper:', error);
       throw error;
     }
   }

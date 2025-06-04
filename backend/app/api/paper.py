@@ -30,6 +30,16 @@ async def count_papers():
     return count
 
 
+@router.post("/click/{paper_id}")
+async def click_paper(paper_id: str):
+    """
+    Click on a paper
+    """
+    success = await db_service.click_paper(paper_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    return success
+
 @router.get("/{paper_id}", response_model=Paper)
 async def get_paper(paper_id: str):
     """
@@ -47,7 +57,7 @@ async def get_paper(paper_id: str):
         categories=paper.categories,
         pdf_url=paper.pdf_url,
         published_date=paper.published_date,
-        updated_at=paper.updated_date
+        updated_date=paper.updated_date
     )
     
     return response 

@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 from sqlalchemy.future import select
-from sqlalchemy import func, insert, text
+from sqlalchemy import func, text, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -113,7 +113,8 @@ class DBService:
                         abstract=paper.abstract,
                         pdf_url=paper.pdf_url,
                         published_date=paper.published_date,
-                        updated_date=paper.updated_date
+                        updated_date=paper.updated_date,
+                        click_count=0  # Initialize click count to 0 for new papers
                     )
                     
                     # Add category associations
@@ -187,7 +188,7 @@ class DBService:
                         categories=[category.name for category in db_paper.categories],
                         pdf_url=db_paper.pdf_url,
                         published_date=db_paper.published_date,
-                        updated_date=db_paper.updated_date,
+                        updated_date=db_paper.updated_date
                     )
                     
                     logger.info(f"success get paper: {paper.title} (ID: {paper.paper_id})")
@@ -228,7 +229,7 @@ class DBService:
                     categories=[category.name for category in db_paper.categories],
                     pdf_url=db_paper.pdf_url,
                     published_date=db_paper.published_date,
-                    updated_date=db_paper.updated_date,
+                    updated_date=db_paper.updated_date
                 ))
         
         return papers
@@ -275,6 +276,72 @@ class DBService:
             count = result.scalar_one()
             return count
         return 0
+    
+    async def click_paper(self, paper_id: str) -> bool:
+        """
+        Increment click count for a paper by 1 in a transaction
+        """
+        if not paper_id:
+            logger.warning("Attempted to click paper with empty ID")
+            return False
+        
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    update(DBPaper)
+                    .where(DBPaper.paper_id == paper_id)
+                    .values(click_count=DBPaper.click_count + 1)
+                )
+                
+                if result.rowcount == 0:
+                    logger.warning(f"Paper {paper_id} not found for click recording")
+                    return False
+                
+                await db.commit()
+                logger.info(f"Successfully recorded click for paper ID: {paper_id}")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when recording click for paper ID {paper_id}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when recording click for paper ID {paper_id}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+    
+    async def get_paper_click_count(self, paper_id: str) -> Optional[int]:
+        """
+        Get the current click count for a paper
+        """
+        if not paper_id:
+            logger.warning("Attempted to get click count for paper with empty ID")
+            return None
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBPaper.click_count)
+                    .where(DBPaper.paper_id == paper_id)
+                )
+                click_count = result.scalar_one_or_none()
+                
+                if click_count is None:
+                    logger.info(f"Paper with ID {paper_id} not found when getting click count")
+                    return None
+                
+                return click_count
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting click count for paper ID {paper_id}: {str(e)}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error when getting click count for paper ID {paper_id}: {str(e)}", exc_info=True)
+                return None
+        
+        return None
 
 # Create a global instance
 db_service = DBService() 

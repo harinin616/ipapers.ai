@@ -35,6 +35,7 @@ class DBPaper(Base):
     pdf_url = Column(String, nullable=False)
     published_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime, nullable=True)
+    click_count = Column(Integer, nullable=False, default=0)
     
     
     # Updated relationships with ordering for authors
