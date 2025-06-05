@@ -11,15 +11,17 @@
           </svg>
           <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
         </button>
-        <div v-if="!user" ref="googleBtn" class="g_id_signin"></div>
 
-        <!-- 如果已经有 user，则隐藏按钮，显示头像和下拉菜单（示例） -->
-        <div v-else class="user-info">
-          <img :src="user.picture" alt="头像" class="avatar" />
-          <span class="user-name">{{ user.name }}</span>
-          <!-- 你还可以加一个“登出”按钮 -->
-          <button @click="logout" class="logout-btn">Logout</button>
-        </div>
+        
+       <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
+
+       <!-- 用户信息容器（头像+用户名+Logout），始终存在，仅当 user 不为空时显示 -->
+       <div class="user-info" v-show="user">
+         <img :src="user?.picture" alt="头像" class="avatar" />
+         <span class="user-name">{{ user?.name }}</span>
+         <button @click="logout" class="logout-btn">Logout</button>
+       </div>
+       
       </nav>
     </header>
     
@@ -166,7 +168,7 @@ export default defineComponent({
               })
                 .then((r) => r.json())
                 .then((userInfo) => {
-                  console.log('登录成功，用户信息：', userInfo)
+                  console.log('Login successful, user info:', userInfo)
                   // ===== 登录成功后把信息保存到 user =====
                   user.value = {
                     email: userInfo.email,
@@ -180,7 +182,7 @@ export default defineComponent({
                   )
                 })
                 .catch((err) => {
-                  console.error('登录请求出错：', err)
+                  console.error('Login request failed:', err)
                 })
             },
           })
@@ -259,14 +261,9 @@ export default defineComponent({
     };
 
     const logout = async () => {
-      // 1. 清空 user，让界面切回“未登录”分支
       user.value = null
       localStorage.removeItem('user')
-
-      // 2. 等待 Vue 把 <div ref="googleBtn"> 重新挂载到 DOM
       await nextTick()
-
-      // 3. 再次调用 tryRenderGoogleButton，让 Google 按钮立刻渲染回来
       tryRenderGoogleButton()
     }
 
