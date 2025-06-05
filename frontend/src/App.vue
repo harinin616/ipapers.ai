@@ -13,7 +13,7 @@
         </button>
         <div id="g_id_onload"
           data-client_id="500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com"
-          data-login_uri="http://localhost:8000/api/auth/google-login"
+          data-login_uri="https://ipapers.ai/api/auth/google-login"
           data-auto_prompt="false">
         </div>
         <div class="g_id_signin"
