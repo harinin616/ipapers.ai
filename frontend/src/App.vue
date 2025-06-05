@@ -14,10 +14,8 @@
 
         
        <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
-
-       <!-- 用户信息容器（头像+用户名+Logout），始终存在，仅当 user 不为空时显示 -->
        <div class="user-info" v-show="user">
-         <img :src="user?.picture" alt="头像" class="avatar" />
+         <img :src="user?.picture" alt="avatar" class="avatar" />
          <span class="user-name">{{ user?.name }}</span>
          <button @click="logout" class="logout-btn">Logout</button>
        </div>
@@ -69,6 +67,7 @@ export default defineComponent({
     const fileListRef = ref(null);
     const fileCount = ref(0);
     const userId = ref<string | null>(null);
+    
     
     const user = ref<{ email: string; name: string; picture: string } | null>(null)
 
@@ -152,13 +151,11 @@ export default defineComponent({
           window.google.accounts &&
           window.google.accounts.id
         ) {
-          // 1. 初始化 SDK
           window.google.accounts.id.initialize({
             client_id:
               '500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com',
             callback: (response: any) => {
-              // response.credential 是 Google 返回的 ID Token
-              // 将其 POST 给后端，后端返回用户信息
+         
               fetch('https://ipapers.ai/api/auth/google-login', {
                 method: 'POST',
                 headers: {
@@ -169,13 +166,13 @@ export default defineComponent({
                 .then((r) => r.json())
                 .then((userInfo) => {
                   console.log('Login successful, user info:', userInfo)
-                  // ===== 登录成功后把信息保存到 user =====
+  
                   user.value = {
                     email: userInfo.email,
                     name: userInfo.name,
                     picture: userInfo.picture,
                   }
-                  // 如果需要，保存到 localStorage 做持久化
+ 
                   localStorage.setItem(
                     'user',
                     JSON.stringify(user.value)
@@ -186,7 +183,7 @@ export default defineComponent({
                 })
             },
           })
-          // 2. 渲染按钮到模板里放置的 容器 googleBtn
+
           if (googleBtn.value) {
             window.google.accounts.id.renderButton(googleBtn.value, {
               theme: 'outline',
@@ -207,7 +204,7 @@ export default defineComponent({
         try {
           user.value = JSON.parse(stored)
         } catch (e) {
-          console.error('解析 user 缓存失败：', e)
+          console.error('Failed to parse user cache:', e)
           localStorage.removeItem('user')
           user.value = null
         }
@@ -433,7 +430,6 @@ body.pdf-active-page {
   font-weight: 500;
 }
 
-/* 登出按钮放在最右 */
 .logout-btn {
   background: transparent;
   border: 1px solid white;
