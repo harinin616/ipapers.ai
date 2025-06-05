@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, Body, Path, Request, Query
 from fastapi.responses import StreamingResponse
-from typing import Optional
+from typing import Optional, List
 import logging
 import json
 
 from app.services.review_service import review_service
+from app.services.chat_service import chat_service
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,11 @@ class ReviewResponseChunk:
 @router.post("/chat_comparison")
 async def chat_comparison(
     request: Request,
-    message: str = Body(embed=True)
+    message: str = Body(embed=True),
+    selected_files: List[str] = Body(default=[], embed=True)
 ):
     """
-    get stream response for paper comparison
+    get stream response for paper comparison (uses shared file system)
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
@@ -44,12 +46,20 @@ async def chat_comparison(
             detail="User ID not found"
         )
 
-    if user_id not in review_service.active_reviews:
-        review_service.active_reviews[user_id] = {
-            "comparison_messages": [],
-            "rwg_messages": [],
+    # Initialize shared chat session if not exists
+    if user_id not in chat_service.active_chats:
+        chat_service.active_chats[user_id] = {
+            "messages": [],
             "files": []
         }
+    
+    # Mark selected files in shared chat system
+    if selected_files and chat_service.active_chats[user_id]["files"]:
+        for file in chat_service.active_chats[user_id]["files"]:
+            if file["paper_id"] in selected_files:
+                file["selected"] = True
+            else:
+                file["selected"] = False
     
     async def stream_comparison_response():
         try:
@@ -76,10 +86,11 @@ async def chat_comparison(
 @router.post("/chat_rwg")
 async def chat_rwg(
     request: Request,
-    message: str = Body(embed=True)
+    message: str = Body(embed=True),
+    selected_files: List[str] = Body(default=[], embed=True)
 ):
     """
-    get stream response for related work generation
+    get stream response for related work generation (uses shared file system)
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
@@ -88,12 +99,20 @@ async def chat_rwg(
             detail="User ID not found"
         )
 
-    if user_id not in review_service.active_reviews:
-        review_service.active_reviews[user_id] = {
-            "comparison_messages": [],
-            "rwg_messages": [],
+    # Initialize shared chat session if not exists
+    if user_id not in chat_service.active_chats:
+        chat_service.active_chats[user_id] = {
+            "messages": [],
             "files": []
         }
+    
+    # Mark selected files in shared chat system
+    if selected_files and chat_service.active_chats[user_id]["files"]:
+        for file in chat_service.active_chats[user_id]["files"]:
+            if file["paper_id"] in selected_files:
+                file["selected"] = True
+            else:
+                file["selected"] = False
     
     async def stream_rwg_response():
         try:
@@ -151,38 +170,4 @@ async def get_rwg_messages(
     return messages
 
 
-@router.get("/files")
-async def get_review_files(
-    request: Request
-):
-    """
-    Get user's attached files for review
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-    
-    if user_id not in review_service.active_reviews:
-        review_service.active_reviews[user_id] = {
-            "comparison_messages": [],
-            "rwg_messages": [],
-            "files": []
-        }
-    
-    review_data = review_service.active_reviews[user_id]
-    result = []
 
-    if review_data["files"]:
-        for file_data in review_data["files"]:
-            result.append({
-                "file_path": file_data["file_path"],
-                "filename": file_data["filename"],
-                "paper_id": file_data["paper_id"],
-                "paper_URL": file_data["paper_URL"],
-                "added_at": file_data["added_at"]
-            })
-    
-    return result 

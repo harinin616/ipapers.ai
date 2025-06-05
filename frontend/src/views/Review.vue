@@ -90,9 +90,9 @@ const activeView = ref('comparison'); // Default to comparison view
 const messagesContainer = ref(null);
 const inputField = ref(null);
 
-// Messages for each view
+// Separate message storage for comparison and RWG (but shared file selection)
 const comparisonMessages = ref([]);
-const relatedWorkMessages = ref([]);
+const rwgMessages = ref([]);
 
 // Chat functionality
 const userInput = ref('');
@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
 
 // Get current messages based on active view
 const currentMessages = computed(() => {
-  return activeView.value === 'comparison' ? comparisonMessages.value : relatedWorkMessages.value;
+  return activeView.value === 'comparison' ? comparisonMessages.value : rwgMessages.value;
 });
 
 // input placeholder
@@ -149,7 +149,7 @@ async function sendMessage() {
   const messageContent = userInput.value.trim();
   userInput.value = '';
   
-  // Add user message to current view's messages
+  // Add user message to current view's message list
   const userMessage = {
     id: Date.now().toString(),
     role: 'user',
@@ -160,7 +160,7 @@ async function sendMessage() {
   if (activeView.value === 'comparison') {
     comparisonMessages.value.push(userMessage);
   } else {
-    relatedWorkMessages.value.push(userMessage);
+    rwgMessages.value.push(userMessage);
   }
   
   // Scroll to bottom
@@ -185,18 +185,18 @@ async function sendMessage() {
     if (activeView.value === 'comparison') {
       comparisonMessages.value.push(assistantMessage);
     } else {
-      relatedWorkMessages.value.push(assistantMessage);
+      rwgMessages.value.push(assistantMessage);
     }
     
     await streamResponse(messageContent, assistantMessage);
   } catch (err) {
     console.error('Failed to send message:', err);
     // Remove empty assistant message on error
-    const currentMsgs = activeView.value === 'comparison' ? comparisonMessages.value : relatedWorkMessages.value;
-    if (currentMsgs.length > 0 && 
-        currentMsgs[currentMsgs.length - 1].role === 'assistant' && 
-        currentMsgs[currentMsgs.length - 1].content === '') {
-      currentMsgs.pop();
+    const currentMessageList = activeView.value === 'comparison' ? comparisonMessages.value : rwgMessages.value;
+    if (currentMessageList.length > 0 && 
+        currentMessageList[currentMessageList.length - 1].role === 'assistant' && 
+        currentMessageList[currentMessageList.length - 1].content === '') {
+      currentMessageList.pop();
     }
   } finally {
     isLoading.value = false;
@@ -208,8 +208,9 @@ async function sendMessage() {
 // Stream response (different endpoint based on view)
 async function streamResponse(userMessage, assistantMessage) {
   try {
-    // Use different API endpoint based on active view
+    // Use different API endpoint based on active view (both use shared file selection)
     let response;
+    
     if (activeView.value === 'comparison') {
       response = await api.chat_comparison(userMessage);
     } else {
@@ -324,7 +325,7 @@ function scrollToBottom() {
 
 // Watch for message changes to auto-scroll
 watch(
-  () => [comparisonMessages.value.map(m => m.content), relatedWorkMessages.value.map(m => m.content)],
+  () => [comparisonMessages.value.map(m => m.content), rwgMessages.value.map(m => m.content)],
   () => {
     nextTick(() => {
       scrollToBottom();
@@ -367,16 +368,25 @@ onMounted(async () => {
   });
 });
 
-// Load review data (placeholder for future implementation)
+// Load review data
 async function loadReviewData() {
   try {
-    // This will be implemented later to load saved messages for each view
     console.log('Loading review data...');
+    
+    // Load messages for both contexts
+    const [comparisonMessagesData, rwgMessagesData] = await Promise.all([
+      api.get_comparison_messages(),
+      api.get_rwg_messages()
+    ]);
+    
+    // Set messages (files are managed by the shared system)
+    comparisonMessages.value = comparisonMessagesData || [];
+    rwgMessages.value = rwgMessagesData || [];
     
     await nextTick();
     scrollToBottom();
   } catch (error) {
-    console.error('Failed to load review data:');
+    console.error('Failed to load review data:', error);
   }
 }
 </script>

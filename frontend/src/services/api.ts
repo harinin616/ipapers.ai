@@ -21,6 +21,10 @@ export interface IApiService {
   chat_rwg(message: string): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
+  
+  // Review message methods (using shared file system)
+  get_comparison_messages(): Promise<any[]>;
+  get_rwg_messages(): Promise<any[]>;
 }
 
 /**
@@ -204,10 +208,12 @@ class ApiService implements IApiService {
         headers['X-User-ID'] = userId;
       }
 
+      const selectedFiles = fileSelectionStore.getSelectedFiles();
+
       const response = await fetch(`/api/chat/chat_comparison`, {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, selected_files: selectedFiles })
       });
       
       return response; 
@@ -227,10 +233,12 @@ class ApiService implements IApiService {
         headers['X-User-ID'] = userId;
       }
 
+      const selectedFiles = fileSelectionStore.getSelectedFiles();
+
       const response = await fetch(`/api/chat/chat_rwg`, {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, selected_files: selectedFiles })
       });
       
       return response; 
@@ -256,6 +264,28 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to click paper:', error);
+      throw error;
+    }
+  }
+
+  // ============ REVIEW MESSAGE METHODS (using shared file system) ============
+  
+  async get_comparison_messages(): Promise<any[]> {
+    try {
+      const response = await this.api.get(`/api/chat/comparison_messages`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get comparison messages:', error);
+      throw error;
+    }
+  }
+
+  async get_rwg_messages(): Promise<any[]> {
+    try {
+      const response = await this.api.get(`/api/chat/rwg_messages`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get RWG messages:', error);
       throw error;
     }
   }

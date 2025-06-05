@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class ReviewService:
     """
     Service for handling review conversations (comparison and related work generation)
+    Uses shared file system with chat service, but maintains separate message histories
     """
     
     def __init__(self):
@@ -22,43 +23,25 @@ class ReviewService:
         # review config
         self.max_context_messages = 10
         
-        # active review sessions
-        self.active_reviews = {}
+        # separate message storage for comparison and RWG (files are shared with chat)
+        self.comparison_messages = {}
+        self.rwg_messages = {}
         
-        # track processing files
+        # track processing files (shared with chat service)
         self.processing_files = set()
         
         logger.info(f"Review Service initialized. Max context: {self.max_context_messages}")
+    
+    # ============ COMPARISON METHODS ============
     
     def add_comparison_message(self, user_id: str, role: str, content: str):
         """
         add message to comparison conversation
         """
-        if user_id not in self.active_reviews:
-            self.active_reviews[user_id] = {
-                "comparison_messages": [],
-                "rwg_messages": [],
-                "files": []
-            }
+        if user_id not in self.comparison_messages:
+            self.comparison_messages[user_id] = []
         
-        self.active_reviews[user_id]["comparison_messages"].append({
-            "role": role,
-            "content": content,
-            "timestamp": time.time()
-        })
-    
-    def add_rwg_message(self, user_id: str, role: str, content: str):
-        """
-        add message to related work generation conversation
-        """
-        if user_id not in self.active_reviews:
-            self.active_reviews[user_id] = {
-                "comparison_messages": [],
-                "rwg_messages": [],
-                "files": []
-            }
-        
-        self.active_reviews[user_id]["rwg_messages"].append({
+        self.comparison_messages[user_id].append({
             "role": role,
             "content": content,
             "timestamp": time.time()
@@ -66,27 +49,9 @@ class ReviewService:
     
     def get_comparison_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
         """get user's comparison history messages"""
-        if user_id not in self.active_reviews:
-            self.active_reviews[user_id] = {
-                "comparison_messages": [],
-                "rwg_messages": [],
-                "files": []
-            }
-        messages = self.active_reviews[user_id]["comparison_messages"]
-        
-        if limit:
-            return messages[-limit:]
-        return messages
-    
-    def get_rwg_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
-        """get user's related work generation history messages"""
-        if user_id not in self.active_reviews:
-            self.active_reviews[user_id] = {
-                "comparison_messages": [],
-                "rwg_messages": [],
-                "files": []
-            }
-        messages = self.active_reviews[user_id]["rwg_messages"]
+        if user_id not in self.comparison_messages:
+            self.comparison_messages[user_id] = []
+        messages = self.comparison_messages[user_id]
         
         if limit:
             return messages[-limit:]
@@ -94,15 +59,18 @@ class ReviewService:
     
     async def format_comparison_messages(self, user_id: str) -> List[Dict[str, str]]:
         """
-        format comparison messages for API call
+        format comparison messages for API call (uses shared file system)
         """
-        review_data = self.active_reviews.get(user_id)
+        from app.services.chat_service import chat_service
         
+        # Get file names from shared chat system
         file_names = []
-        if review_data["files"]:
-            for file_data in review_data["files"]:
-                file_names.append(file_data.get("filename", "Unknown file"))
-        
+        chat_data = chat_service.active_chats.get(user_id)
+        if chat_data and chat_data["files"]:
+            for file_data in chat_data["files"]:
+                if file_data.get("selected"):
+                    file_names.append(file_data.get("filename", "Unknown file"))
+    
         system_content = (
             "You are a professional academic paper comparison assistant. Your role is to help users compare and analyze multiple research papers. "
             "You can identify similarities, differences, methodologies, results, and contributions across papers. "
@@ -112,37 +80,7 @@ class ReviewService:
         )
         
         api_messages = [{"role": "system", "content": system_content}]
-        user_messages = [m for m in review_data["comparison_messages"] if m["role"] in ["user", "assistant"]]
-        recent_messages = user_messages[-self.max_context_messages:]
-        for msg in recent_messages:
-            api_messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-        return api_messages
-    
-    async def format_rwg_messages(self, user_id: str) -> List[Dict[str, str]]:
-        """
-        format related work generation messages for API call
-        """
-        review_data = self.active_reviews.get(user_id)
-        
-        file_names = []
-        if review_data["files"]:
-            for file_data in review_data["files"]:
-                file_names.append(file_data.get("filename", "Unknown file"))
-        
-        system_content = (
-            "You are a professional academic writing assistant specialized in generating related work sections. "
-            "Your role is to help users create comprehensive related work sections by analyzing existing papers, "
-            "identifying key contributions, methodologies, and relationships between different research efforts. "
-            "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
-            f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
-            "Please synthesize information from these papers to generate related work content with proper citations and flow."
-        )
-        
-        api_messages = [{"role": "system", "content": system_content}]
-        user_messages = [m for m in review_data["rwg_messages"] if m["role"] in ["user", "assistant"]]
+        user_messages = [m for m in self.comparison_messages.get(user_id, []) if m["role"] in ["user", "assistant"]]
         recent_messages = user_messages[-self.max_context_messages:]
         for msg in recent_messages:
             api_messages.append({
@@ -153,21 +91,18 @@ class ReviewService:
     
     async def generate_comparison_response(self, user_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
         """
-        generate streaming response for paper comparison
+        generate streaming response for paper comparison (uses shared file system)
         """
         self.add_comparison_message(user_id, "user", query)
         
-        review_data = self.active_reviews[user_id]
-        assistant_response = ""
-        
         try:
             relevant_chunks = []
-            if review_data["files"]:
-                # get relevant chunks from pdf for comparison
-                relevant_chunks = await pdf_service.query_similar_chunks(
-                    user_id, 
-                    query
-                )
+            # Use shared chat system for file access
+            from app.services.chat_service import chat_service
+            chat_data = chat_service.active_chats.get(user_id)
+            if chat_data and chat_data["files"]:
+                # get relevant chunks from pdf for comparison using shared system
+                relevant_chunks = await pdf_service.query_similar_chunks(user_id, query)
             
             # format messages for comparison
             api_messages = await self.format_comparison_messages(user_id)
@@ -194,63 +129,113 @@ class ReviewService:
             # if failed, fallback to regular message format
             api_messages = await self.format_comparison_messages(user_id)
         
-        # PLACEHOLDER: Return simple message instead of calling LLM
-        placeholder_message = "I will provide this later"
-        self.add_comparison_message(user_id, "assistant", placeholder_message)
-        yield placeholder_message, True
-        return
+        # generate response from LLM
+        assistant_response = ""
+        try:
+            # stream response from LLM for comparison
+            stream_response = await llm_service.get_conversation_completion(
+                messages=api_messages
+            )
+            
+            if not stream_response:
+                error_msg = "Sorry, I encountered an error while processing your comparison request."
+                self.add_comparison_message(user_id, "assistant", error_msg)
+                yield error_msg, True
+                return
+            
+            # process each chunk of the stream response
+            async for chunk in stream_response:
+                if chunk.text:
+                    content = chunk.text
+                    assistant_response += content
+                    # immediately send each token
+                    yield content, False
+            
+            # add to comparison history after completion
+            if assistant_response:
+                self.add_comparison_message(user_id, "assistant", assistant_response)
+                
+            # send end flag
+            yield "", True
+                
+        except Exception as e:
+            logger.error(f"Error generating comparison response for {user_id}: {str(e)}")
+            error_msg = "Sorry, I encountered an error while processing your comparison request."
+            self.add_comparison_message(user_id, "assistant", error_msg)
+            yield error_msg, True
+
+    # ============ RWG (RELATED WORK GENERATION) METHODS ============
+    
+    def add_rwg_message(self, user_id: str, role: str, content: str):
+        """
+        add message to related work generation conversation
+        """
+        if user_id not in self.rwg_messages:
+            self.rwg_messages[user_id] = []
         
-        # ORIGINAL LLM CODE (commented out for now)
-        # try:
-        #     # stream response from LLM for comparison
-        #     stream_response = await llm_service.get_conversation_completion(
-        #         messages=api_messages
-        #     )
-        #     
-        #     if not stream_response:
-        #         error_msg = "Sorry, I encountered an error while processing your comparison request."
-        #         self.add_comparison_message(user_id, "assistant", error_msg)
-        #         yield error_msg, True
-        #         return
-        #     
-        #     # process each chunk of the stream response
-        #     async for chunk in stream_response:
-        #         if chunk.text:
-        #             content = chunk.text
-        #             assistant_response += content
-        #             # immediately send each token
-        #             yield content, False
-        #     
-        #     # add to comparison history after completion
-        #     if assistant_response:
-        #         self.add_comparison_message(user_id, "assistant", assistant_response)
-        #         
-        #     # send end flag
-        #     yield "", True
-        #         
-        # except Exception as e:
-        #     logger.error(f"Error generating comparison response for {user_id}: {str(e)}")
-        #     error_msg = "Sorry, I encountered an error while processing your comparison request."
-        #     self.add_comparison_message(user_id, "assistant", error_msg)
-        #     yield error_msg, True
+        self.rwg_messages[user_id].append({
+            "role": role,
+            "content": content,
+            "timestamp": time.time()
+        })
+    
+    def get_rwg_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
+        """get user's related work generation history messages"""
+        if user_id not in self.rwg_messages:
+            self.rwg_messages[user_id] = []
+        messages = self.rwg_messages[user_id]
+        
+        if limit:
+            return messages[-limit:]
+        return messages
+
+    async def format_rwg_messages(self, user_id: str) -> List[Dict[str, str]]:
+        """
+        format related work generation messages for API call (uses shared file system)
+        """
+        from app.services.chat_service import chat_service
+        
+        # Get file names from shared chat system
+        file_names = []
+        chat_data = chat_service.active_chats.get(user_id)
+        if chat_data and chat_data["files"]:
+            for file_data in chat_data["files"]:
+                if file_data.get("selected"):
+                    file_names.append(file_data.get("filename", "Unknown file"))
+        
+        system_content = (
+            "You are a professional academic writing assistant specialized in generating related work sections. "
+            "Your role is to help users create comprehensive related work sections by analyzing existing papers, "
+            "identifying key contributions, methodologies, and relationships between different research efforts. "
+            "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
+            f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
+            "Please synthesize information from these papers to generate related work content with proper citations and flow."
+        )
+        
+        api_messages = [{"role": "system", "content": system_content}]
+        user_messages = [m for m in self.rwg_messages.get(user_id, []) if m["role"] in ["user", "assistant"]]
+        recent_messages = user_messages[-self.max_context_messages:]
+        for msg in recent_messages:
+            api_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        return api_messages
     
     async def generate_rwg_response(self, user_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
         """
-        generate streaming response for related work generation
+        generate streaming response for related work generation (uses shared file system)
         """
         self.add_rwg_message(user_id, "user", query)
         
-        review_data = self.active_reviews[user_id]
-        assistant_response = ""
-        
         try:
             relevant_chunks = []
-            if review_data["files"]:
-                # get relevant chunks from pdf for related work generation
-                relevant_chunks = await pdf_service.query_similar_chunks(
-                    user_id, 
-                    query
-                )
+            # Use shared chat system for file access
+            from app.services.chat_service import chat_service
+            chat_data = chat_service.active_chats.get(user_id)
+            if chat_data and chat_data["files"]:
+                # get relevant chunks from pdf for related work generation using shared system
+                relevant_chunks = await pdf_service.query_similar_chunks(user_id, query)
             
             # format messages for related work generation
             api_messages = await self.format_rwg_messages(user_id)
@@ -277,45 +262,42 @@ class ReviewService:
             # if failed, fallback to regular message format
             api_messages = await self.format_rwg_messages(user_id)
         
-        # PLACEHOLDER: Return simple message instead of calling LLM
-        placeholder_message = "I will provide this later"
-        self.add_rwg_message(user_id, "assistant", placeholder_message)
-        yield placeholder_message, True
-        return
-        
-        # ORIGINAL LLM CODE (commented out for now)
-        # try:
-        #     # stream response from LLM for related work generation
-        #     stream_response = await llm_service.get_conversation_completion(
-        #         messages=api_messages
-        #     )
-        #     
-        #     if not stream_response:
-        #         error_msg = "Sorry, I encountered an error while processing your related work generation request."
-        #         self.add_rwg_message(user_id, "assistant", error_msg)
-        #         yield error_msg, True
-        #         return
-        #     
-        #     # process each chunk of the stream response
-        #     async for chunk in stream_response:
-        #         if chunk.text:
-        #             content = chunk.text
-        #             assistant_response += content
-        #             # immediately send each token
-        #             yield content, False
-        #     
-        #     # add to RWG history after completion
-        #     if assistant_response:
-        #         self.add_rwg_message(user_id, "assistant", assistant_response)
-        #         
-        #     # send end flag
-        #     yield "", True
-        #         
-        # except Exception as e:
-        #     logger.error(f"Error generating RWG response for {user_id}: {str(e)}")
-        #     error_msg = "Sorry, I encountered an error while processing your related work generation request."
-        #     self.add_rwg_message(user_id, "assistant", error_msg)
-        #     yield error_msg, True
+        # generate response from LLM
+        assistant_response = ""
+        try:
+            # stream response from LLM for related work generation
+            stream_response = await llm_service.get_conversation_completion(
+                messages=api_messages
+            )
+            
+            if not stream_response:
+                error_msg = "Sorry, I encountered an error while processing your related work generation request."
+                self.add_rwg_message(user_id, "assistant", error_msg)
+                yield error_msg, True
+                return
+            
+            # process each chunk of the stream response
+            async for chunk in stream_response:
+                if chunk.text:
+                    content = chunk.text
+                    assistant_response += content
+                    # immediately send each token
+                    yield content, False
+            
+            # add to RWG history after completion
+            if assistant_response:
+                self.add_rwg_message(user_id, "assistant", assistant_response)
+                
+            # send end flag
+            yield "", True
+                
+        except Exception as e:
+            logger.error(f"Error generating RWG response for {user_id}: {str(e)}")
+            error_msg = "Sorry, I encountered an error while processing your related work generation request."
+            self.add_rwg_message(user_id, "assistant", error_msg)
+            yield error_msg, True
+
+
 
 # Create singleton instance
 review_service = ReviewService() 
