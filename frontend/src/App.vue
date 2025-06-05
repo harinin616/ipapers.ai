@@ -11,7 +11,15 @@
           </svg>
           <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
         </button>
-        <div ref="googleBtn" class="g_id_signin"></div>
+        <div v-if="!user" ref="googleBtn" class="g_id_signin"></div>
+
+        <!-- 如果已经有 user，则隐藏按钮，显示头像和下拉菜单（示例） -->
+        <div v-else class="user-info">
+          <img :src="user.picture" alt="头像" class="avatar" />
+          <span class="user-name">{{ user.name }}</span>
+          <!-- 你还可以加一个“登出”按钮 -->
+          <button @click="logout" class="logout-btn">Logout</button>
+        </div>
       </nav>
     </header>
     
@@ -60,6 +68,8 @@ export default defineComponent({
     const fileCount = ref(0);
     const userId = ref<string | null>(null);
     
+    const user = ref<{ email: string; name: string; picture: string } | null>(null)
+
     const appHeaderRef = ref<HTMLElement | null>(null);
     const headerHeight = ref(0);
     const currentFileListActualWidth = ref('');
@@ -157,13 +167,13 @@ export default defineComponent({
           window.google.accounts &&
           window.google.accounts.id
         ) {
-          // 初始化 Google SDK
+          // 1. 初始化 SDK
           window.google.accounts.id.initialize({
             client_id:
               '500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com',
             callback: (response: any) => {
-              // 这里拿到的 response.credential 就是 ID Token
-              // 你可以把它 POST 给后端做登录/验证
+              // response.credential 是 Google 返回的 ID Token
+              // 将其 POST 给后端，后端返回用户信息
               fetch('https://ipapers.ai/api/auth/google-login', {
                 method: 'POST',
                 headers: {
@@ -173,33 +183,40 @@ export default defineComponent({
               })
                 .then((r) => r.json())
                 .then((userInfo) => {
-                  console.log('登录成功，用户信息：', userInfo);
+                  console.log('登录成功，用户信息：', userInfo)
+                  // ===== 登录成功后把信息保存到 user =====
+                  user.value = {
+                    email: userInfo.email,
+                    name: userInfo.name,
+                    picture: userInfo.picture,
+                  }
+                  // 如果需要，保存到 localStorage 做持久化
+                  localStorage.setItem(
+                    'user',
+                    JSON.stringify(user.value)
+                  )
                 })
                 .catch((err) => {
-                  console.error('登录请求出错：', err);
-                });
+                  console.error('登录请求出错：', err)
+                })
             },
-          });
-          // 渲染按钮到 ref 对应的 DOM 节点中
+          })
+          // 2. 渲染按钮到模板里放置的 容器 googleBtn
           if (googleBtn.value) {
-            window.google.accounts.id.renderButton(
-              googleBtn.value,
-              {
-                theme: 'outline',
-                size: 'medium',
-                type: 'standard',
-                shape: 'pill',
-                text: 'sign_in_with',
-                logo_alignment: 'left',
-              }
-            );
+            window.google.accounts.id.renderButton(googleBtn.value, {
+              theme: 'outline',
+              size: 'medium',
+              type: 'standard',
+              shape: 'pill',
+              text: 'sign_in_with',
+              logo_alignment: 'left',
+            })
           }
         } else {
-          // 如果 SDK 还没加载，延迟 100ms 再试
-          setTimeout(tryRenderGoogleButton, 100);
+          setTimeout(tryRenderGoogleButton, 100)
         }
-      };
-      tryRenderGoogleButton();
+      }
+      tryRenderGoogleButton()
     });
 
     onBeforeUnmount(() => {
@@ -230,6 +247,13 @@ export default defineComponent({
       currentFileListActualWidth.value = newWidth;
     };
 
+    const logout = () => {
+      user.value = null
+      localStorage.removeItem('user')
+      // 如果你想同时清除后端的 session、Cookie 等，可以在这里调用后端登出接口
+      // fetch('https://ipapers.ai/api/auth/logout', { method: 'POST', credentials: 'include' })
+    }
+
     return {
       showFilesList,
       showPdf,
@@ -244,7 +268,9 @@ export default defineComponent({
       fileListStyle,
       appContentStyle,
       updateFileListWidth,
-      googleBtn
+      googleBtn,
+      user,
+      logout,
     };
   }
 })
