@@ -17,7 +17,7 @@ from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
 
 BATCH_DAYS = 1
-DEFAULT_DAYS = 1
+DEFAULT_DAYS = 2
 BATCH_DELAY = 3
 MAX_RESULTS_PER_BATCH = 10000
 
