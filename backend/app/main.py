@@ -32,10 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/", response_class=HTMLResponse)   
-@app.head("/") 
-async def root():
-    return ""
+#@app.get("/", response_class=HTMLResponse)   
+#@app.head("/") 
+#async def root():
+#    return ""
 
 # Include API routes
 api_app.include_router(paper.router, prefix="/papers", tags=["papers"])

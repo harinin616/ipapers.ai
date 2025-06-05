@@ -142,7 +142,8 @@ class ChatService:
         chat_file_names = []
         if chat_data["files"]:
             for file_data in chat_data["files"]:
-                chat_file_names.append(file_data.get("filename", "Unknown file"))
+                if file_data.get("selected"):
+                    chat_file_names.append(file_data.get("filename", "Unknown file"))
         
         system_content = (
             "You are a professional academic paper analysis assistant. You can analyze papers and answer questions based on the papers chunks "+

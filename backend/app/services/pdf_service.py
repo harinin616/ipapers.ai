@@ -177,7 +177,8 @@ class PdfService:
                 "filename": filename,
                 "paper_id": paper_id,
                 "paper_URL":f"https://arxiv.org/pdf/{paper_id}.pdf",
-                "added_at": datetime.now().isoformat()
+                "added_at": datetime.now().isoformat(),
+                "selected": False
             }
             
             chat_service.active_chats[user_id]["files"].append(file_info)
@@ -199,7 +200,10 @@ class PdfService:
         all_chunks = []
         all_embeddings = []
         for file_info in files:
+            if not file_info.get("selected"):
+                continue
             paper_id = file_info.get("paper_id")
+            logger.info(f"chat Paper name: {file_info.get('filename')}")
 
             year_month = paper_id[:4]
             year = year_month[:2]
@@ -225,8 +229,9 @@ class PdfService:
             all_embeddings.extend(embeddings)
 
         if not all_chunks or not all_embeddings:
-            logger.error(f"No valid embeddings found for any file in session {user_id}")
+            logger.info(f"No valid embeddings found for any file in session {user_id}")
             return []
+        
         
         query_embedding_list = await llm_service.get_embeddings(
             texts=[query],

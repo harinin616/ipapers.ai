@@ -40,8 +40,13 @@
     <div v-if="!showPdf || !currentPdfUrl" class="pdf-files-panel">
       <div class="panel-header">
         <h3>File List</h3>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <router-link to="/chat" class="chat-button-inside-sidebar">
+              Chat
+          </router-link>
         <button class="close-btn" @click="toggleFilesList">×</button>
       </div>
+       </div>
       
       <div class="pdf-files-list">
         <div 
@@ -58,6 +63,16 @@
           <div class="pdf-file-info">
             <div class="pdf-file-name">{{ file.filename }}</div>
           </div>
+          <button 
+            :class="['pdf-file-select', { selected: isFileSelected(file.paper_id) }]"
+            @click.stop="handleToggleSelect(file.paper_id)" 
+            :title="isFileSelected(file.paper_id) ? 'Deselect file' : 'Select file'"
+          >
+            <svg class="icon-svg" viewBox="0 0 24 24">
+              <path v-if="isFileSelected(file.paper_id)" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
+              <path v-else d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,5V19H5V5H19Z" />
+            </svg>
+          </button>
           <button 
             class="pdf-file-delete" 
             @click.stop="deleteFile(file)" 
@@ -79,6 +94,7 @@
 <script lang="ts">
 import { defineComponent, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import api from '../services/api'
+import { fileSelectionStore } from '../stores/fileSelectionStore'
 
 interface ChatFile {
   file_path: string;
@@ -156,6 +172,14 @@ export default defineComponent({
       if (window.innerWidth <= 768) {
         emit('update:showFilesList', false)
       }
+    }
+    
+    const handleToggleSelect = (paperId: string) => {
+      fileSelectionStore.toggleFileSelection(paperId)
+    }
+    
+    const isFileSelected = (paperId: string): boolean => {
+      return fileSelectionStore.isFileSelected(paperId)
     }
     
     const deleteFile = async (file: ChatFile) => {
@@ -241,7 +265,9 @@ export default defineComponent({
       deleteFile,
       toggleFilesList,
       closePdf,
-      loadFiles
+      loadFiles,
+      handleToggleSelect,
+      isFileSelected
     }
   }
 })
@@ -359,6 +385,38 @@ export default defineComponent({
   overflow: hidden;
   cursor: pointer;
   min-width: 0;
+}
+
+.pdf-file-select {
+  background: none;
+  border: none;
+  color: #757575;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  opacity: 0.7;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.pdf-file-select:hover {
+  background-color: #e8f5e8;
+  color: #4caf50;
+  opacity: 1;
+}
+
+.pdf-file-select.selected {
+  background-color: #e8f5e8;
+  color: #4caf50;
+  opacity: 1;
+}
+
+.pdf-file-select.selected:hover {
+  background-color: #c8e6c9;
 }
 
 .pdf-file-delete {
@@ -539,4 +597,18 @@ export default defineComponent({
     height: 350px;
   }
 }
+.chat-button-inside-sidebar {
+  background-color: #3f51b5;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.chat-button-inside-sidebar:hover {
+  background-color: #303f9f;
+}
+
 </style> 

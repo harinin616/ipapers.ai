@@ -8,7 +8,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'home',
     component: HomeView,
     meta: {
-      title: 'Home - DL Paper Monitor',
+      title: 'Home - iPaper',
       requiresAuth: false
     }
   },
@@ -17,7 +17,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'search',
     component: () => import('../views/SearchView.vue'),
     meta: {
-      title: 'Search Papers - DL Paper Monitor',
+      title: 'Search Papers - iPaper',
       requiresAuth: false
     }
   },
@@ -26,7 +26,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'paper-detail',
     component: () => import('../views/PaperDetailView.vue'),
     meta: {
-      title: 'Paper Details - DL Paper Monitor',
+      title: 'Paper Details - iPaper',
       requiresAuth: false
     }
   },
@@ -35,7 +35,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'chat',
     component: () => import('../views/ChatView.vue'),
     meta: {
-      title: 'Chat - DL Paper Monitor',
+      title: 'Chat - iPaper',
       requiresAuth: false
     }
   },
@@ -44,7 +44,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'review',
     component: () => import('../views/Review.vue'),
     meta: {
-      title: 'Review - DL Paper Monitor',
+      title: 'Review - iPaper',
       requiresAuth: false
     }
   },
@@ -54,7 +54,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue'),
     meta: {
-      title: '404 Not Found - DL Paper Monitor',
+      title: '404 Not Found - iPaper',
       requiresAuth: false
     }
   }
@@ -84,7 +84,7 @@ const router = createRouter({
 // Global navigation guards
 router.beforeEach((to, from, next) => {
   // Update page title
-  document.title = to.meta.title as string || 'DL Paper Monitor';
+  document.title = to.meta.title as string || 'iPaper';
   
   // Continue navigation
   next();

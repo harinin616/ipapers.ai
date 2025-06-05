@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body, Path, Request, Query
 from fastapi.responses import StreamingResponse
-from typing import Optional
+from typing import Optional, List
 import logging
 import json
 
@@ -50,7 +50,8 @@ async def get_chat_messages(
 @router.post("/stream_chat")
 async def chat(
     request: Request,
-    message: str = Body(embed=True)
+    message: str = Body(embed=True),
+    selected_files: List[str] = Body(embed=True)
 ):
     """
     get stream chat response
@@ -67,6 +68,12 @@ async def chat(
             "messages": [],
             "files": []
         }
+    if selected_files and chat_service.active_chats[user_id]["files"]:
+        for file in chat_service.active_chats[user_id]["files"]:
+            if file["paper_id"] in selected_files:
+                file["selected"] = True
+            else:
+                file["selected"] = False
     
     async def stream_chat_response():
         try:
@@ -120,7 +127,8 @@ async def get_user_files(
                 "filename": file_data["filename"],
                 "paper_id": file_data["paper_id"],
                 "paper_URL": file_data["paper_URL"],
-                "added_at": file_data["added_at"]
+                "added_at": file_data["added_at"],
+                "selected": file_data["selected"]
             })
     
     return result
