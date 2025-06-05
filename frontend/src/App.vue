@@ -11,19 +11,7 @@
           </svg>
           <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
         </button>
-        <div id="g_id_onload"
-          data-client_id="500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com"
-          data-login_uri="https://ipapers.ai/api/auth/google-login"
-          data-auto_prompt="false">
-        </div>
-        <div class="g_id_signin"
-          data-type="standard"
-          data-size="medium"
-          data-theme="outline"
-          data-text="sign_in_with"
-          data-shape="pill"
-          data-logo_alignment="left">
-        </div>
+        <div ref="googleBtn" class="g_id_signin"></div>
       </nav>
     </header>
     
@@ -145,7 +133,9 @@ export default defineComponent({
         document.body.classList.remove('pdf-active-page');
       }
     });
-    
+    const googleBtn = ref<HTMLElement | null>(null);
+
+
     onMounted(async () => {
       router.beforeEach((to, from) => {
         saveScrollPosition(from.fullPath);
@@ -160,6 +150,56 @@ export default defineComponent({
       
       // Listen for paper-attached events
       window.addEventListener('paper-attached', handlePaperAttached);
+
+      const tryRenderGoogleButton = () => {
+        if (
+          window.google &&
+          window.google.accounts &&
+          window.google.accounts.id
+        ) {
+          // 初始化 Google SDK
+          window.google.accounts.id.initialize({
+            client_id:
+              '500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com',
+            callback: (response: any) => {
+              // 这里拿到的 response.credential 就是 ID Token
+              // 你可以把它 POST 给后端做登录/验证
+              fetch('https://ipapers.ai/api/auth/google-login', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ credential: response.credential }),
+              })
+                .then((r) => r.json())
+                .then((userInfo) => {
+                  console.log('登录成功，用户信息：', userInfo);
+                })
+                .catch((err) => {
+                  console.error('登录请求出错：', err);
+                });
+            },
+          });
+          // 渲染按钮到 ref 对应的 DOM 节点中
+          if (googleBtn.value) {
+            window.google.accounts.id.renderButton(
+              googleBtn.value,
+              {
+                theme: 'outline',
+                size: 'medium',
+                type: 'standard',
+                shape: 'pill',
+                text: 'sign_in_with',
+                logo_alignment: 'left',
+              }
+            );
+          }
+        } else {
+          // 如果 SDK 还没加载，延迟 100ms 再试
+          setTimeout(tryRenderGoogleButton, 100);
+        }
+      };
+      tryRenderGoogleButton();
     });
 
     onBeforeUnmount(() => {
@@ -203,7 +243,8 @@ export default defineComponent({
       appHeaderRef,
       fileListStyle,
       appContentStyle,
-      updateFileListWidth
+      updateFileListWidth,
+      googleBtn
     };
   }
 })
