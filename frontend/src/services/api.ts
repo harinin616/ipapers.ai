@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import type { Paper } from '@/types/paper';
+import { fileSelectionStore } from '@/stores/fileSelectionStore';
 
 
 /**
@@ -176,10 +177,12 @@ class ApiService implements IApiService {
         headers['X-User-ID'] = userId;
       }
 
+      const selectedFiles = fileSelectionStore.getSelectedFiles();
+
       const response = await fetch(`/api/chat/stream_chat`, {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, selected_files: selectedFiles })
       });
       
       return response; 
