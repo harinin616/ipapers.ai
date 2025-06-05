@@ -247,11 +247,16 @@ export default defineComponent({
       currentFileListActualWidth.value = newWidth;
     };
 
-    const logout = () => {
+    const logout = async () => {
+      // 1. 清空 user，让界面切回“未登录”分支
       user.value = null
       localStorage.removeItem('user')
-      // 如果你想同时清除后端的 session、Cookie 等，可以在这里调用后端登出接口
-      // fetch('https://ipapers.ai/api/auth/logout', { method: 'POST', credentials: 'include' })
+
+      // 2. 等待 Vue 把 <div ref="googleBtn"> 重新挂载到 DOM
+      await nextTick()
+
+      // 3. 再次调用 tryRenderGoogleButton，让 Google 按钮立刻渲染回来
+      tryRenderGoogleButton()
     }
 
     return {
@@ -401,5 +406,38 @@ body {
 body.pdf-active-page {
   --app-max-width: none !important;
   --container-padding: 0 !important;
+}
+.user-info {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.user-name {
+  color: white;
+  margin-right: 12px;
+  font-weight: 500;
+}
+
+/* 登出按钮放在最右 */
+.logout-btn {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 </style> 
