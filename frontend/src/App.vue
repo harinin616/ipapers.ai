@@ -11,6 +11,19 @@
           </svg>
           <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
         </button>
+        <div id="g_id_onload"
+          data-client_id="500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com"
+          data-login_uri="http://localhost:8000/auth/callback"
+          data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin"
+          data-type="standard"
+          data-size="medium"
+          data-theme="outline"
+          data-text="sign_in_with"
+          data-shape="pill"
+          data-logo_alignment="left">
+        </div>
       </nav>
     </header>
     
