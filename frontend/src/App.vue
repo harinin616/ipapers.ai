@@ -50,7 +50,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
+import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed,  nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import apiService from './services/api'
 import FileList from './components/FileList.vue'
@@ -144,35 +144,7 @@ export default defineComponent({
       }
     });
     const googleBtn = ref<HTMLElement | null>(null);
-
-
-    onMounted(async () => {
-      const stored = localStorage.getItem('user')
-      if (stored) {
-        try {
-          user.value = JSON.parse(stored)
-        } catch (e) {
-          console.error('解析 user 缓存失败：', e)
-          localStorage.removeItem('user')
-          user.value = null
-        }
-      }
-
-      router.beforeEach((to, from) => {
-        saveScrollPosition(from.fullPath);
-      });
-      
-      await getOrCreateUserId();
-
-      if (appHeaderRef.value) {
-        headerHeight.value = appHeaderRef.value.offsetHeight;
-      }
-      window.addEventListener('resize', updateHeaderHeight);
-      
-      // Listen for paper-attached events
-      window.addEventListener('paper-attached', handlePaperAttached);
-
-      const tryRenderGoogleButton = () => {
+    const tryRenderGoogleButton = () => {
         if (
           window.google &&
           window.google.accounts &&
@@ -227,7 +199,35 @@ export default defineComponent({
           setTimeout(tryRenderGoogleButton, 100)
         }
       }
-      tryRenderGoogleButton()
+    onMounted(async () => {
+      const stored = localStorage.getItem('user')
+      if (stored) {
+        try {
+          user.value = JSON.parse(stored)
+        } catch (e) {
+          console.error('解析 user 缓存失败：', e)
+          localStorage.removeItem('user')
+          user.value = null
+        }
+      }
+
+      router.beforeEach((to, from) => {
+        saveScrollPosition(from.fullPath);
+      });
+      
+      await getOrCreateUserId();
+
+      if (appHeaderRef.value) {
+        headerHeight.value = appHeaderRef.value.offsetHeight;
+      }
+      window.addEventListener('resize', updateHeaderHeight);
+      
+      // Listen for paper-attached events
+      window.addEventListener('paper-attached', handlePaperAttached);
+
+      if (!user.value) {
+        tryRenderGoogleButton()
+      }
     });
 
     onBeforeUnmount(() => {
@@ -374,6 +374,7 @@ body {
   color: white;
   cursor: pointer;
   padding: 0.5rem;
+  margin-left: auto;
   display: flex;
   align-items: center;
   border-radius: 4px;
@@ -418,7 +419,6 @@ body.pdf-active-page {
   --container-padding: 0 !important;
 }
 .user-info {
-  margin-left: auto;
   display: flex;
   align-items: center;
 }
