@@ -147,6 +147,17 @@ export default defineComponent({
 
 
     onMounted(async () => {
+      const stored = localStorage.getItem('user')
+      if (stored) {
+        try {
+          user.value = JSON.parse(stored)
+        } catch (e) {
+          console.error('解析 user 缓存失败：', e)
+          localStorage.removeItem('user')
+          user.value = null
+        }
+      }
+
       router.beforeEach((to, from) => {
         saveScrollPosition(from.fullPath);
       });
@@ -363,7 +374,6 @@ body {
   color: white;
   cursor: pointer;
   padding: 0.5rem;
-  margin-left: auto;
   display: flex;
   align-items: center;
   border-radius: 4px;
