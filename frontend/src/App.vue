@@ -11,6 +11,15 @@
           </svg>
           <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
         </button>
+
+        
+       <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
+       <div class="user-info" v-show="user">
+         <img :src="user?.picture" alt="avatar" class="avatar" />
+         <span class="user-name">{{ user?.name }}</span>
+         <button @click="logout" class="logout-btn">Logout</button>
+       </div>
+       
       </nav>
     </header>
     
@@ -41,7 +50,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed } from 'vue'
+import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed,  nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import apiService from './services/api'
 import FileList from './components/FileList.vue'
@@ -59,6 +68,9 @@ export default defineComponent({
     const fileCount = ref(0);
     const userId = ref<string | null>(null);
     
+    
+    const user = ref<{ email: string; name: string; picture: string } | null>(null)
+
     const appHeaderRef = ref<HTMLElement | null>(null);
     const headerHeight = ref(0);
     const currentFileListActualWidth = ref('');
@@ -132,8 +144,72 @@ export default defineComponent({
         document.body.classList.remove('pdf-active-page');
       }
     });
-    
+    const googleBtn = ref<HTMLElement | null>(null);
+    const tryRenderGoogleButton = () => {
+        if (
+          window.google &&
+          window.google.accounts &&
+          window.google.accounts.id
+        ) {
+          window.google.accounts.id.initialize({
+            client_id:
+              '500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com',
+            callback: (response: any) => {
+         
+              fetch('https://ipapers.ai/api/auth/google-login', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ credential: response.credential }),
+              })
+                .then((r) => r.json())
+                .then((userInfo) => {
+                  console.log('Login successful, user info:', userInfo)
+  
+                  user.value = {
+                    email: userInfo.email,
+                    name: userInfo.name,
+                    picture: userInfo.picture,
+                  }
+ 
+                  localStorage.setItem(
+                    'user',
+                    JSON.stringify(user.value)
+                  )
+                })
+                .catch((err) => {
+                  console.error('Login request failed:', err)
+                })
+            },
+          })
+
+          if (googleBtn.value) {
+            window.google.accounts.id.renderButton(googleBtn.value, {
+              theme: 'outline',
+              size: 'medium',
+              type: 'standard',
+              shape: 'pill',
+              text: 'sign_in_with',
+              logo_alignment: 'left',
+            })
+          }
+        } else {
+          setTimeout(tryRenderGoogleButton, 100)
+        }
+      }
     onMounted(async () => {
+      const stored = localStorage.getItem('user')
+      if (stored) {
+        try {
+          user.value = JSON.parse(stored)
+        } catch (e) {
+          console.error('Failed to parse user cache:', e)
+          localStorage.removeItem('user')
+          user.value = null
+        }
+      }
+
       router.beforeEach((to, from) => {
         saveScrollPosition(from.fullPath);
       });
@@ -147,6 +223,10 @@ export default defineComponent({
       
       // Listen for paper-attached events
       window.addEventListener('paper-attached', handlePaperAttached);
+
+      if (!user.value) {
+        tryRenderGoogleButton()
+      }
     });
 
     onBeforeUnmount(() => {
@@ -177,6 +257,13 @@ export default defineComponent({
       currentFileListActualWidth.value = newWidth;
     };
 
+    const logout = async () => {
+      user.value = null
+      localStorage.removeItem('user')
+      await nextTick()
+      tryRenderGoogleButton()
+    }
+
     return {
       showFilesList,
       showPdf,
@@ -190,7 +277,10 @@ export default defineComponent({
       appHeaderRef,
       fileListStyle,
       appContentStyle,
-      updateFileListWidth
+      updateFileListWidth,
+      googleBtn,
+      user,
+      logout,
     };
   }
 })
@@ -321,5 +411,36 @@ body {
 body.pdf-active-page {
   --app-max-width: none !important;
   --container-padding: 0 !important;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.user-name {
+  color: white;
+  margin-right: 12px;
+  font-weight: 500;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 </style> 
