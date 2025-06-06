@@ -202,7 +202,7 @@ onMounted(async () => {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }else{
-       await createSession("Untitled");
+       await createNewSession("Untitled");
     }
 
 

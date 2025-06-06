@@ -22,7 +22,7 @@ async def search_papers(search_request: PaperSearchRequest):
         paper_ids = await vector_search_service.search(
             query=search_request.query,
             k=search_request.limit
-        )        
+        )
         if not paper_ids:
             return PaperSearchResponse(results=[], count=0)
         
