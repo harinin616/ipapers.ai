@@ -149,7 +149,7 @@ async function loadChatSession(sessionId) {
   try {
     isLoading.value = true;
     // 假设后端接口：api.get_messages({ session_id })
-    const response = await api.get_messages({ session_id: sessionId });
+    const response = await api.get_messages();//await api.get_messages({ session_id: sessionId });
     messages.value = response || [];
     await nextTick();
     scrollToBottom();
@@ -160,7 +160,6 @@ async function loadChatSession(sessionId) {
     isLoading.value = false;
   }
 }
-
 
 
 
@@ -210,26 +209,6 @@ onMounted(async () => {
   });
 });
 
-// Load existing chat session
-async function loadChatSession() {
-  try {
-    isLoading.value = true;
-    const response = await api.get_messages();
-    
-    if (response) {
-      messages.value = response;
-    } else {
-      messages.value = [];
-    }
-    
-    await nextTick();
-    scrollToBottom();
-  } catch (error) {
-    console.error('Failed to load session:');
-  } finally {
-    isLoading.value = false;
-  }
-}
 
 // Send message or execute search
 async function sendMessage() {
