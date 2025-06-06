@@ -135,7 +135,7 @@ async function switchSession(sessionId) {
 // 新建会话
 async function createNewSession() {
   try {
-    const newSession = await chatSessionStore.createSession({ title: '未命名会话' });
+    const newSession = await chatSessionStore.createSession({ title: 'Untitled session' });
     chatSessions.value.unshift(newSession);
     // 切换到新会话
     switchSession(newSession.id);
