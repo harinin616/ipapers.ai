@@ -232,3 +232,39 @@ async def process_paper_embeddings(
     except Exception as e:
         logger.error(f"Error processing embeddings for paper {paper_id} for user {user_id}: {str(e)}")
         return False
+
+@router.get("/sessions")
+async def get_sessions(request: Request):
+    """
+    获取用户所有会话列表
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    return chat_service.get_sessions(user_id)
+
+
+@router.post("/sessions")
+async def create_session(request: Request, data: dict = Body(...)):
+    """
+    新建会话
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    title = data.get("title", "Untitled Session")
+    session_id = chat_service.create_session(user_id, title)
+    return {"id": session_id, "title": title}
+
+
+@router.delete("/sessions")
+async def delete_session(request: Request, data: dict = Body(...)):
+    """
+    删除会话
+    """
+    user_id = request.headers.get('X-User-ID')
+    session_id = data.get("session_id")
+    if not user_id or not session_id:
+        raise HTTPException(status_code=400, detail="Missing user_id or session_id")
+    chat_service.delete_session(user_id, session_id)
+    return {"success": True}

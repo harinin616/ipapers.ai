@@ -7,10 +7,6 @@ interface SessionMeta {
   // 以后如果需要，可以加更多字段，比如 lastMessageAt, unreadCount 等
 }
 
-const _sessions = ref<SessionMeta[]>([
-]);
-
-
 
 interface ChatSessionStoreState {
   // 前面已有的：是否正在处理论文相关逻辑
@@ -65,7 +61,7 @@ class ChatSessionStore {
       return [];
     }
   }
-      /*
+      
 
   async createSession(payload: { title: string }): Promise<SessionMeta> {
     try {
@@ -77,8 +73,8 @@ class ChatSessionStore {
       console.error('createSession 出错：', e);
       throw e;
     }
-  }*/
-  async createSession(payload: { title: string }): Promise<SessionMeta> {
+  }
+  /*async createSession(payload: { title: string }): Promise<SessionMeta> {
     return new Promise((resolve) => {
       setTimeout(() => {
         const newSession: SessionMeta = {
@@ -89,31 +85,30 @@ class ChatSessionStore {
         resolve(newSession);
       }, 200);
     });
-  }
+  }*/
 
   async deleteSession(sessionId: string): Promise<void> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const idx = _sessions.value.findIndex((s) => s.id === sessionId);
-        if (idx !== -1) {
-          _sessions.value.splice(idx, 1);
-        }
-        resolve();
-      }, 200);
-    });
+  try {
+    await api.delete_session({ session_id: sessionId });
+    this.state.sessions = this.state.sessions.filter(s => s.id !== sessionId);
+  } catch (e) {
+    console.error('deleteSession 出错：', e);
+    throw e;
   }
+}
 
 async loadMessages(sessionId: string): Promise<any[]> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // 你可以根据 sessionId 返回不同的 mock 数据
-        resolve([]);
-      }, 200);
-    });
+  try {
+    const res = await api.get_messages({ session_id: sessionId });
+    return Array.isArray(res) ? res : [];
+  } catch (e) {
+    console.error('loadMessages 出错：', e);
+    return [];
   }
-  get sessions(): SessionMeta[] {
-   return _sessions.value;
-  }
+}
+get sessions(): SessionMeta[] {
+  return this.state.sessions;
+}
   //resetProcessingState(): void {}
   /**
    * 只读暴露其它状态，以备组件中使用

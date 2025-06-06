@@ -15,7 +15,6 @@ export interface IApiService {
   process_embeddings(paperId: string): Promise<boolean>;
   get_user_files(): Promise<any[]>;
   delete_file(paper_id: string): Promise<boolean>;
-  get_messages(): Promise<any[]>;
   stream_chat(message: string): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
@@ -157,15 +156,6 @@ class ApiService implements IApiService {
     }
   }
 
-  async get_messages(): Promise<any[]> {
-    try {
-      const response = await this.api.get(`/api/chat/messages`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get messages:', error);
-      throw error;
-    }
-  }
 
   async stream_chat(message: string): Promise<Response> {
     try {
@@ -211,6 +201,54 @@ class ApiService implements IApiService {
       throw error;
     }
   }
+  /**
+   * 获取所有会话列表
+   */
+  async get_sessions(): Promise<{ id: string; title: string }[]> {
+    try {
+      const response = await this.api.get('/api/chat/sessions');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get sessions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 新建会话
+   */
+  async create_session(payload: { title: string }): Promise<{ id: string; title: string }> {
+    try {
+      const response = await this.api.post('/api/chat/sessions', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      throw error;
+    }
+  }
+  async delete_session(payload: { session_id: string }): Promise<any> {
+    try {
+      const response = await this.api.delete('/api/chat/sessions', { data: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取指定会话的消息
+   */
+  async get_messages(payload: { session_id: string }): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/chat/messages', { params: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get messages:', error);
+      throw error;
+    }
+  }
+
 }
 
 // Export singleton instance
