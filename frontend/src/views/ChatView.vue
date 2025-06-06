@@ -404,7 +404,9 @@ function scrollToBottom() {
   if (messagesContainer.value) {
     // Use requestAnimationFrame to ensure browser has rendered the latest content
     window.requestAnimationFrame(() => {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+         if (messagesContainer.value) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+      }
     });
   }
 }
