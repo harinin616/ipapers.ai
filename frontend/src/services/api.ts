@@ -6,6 +6,7 @@ import { fileSelectionStore } from '@/stores/fileSelectionStore';
 /**
  * API Service interface
  */
+
 export interface IApiService {
   getRecentPapers(limit?: number, offset?: number): Promise<Paper[]>;
   countPapers(): Promise<number>;
@@ -15,11 +16,16 @@ export interface IApiService {
   process_embeddings(paperId: string): Promise<boolean>;
   get_user_files(): Promise<any[]>;
   delete_file(paper_id: string): Promise<boolean>;
-  stream_chat(message: string): Promise<Response>;
+  stream_chat(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
-}
 
+  // 会话相关
+  get_sessions(): Promise<{ id: string; title: string }[]>;
+  create_session(payload: { title: string }): Promise<{ id: string; title: string }>;
+  delete_session(payload: { session_id: string }): Promise<any>;
+  get_messages(payload: { session_id: string }): Promise<any[]>;
+}
 /**
  * API Service implementation
  */
@@ -156,31 +162,28 @@ class ApiService implements IApiService {
     }
   }
 
-
-  async stream_chat(message: string): Promise<Response> {
-    try {
-      const userId = localStorage.getItem('X-User-ID');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (userId) {
-        headers['X-User-ID'] = userId;
-      }
-
-      const selectedFiles = fileSelectionStore.getSelectedFiles();
-
-      const response = await fetch(`/api/chat/stream_chat`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({ message: message, selected_files: selectedFiles })
-      });
-      
-      return response; 
-    } catch (error) {
-      console.error('Failed to stream chat:', error);
-      throw error;
+async stream_chat(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response> {
+  try {
+    const userId = localStorage.getItem('X-User-ID');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (userId) {
+      headers['X-User-ID'] = userId;
     }
+
+    const response = await fetch(`/api/chat/stream_chat`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Failed to stream chat:', error);
+    throw error;
   }
+}
 
   async get_paper(paper_id: string): Promise<boolean> {
     try {

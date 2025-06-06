@@ -3,8 +3,13 @@ from fastapi.responses import StreamingResponse
 from typing import Optional, List
 import logging
 import json
-
 from app.services.chat_service import chat_service
+from pydantic import BaseModel
+
+class StreamChatRequest(BaseModel):
+    session_id: str
+    message: str
+    selected_files: List[str]
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +56,7 @@ async def get_chat_messages(
 @router.post("/stream_chat")
 async def chat(
     request: Request,
-    session_id: str = Body(...),
-    message: str = Body(embed=True),
-    selected_files: List[str] = Body(embed=True)
+    body: StreamChatRequest
 ):
     """
     get stream chat response
@@ -64,7 +67,9 @@ async def chat(
             status_code=401,
             detail="User ID not found"
         )
-
+    session_id = body.session_id
+    message = body.message
+    selected_files = body.selected_files
     if user_id not in chat_service.active_chats:
         chat_service.active_chats[user_id] = {
             "files": [],
