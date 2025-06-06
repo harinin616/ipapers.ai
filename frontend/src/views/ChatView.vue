@@ -17,7 +17,18 @@
             :class="['session-item', { active: session.id === currentSessionId }]"
             @click="switchSession(session.id)"
           >
-            {{ session.title || 'Untitled session' }}
+          <span @click="switchSession(session.id)" class="session-title">
+              {{ session.title || 'Untitled session' }}
+            </span>
+
+            <!-- 在同一行加一个删除图标/按钮 --> 
+            <button
+              class="delete-btn"
+              @click="deleteThisSession(session.id)"
+              title="Delete session"
+            >
+              🗑
+            </button>
           </li>
         </ul>
       </div>
@@ -140,7 +151,7 @@ async function createNewSession() {
     // 切换到新会话
     switchSession(newSession.id);
   } catch (e) {
-    console.error('新建会话失败：', e);
+    console.error('Failed to load session:', e);
   }
 }
 
@@ -161,6 +172,22 @@ async function loadChatSession(sessionId=null) {
   }
 }
 
+async function deleteThisSession(sessionId: string) {
+  // 如果要删除的是当前正在查看的会话，需要先清空右侧或者切换到其他会话
+  if (sessionId === currentSessionId.value) {
+    // 最简单的处理：先清空右侧消息
+    messages.value = [];
+    currentSessionId.value = null;
+  }
+
+  try {
+    await chatSessionStore.deleteSession(sessionId);
+    // 删除成功后，再把最新列表同步到本地
+    chatSessions.value = chatSessionStore.sessions as { id: string; title: string }[];
+  } catch (e) {
+    console.error('删除会话失败：', e);
+  }
+}
 
 
 
@@ -175,7 +202,7 @@ onMounted(async () => {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }else{
-        await loadChatSession();
+       await createSession("Untitled");
     }
 
 

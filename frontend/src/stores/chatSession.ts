@@ -8,8 +8,6 @@ interface SessionMeta {
 }
 
 const _sessions = ref<SessionMeta[]>([
-  { id: '1', title: 'test A' },
-  { id: '2', title: 'test B' },
 ]);
 
 
@@ -95,6 +93,18 @@ class ChatSessionStore {
         };
         _sessions.value.unshift(newSession);
         resolve(newSession);
+      }, 200);
+    });
+  }
+  
+  async deleteSession(sessionId: string): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const idx = _sessions.value.findIndex((s) => s.id === sessionId);
+        if (idx !== -1) {
+          _sessions.value.splice(idx, 1);
+        }
+        resolve();
       }, 200);
     });
   }
