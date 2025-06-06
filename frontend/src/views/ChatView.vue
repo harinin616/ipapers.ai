@@ -304,7 +304,7 @@ async function streamChatResponse(userMessage, assistantMessage) {
   try {
     // Send request
     const response = await api.stream_chat({
-    session_id:    currentSessionId.value!,
+    session_id:    currentSessionId.value,
     message:       userMessage,
     selected_files: [],                // 如果暂时不选文件就传空列表
   });
