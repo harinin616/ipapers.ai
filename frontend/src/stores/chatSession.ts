@@ -1,4 +1,4 @@
-import { reactive, readonly } from 'vue';
+import { reactive, readonly ,ref} from 'vue';
 import api from '../services/api'; 
 
 interface SessionMeta {
@@ -6,6 +6,13 @@ interface SessionMeta {
   title: string;
   // 以后如果需要，可以加更多字段，比如 lastMessageAt, unreadCount 等
 }
+
+const _sessions = ref<SessionMeta[]>([
+  { id: '1', title: 'test A' },
+  { id: '2', title: 'test B' },
+]);
+
+
 
 interface ChatSessionStoreState {
   // 前面已有的：是否正在处理论文相关逻辑
@@ -45,6 +52,14 @@ class ChatSessionStore {
     this.state.processingPaper = false;
   }
   async fetchAllSessions(): Promise<SessionMeta[]> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(_sessions.value);
+      }, 200); // 模拟 200ms 延迟
+    });
+  }
+  /*
+  async fetchAllSessions(): Promise<SessionMeta[]> {
     try {
       // 调用后端接口
       const res: SessionMeta[] = await api.get_sessions();
@@ -58,7 +73,9 @@ class ChatSessionStore {
       return [];
     }
   }
-   async createSession(payload: { title: string }): Promise<SessionMeta> {
+    
+
+  async createSession(payload: { title: string }): Promise<SessionMeta> {
     try {
       const newSession: SessionMeta = await api.create_session(payload);
       // 将新会话插入到最前面
@@ -68,11 +85,32 @@ class ChatSessionStore {
       console.error('createSession 出错：', e);
       throw e;
     }
+  }*/
+  async createSession(payload: { title: string }): Promise<SessionMeta> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const newSession: SessionMeta = {
+          id: Date.now().toString(),
+          title: payload.title,
+        };
+        _sessions.value.unshift(newSession);
+        resolve(newSession);
+      }, 200);
+    });
+  }
+
+async loadMessages(sessionId: string): Promise<any[]> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // 你可以根据 sessionId 返回不同的 mock 数据
+        resolve([]);
+      }, 200);
+    });
   }
   get sessions(): SessionMeta[] {
     return this.state.sessions;
   }
-
+  //resetProcessingState(): void {}
   /**
    * 只读暴露其它状态，以备组件中使用
    */
