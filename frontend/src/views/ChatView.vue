@@ -204,6 +204,8 @@ onMounted(async () => {
       await loadChatSession(sessions[0].id);
     }else{
        await createNewSession();
+       currentSessionId.value = sessions[0].id;
+      await loadChatSession(sessions[0].id);
     }
 
 
@@ -301,7 +303,11 @@ async function sendMessage() {
 async function streamChatResponse(userMessage, assistantMessage) {
   try {
     // Send request
-    const response = await api.stream_chat(userMessage);
+    const response = await api.stream_chat({
+    session_id:    currentSessionId.value!,
+    message:       userMessage,
+    selected_files: [],                // 如果暂时不选文件就传空列表
+  });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
