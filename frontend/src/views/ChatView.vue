@@ -172,7 +172,7 @@ async function loadChatSession(sessionId=null) {
   }
 }
 
-async function deleteThisSession(sessionId: string) {
+async function deleteThisSession(sessionId) {
   // 如果要删除的是当前正在查看的会话，需要先清空右侧或者切换到其他会话
   if (sessionId === currentSessionId.value) {
     // 最简单的处理：先清空右侧消息
