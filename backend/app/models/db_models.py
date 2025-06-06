@@ -69,3 +69,14 @@ class DBCategory(Base):
     
     def __repr__(self):
         return f"<Category {self.name}>"
+
+class DBUser(Base):
+    """User database model"""
+    __tablename__ = "users"
+    
+    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False, unique=True, index=True)
+    
+    def __repr__(self):
+        return f"<User {self.user_id}: {self.name}>"

@@ -12,7 +12,6 @@
           <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
         </button>
 
-        
        <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
        <div class="user-info" v-show="user">
          <img :src="user?.picture" alt="avatar" class="avatar" />
@@ -69,7 +68,7 @@ export default defineComponent({
     const userId = ref<string | null>(null);
     
     
-    const user = ref<{ email: string; name: string; picture: string } | null>(null)
+    const user = ref<{ email: string; name: string; picture: string; user_id: string } | null>(null)
 
     const appHeaderRef = ref<HTMLElement | null>(null);
     const headerHeight = ref(0);
@@ -171,12 +170,18 @@ export default defineComponent({
                     email: userInfo.email,
                     name: userInfo.name,
                     picture: userInfo.picture,
+                    user_id: userInfo.user_id
                   }
  
                   localStorage.setItem(
                     'user',
                     JSON.stringify(user.value)
                   )
+                  userId.value = userInfo.user_id
+                  localStorage.setItem('X-User-ID', userInfo.user_id)
+                  
+                  // Refresh page after successful login
+                  window.location.reload()
                 })
                 .catch((err) => {
                   console.error('Login request failed:', err)
@@ -260,6 +265,9 @@ export default defineComponent({
     const logout = async () => {
       user.value = null
       localStorage.removeItem('user')
+      localStorage.removeItem('X-User-ID')
+      userId.value = null
+      await getOrCreateUserId()
       await nextTick()
       tryRenderGoogleButton()
     }

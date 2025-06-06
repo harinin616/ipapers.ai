@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, paper_authors
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, paper_authors
 from app.db.database import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,48 @@ class DBService:
     
     def __init__(self):
         pass
+    
+    async def add_user(self, name: str, email: str) -> bool:
+        """
+        Add user to database, check if email already exists first
+        """
+        if not name or not email:
+            logger.warning("Attempted to add user with empty name or email")
+            return False
+            
+        async for db in get_async_db():
+            try:
+                # Check if user with this email already exists
+                result = await db.execute(
+                    select(DBUser).where(DBUser.email == email)
+                )
+                existing_user = result.scalars().first()
+                
+                if existing_user:
+                    return True
+                
+                # Create new user
+                new_user = DBUser(
+                    name=name,
+                    email=email
+                )
+                
+                db.add(new_user)
+                await db.commit()
+                
+                logger.info(f"Successfully added new user: {name} with email: {email}")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when adding user {email}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when adding user {email}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
     
     async def add_papers(self, papers: List[Paper]) -> List[str]:
         """
@@ -339,6 +381,37 @@ class DBService:
                 return None
             except Exception as e:
                 logger.error(f"Unexpected error when getting click count for paper ID {paper_id}: {str(e)}", exc_info=True)
+                return None
+        
+        return None
+
+    async def get_user_id_by_email(self, email: str) -> Optional[int]:
+        """
+        Get user ID by email address
+        Returns user_id if found, None if not found
+        """
+        if not email:
+            logger.warning("Attempted to get user ID with empty email")
+            return None
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBUser.user_id).where(DBUser.email == email)
+                )
+                user_id = result.scalar_one_or_none()
+                
+                if user_id is None:
+                    logger.info(f"User with email {email} not found")
+                    return None
+                
+                return user_id
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting user ID for email {email}: {str(e)}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error when getting user ID for email {email}: {str(e)}", exc_info=True)
                 return None
         
         return None
