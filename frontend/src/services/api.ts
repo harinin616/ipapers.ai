@@ -17,13 +17,11 @@ export interface IApiService {
   delete_file(paper_id: string): Promise<boolean>;
   get_messages(): Promise<any[]>;
   stream_chat(message: string): Promise<Response>;
-  chat_comparison(message: string): Promise<Response>;
   chat_rwg(message: string): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
   
   // Review message methods (using shared file system)
-  get_comparison_messages(): Promise<any[]>;
   get_rwg_messages(): Promise<any[]>;
 }
 
@@ -198,31 +196,6 @@ class ApiService implements IApiService {
     }
   }
 
-  async chat_comparison(message: string): Promise<Response> {
-    try {
-      const userId = localStorage.getItem('X-User-ID');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (userId) {
-        headers['X-User-ID'] = userId;
-      }
-
-      const selectedFiles = fileSelectionStore.getSelectedFiles();
-
-      const response = await fetch(`/api/chat/chat_comparison`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({ message: message, selected_files: selectedFiles })
-      });
-      
-      return response; 
-    } catch (error) {
-      console.error('Failed to chat comparison:', error);
-      throw error;
-    }
-  }
-
   async chat_rwg(message: string): Promise<Response> {
     try {
       const userId = localStorage.getItem('X-User-ID');
@@ -270,16 +243,6 @@ class ApiService implements IApiService {
 
   // ============ REVIEW MESSAGE METHODS (using shared file system) ============
   
-  async get_comparison_messages(): Promise<any[]> {
-    try {
-      const response = await this.api.get(`/api/chat/comparison_messages`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get comparison messages:', error);
-      throw error;
-    }
-  }
-
   async get_rwg_messages(): Promise<any[]> {
     try {
       const response = await this.api.get(`/api/chat/rwg_messages`);

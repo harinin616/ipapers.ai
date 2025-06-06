@@ -30,59 +30,6 @@ class ReviewResponseChunk:
         }, ensure_ascii=False)
 
 
-@router.post("/chat_comparison")
-async def chat_comparison(
-    request: Request,
-    message: str = Body(embed=True),
-    selected_files: List[str] = Body(default=[], embed=True)
-):
-    """
-    get stream response for paper comparison (uses shared file system)
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-
-    # Initialize shared chat session if not exists
-    if user_id not in chat_service.active_chats:
-        chat_service.active_chats[user_id] = {
-            "messages": [],
-            "files": []
-        }
-    
-    # Mark selected files in shared chat system
-    if selected_files and chat_service.active_chats[user_id]["files"]:
-        for file in chat_service.active_chats[user_id]["files"]:
-            if file["paper_id"] in selected_files:
-                file["selected"] = True
-            else:
-                file["selected"] = False
-    
-    async def stream_comparison_response():
-        try:
-            async for content_chunk, is_done in review_service.generate_comparison_response(user_id, message):
-                response_chunk = ReviewResponseChunk(content=content_chunk, done=is_done)
-                json_chunk = response_chunk.to_json() + "\n"
-                yield json_chunk
-        except Exception as e:
-            logger.error(f"Error in stream_comparison_response: {str(e)}")
-            error_chunk = ReviewResponseChunk(content="Error processing comparison request", done=True)
-            yield error_chunk.to_json() + "\n"
-    
-    return StreamingResponse(
-        stream_comparison_response(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no" 
-        }
-    )
-
-
 @router.post("/chat_rwg")
 async def chat_rwg(
     request: Request,
@@ -134,23 +81,6 @@ async def chat_rwg(
             "X-Accel-Buffering": "no" 
         }
     )
-
-
-@router.get("/comparison_messages")
-async def get_comparison_messages(
-    request: Request,
-):
-    """
-    Get user's comparison history messages
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-    messages = review_service.get_comparison_messages(user_id)
-    return messages
 
 
 @router.get("/rwg_messages")

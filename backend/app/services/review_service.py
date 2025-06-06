@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class ReviewService:
     """
-    Service for handling review conversations (comparison and related work generation)
-    Uses shared file system with chat service, but maintains separate message histories
+    Service for handling related work generation
+    Uses shared file system with chat service, but maintains separate message history
     """
     
     def __init__(self):
@@ -23,8 +23,7 @@ class ReviewService:
         # review config
         self.max_context_messages = 10
         
-        # separate message storage for comparison and RWG (files are shared with chat)
-        self.comparison_messages = {}
+        # message storage for RWG (files are shared with chat)
         self.rwg_messages = {}
         
         # track processing files (shared with chat service)
@@ -32,138 +31,6 @@ class ReviewService:
         
         logger.info(f"Review Service initialized. Max context: {self.max_context_messages}")
     
-    # ============ COMPARISON METHODS ============
-    
-    def add_comparison_message(self, user_id: str, role: str, content: str):
-        """
-        add message to comparison conversation
-        """
-        if user_id not in self.comparison_messages:
-            self.comparison_messages[user_id] = []
-        
-        self.comparison_messages[user_id].append({
-            "role": role,
-            "content": content,
-            "timestamp": time.time()
-        })
-    
-    def get_comparison_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
-        """get user's comparison history messages"""
-        if user_id not in self.comparison_messages:
-            self.comparison_messages[user_id] = []
-        messages = self.comparison_messages[user_id]
-        
-        if limit:
-            return messages[-limit:]
-        return messages
-    
-    async def format_comparison_messages(self, user_id: str) -> List[Dict[str, str]]:
-        """
-        format comparison messages for API call (uses shared file system)
-        """
-        from app.services.chat_service import chat_service
-        
-        # Get file names from shared chat system
-        file_names = []
-        chat_data = chat_service.active_chats.get(user_id)
-        if chat_data and chat_data["files"]:
-            for file_data in chat_data["files"]:
-                if file_data.get("selected"):
-                    file_names.append(file_data.get("filename", "Unknown file"))
-    
-        system_content = (
-            "You are a professional academic paper comparison assistant. Your role is to help users compare and analyze multiple research papers. "
-            "You can identify similarities, differences, methodologies, results, and contributions across papers. "
-            "Focus on providing detailed comparative analysis, highlighting strengths and weaknesses of each approach. "
-            f"There are {len(file_names)} papers available for comparison: {', '.join(file_names)}. "
-            "Please cite specific content from the papers and provide structured comparisons."
-        )
-        
-        api_messages = [{"role": "system", "content": system_content}]
-        user_messages = [m for m in self.comparison_messages.get(user_id, []) if m["role"] in ["user", "assistant"]]
-        recent_messages = user_messages[-self.max_context_messages:]
-        for msg in recent_messages:
-            api_messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-        return api_messages
-    
-    async def generate_comparison_response(self, user_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
-        """
-        generate streaming response for paper comparison (uses shared file system)
-        """
-        self.add_comparison_message(user_id, "user", query)
-        
-        try:
-            relevant_chunks = []
-            # Use shared chat system for file access
-            from app.services.chat_service import chat_service
-            chat_data = chat_service.active_chats.get(user_id)
-            if chat_data and chat_data["files"]:
-                # get relevant chunks from pdf for comparison using shared system
-                relevant_chunks = await pdf_service.query_similar_chunks(user_id, query)
-            
-            # format messages for comparison
-            api_messages = await self.format_comparison_messages(user_id)
-            
-            # add relevant chunks to the latest user message
-            if relevant_chunks:
-                context_text = "\n\n".join(relevant_chunks)
-                last_message_idx = len(api_messages) - 1
-                
-                # create enhanced query with context for comparison
-                enhanced_query = f"""
-                {query}
-                
-                Please analyze and compare the following content from the papers:
-                ---
-                {context_text}
-                ---
-                Provide a detailed comparison focusing on methodologies, results, strengths, and limitations.
-                """
-                
-                api_messages[last_message_idx]["content"] = enhanced_query
-        except Exception as e:
-            logger.error(f"Error performing RAG for comparison {user_id}: {str(e)}")
-            # if failed, fallback to regular message format
-            api_messages = await self.format_comparison_messages(user_id)
-        
-        # generate response from LLM
-        assistant_response = ""
-        try:
-            # stream response from LLM for comparison
-            stream_response = await llm_service.get_conversation_completion(
-                messages=api_messages
-            )
-            
-            if not stream_response:
-                error_msg = "Sorry, I encountered an error while processing your comparison request."
-                self.add_comparison_message(user_id, "assistant", error_msg)
-                yield error_msg, True
-                return
-            
-            # process each chunk of the stream response
-            async for chunk in stream_response:
-                if chunk.text:
-                    content = chunk.text
-                    assistant_response += content
-                    # immediately send each token
-                    yield content, False
-            
-            # add to comparison history after completion
-            if assistant_response:
-                self.add_comparison_message(user_id, "assistant", assistant_response)
-                
-            # send end flag
-            yield "", True
-                
-        except Exception as e:
-            logger.error(f"Error generating comparison response for {user_id}: {str(e)}")
-            error_msg = "Sorry, I encountered an error while processing your comparison request."
-            self.add_comparison_message(user_id, "assistant", error_msg)
-            yield error_msg, True
-
     # ============ RWG (RELATED WORK GENERATION) METHODS ============
     
     def add_rwg_message(self, user_id: str, role: str, content: str):

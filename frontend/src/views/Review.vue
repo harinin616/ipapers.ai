@@ -7,28 +7,13 @@
         <div class="review-section">
           <div class="review-header">
             <div class="header-main">
-              <h2>Review</h2>
-            </div>
-            <!-- Button Controls -->
-            <div class="review-controls">
-              <button 
-                @click="setActiveView('comparison')"
-                :class="['control-button', { 'active': activeView === 'comparison' }]"
-              >
-                Comparison
-              </button>
-              <button 
-                @click="setActiveView('relatedWork')"
-                :class="['control-button', { 'active': activeView === 'relatedWork' }]"
-              >
-                Related Work Generation
-              </button>
+              <h2>Related Work Generation</h2>
             </div>
           </div>
 
           <div class="review-container">
             <div class="review-messages" ref="messagesContainer">
-              <div v-for="message in currentMessages" :key="message.id" 
+              <div v-for="message in rwgMessages" :key="message.id" 
                    :class="[
                      'review-message', 
                      message.role === 'user' ? 'user-message' : 'assistant-message',
@@ -37,7 +22,7 @@
                    :data-message-id="message.id">
                 <div class="message-content" v-html="formatMessage(message.content)" :class="{ 'live-typing': message.role === 'assistant' && isTyping && message.id === currentTypingMessageId }"></div>
               </div>
-              <div v-if="isLoading && currentMessages.length === 0" class="review-loading">
+              <div v-if="isLoading && rwgMessages.length === 0" class="review-loading">
                 <div class="review-loader"></div>
                 <div>AI is thinking...</div>
               </div>
@@ -52,7 +37,7 @@
                   ref="inputField" 
                   v-model="userInput"
                   @keydown.enter.exact.prevent="sendMessage"
-                  :placeholder="inputPlaceholder"
+                  placeholder="Extra guidance for related work generation..."
                   :disabled="false"
                   class="review-input"
                 ></textarea>
@@ -64,7 +49,7 @@
               >
                 <span v-if="isLoading">⏳</span>
                 <span v-else-if="isPaperProcessing">⌛</span>
-                <span v-else>Send</span>
+                <span v-else>Generate</span>
               </button>
             </div>
           </div>
@@ -75,7 +60,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
@@ -86,12 +71,10 @@ import api from '../services/api'
 // Review data
 const user_id = ref("");
 const initialLoading = ref(true);
-const activeView = ref('comparison'); // Default to comparison view
 const messagesContainer = ref(null);
 const inputField = ref(null);
 
-// Separate message storage for comparison and RWG (but shared file selection)
-const comparisonMessages = ref([]);
+// Message storage for RWG (files are shared with chat)
 const rwgMessages = ref([]);
 
 // Chat functionality
@@ -112,30 +95,6 @@ onBeforeUnmount(() => {
   chatSessionStore.resetProcessingState();
 });
 
-// Get current messages based on active view
-const currentMessages = computed(() => {
-  return activeView.value === 'comparison' ? comparisonMessages.value : rwgMessages.value;
-});
-
-// input placeholder
-const inputPlaceholder = computed(() => {
-  if (activeView.value === 'comparison') {
-    return 'Ask about paper comparison...';
-  } else {
-    return 'Ask about related work generation...';
-  }
-});
-
-// Set active view
-function setActiveView(view) {
-  activeView.value = view;
-  console.log(`Switched to ${view} view`);
-  // Scroll to bottom when switching views
-  nextTick(() => {
-    scrollToBottom();
-  });
-}
-
 // Send message
 async function sendMessage() {
   // if input is empty or loading or processing, return
@@ -149,7 +108,7 @@ async function sendMessage() {
   const messageContent = userInput.value.trim();
   userInput.value = '';
   
-  // Add user message to current view's message list
+  // Add user message to RWG message list
   const userMessage = {
     id: Date.now().toString(),
     role: 'user',
@@ -157,11 +116,7 @@ async function sendMessage() {
     created_at: new Date().toISOString()
   };
   
-  if (activeView.value === 'comparison') {
-    comparisonMessages.value.push(userMessage);
-  } else {
-    rwgMessages.value.push(userMessage);
-  }
+  rwgMessages.value.push(userMessage);
   
   // Scroll to bottom
   await nextTick();
@@ -182,21 +137,16 @@ async function sendMessage() {
     
     currentTypingMessageId.value = assistantMessage.id;
     
-    if (activeView.value === 'comparison') {
-      comparisonMessages.value.push(assistantMessage);
-    } else {
-      rwgMessages.value.push(assistantMessage);
-    }
+    rwgMessages.value.push(assistantMessage);
     
     await streamResponse(messageContent, assistantMessage);
   } catch (err) {
     console.error('Failed to send message:', err);
     // Remove empty assistant message on error
-    const currentMessageList = activeView.value === 'comparison' ? comparisonMessages.value : rwgMessages.value;
-    if (currentMessageList.length > 0 && 
-        currentMessageList[currentMessageList.length - 1].role === 'assistant' && 
-        currentMessageList[currentMessageList.length - 1].content === '') {
-      currentMessageList.pop();
+    if (rwgMessages.value.length > 0 && 
+        rwgMessages.value[rwgMessages.value.length - 1].role === 'assistant' && 
+        rwgMessages.value[rwgMessages.value.length - 1].content === '') {
+      rwgMessages.value.pop();
     }
   } finally {
     isLoading.value = false;
@@ -205,17 +155,11 @@ async function sendMessage() {
   }
 }
 
-// Stream response (different endpoint based on view)
+// Stream response for related work generation
 async function streamResponse(userMessage, assistantMessage) {
   try {
-    // Use different API endpoint based on active view (both use shared file selection)
-    let response;
-    
-    if (activeView.value === 'comparison') {
-      response = await api.chat_comparison(userMessage);
-    } else {
-      response = await api.chat_rwg(userMessage);
-    }
+    // Use RWG API endpoint
+    const response = await api.chat_rwg(userMessage);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -325,7 +269,7 @@ function scrollToBottom() {
 
 // Watch for message changes to auto-scroll
 watch(
-  () => [comparisonMessages.value.map(m => m.content), rwgMessages.value.map(m => m.content)],
+  () => rwgMessages.value.map(m => m.content),
   () => {
     nextTick(() => {
       scrollToBottom();
@@ -341,7 +285,7 @@ onMounted(async () => {
     
     user_id.value = localStorage.getItem('X-User-ID');
 
-    // Load review data for both views
+    // Load review data
     await loadReviewData();
     
     initialLoading.value = false;
@@ -373,14 +317,10 @@ async function loadReviewData() {
   try {
     console.log('Loading review data...');
     
-    // Load messages for both contexts
-    const [comparisonMessagesData, rwgMessagesData] = await Promise.all([
-      api.get_comparison_messages(),
-      api.get_rwg_messages()
-    ]);
+    // Load RWG messages
+    const rwgMessagesData = await api.get_rwg_messages();
     
     // Set messages (files are managed by the shared system)
-    comparisonMessages.value = comparisonMessagesData || [];
     rwgMessages.value = rwgMessagesData || [];
     
     await nextTick();
@@ -462,45 +402,6 @@ async function loadReviewData() {
   margin: 0;
   font-size: 1.5rem;
   color: #333;
-}
-
-.review-controls {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.control-button {
-  padding: 0.75rem 1.5rem;
-  border: 2px solid #e0e0e0;
-  background-color: #fff;
-  color: #666;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  flex: 1;
-  text-align: center;
-}
-
-.control-button:hover {
-  border-color: #3f51b5;
-  color: #3f51b5;
-  background-color: #f8f9ff;
-}
-
-.control-button.active {
-  background-color: #3f51b5;
-  color: white;
-  border-color: #3f51b5;
-  box-shadow: 0 2px 4px rgba(63, 81, 181, 0.2);
-}
-
-.control-button.active:hover {
-  background-color: #303f9f;
-  border-color: #303f9f;
 }
 
 .review-container {
