@@ -18,7 +18,7 @@
             @click="switchSession(session.id)"
           >
           <span @click="switchSession(session.id)" class="session-title">
-              {{ session.title || 'Untitled session' }}
+              {{ session.title || 'Untitled Session' }}
             </span>
 
             <!-- 在同一行加一个删除图标/按钮 --> 
@@ -147,7 +147,7 @@ async function switchSession(sessionId) {
 // 新建会话
 async function createNewSession() {
   try {
-    const newSession = await chatSessionStore.createSession({ title: 'Untitled session' });
+    const newSession = await chatSessionStore.createSession({ title: 'Untitled Session' });
     //chatSessions.value.unshift(newSession);
     // 切换到新会话
     switchSession(newSession.id);
@@ -203,7 +203,7 @@ onMounted(async () => {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }else{
-       await createNewSession("Untitled");
+       await createNewSession();
     }
 
 

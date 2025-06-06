@@ -49,14 +49,8 @@ class ChatSessionStore {
   resetProcessingState(): void {
     this.state.processingPaper = false;
   }
-  async fetchAllSessions(): Promise<SessionMeta[]> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(_sessions.value);
-      }, 200); // 模拟 200ms 延迟
-    });
-  }
-  /*
+
+
   async fetchAllSessions(): Promise<SessionMeta[]> {
     try {
       // 调用后端接口
@@ -71,7 +65,7 @@ class ChatSessionStore {
       return [];
     }
   }
-    
+      /*
 
   async createSession(payload: { title: string }): Promise<SessionMeta> {
     try {

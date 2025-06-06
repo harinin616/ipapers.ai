@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import uuid
 from typing import List, Dict, Any, AsyncGenerator, Tuple
 import asyncio
 
@@ -30,41 +31,51 @@ class ChatService:
         
         logger.info(f"Chat Service initialized. Max context: {self.max_context_messages}")
     
-    def add_message(self, user_id: str, role: str, content: str):
-        """
-        add message to a chat
-        """
 
+    def create_session(self, user_id: str, title: str = "Untitled Session") -> str:
         if user_id not in self.active_chats:
-            logger.error(f"Chat session not found: {user_id}")
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
+        session_id = str(uuid.uuid4())
+        self.active_chats[user_id]["sessions"][session_id] = {
+            "messages": [],
+            "title": title
+        }
+        return session_id
+    
+    def get_sessions(self, user_id: str):
+        if user_id not in self.active_chats:
+            return []
+        return [
+            {"id": sid, "title": ctx.get("title", "Untitled Session")}
+            for sid, ctx in self.active_chats[user_id]["sessions"].items()
+        ]
+    
+    def add_message(self, user_id: str, session_id: str, role: str, content: str):
+        if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
+            logger.error(f"Chat session not found: {user_id} {session_id}")
             return
-        
-        self.active_chats[user_id]["messages"].append({
+        self.active_chats[user_id]["sessions"][session_id]["messages"].append({
             "role": role,
             "content": content,
             "timestamp": time.time()
         })
-    
-    def get_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
-        """get user's history messages"""
-        if user_id not in self.active_chats:
-            self.active_chats[user_id] = {
-                "messages": [],
-                "files": []
-            }
-        messages = self.active_chats[user_id]["messages"]
-        
+
+    def get_messages(self, user_id: str, session_id: str, limit: int = None):
+        if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
+            return []
+        messages = self.active_chats[user_id]["sessions"][session_id]["messages"]
         if limit:
             return messages[-limit:]
         return messages
     
+    def delete_session(self, user_id: str, session_id: str):
+        if user_id in self.active_chats and session_id in self.active_chats[user_id]["sessions"]:
+            del self.active_chats[user_id]["sessions"][session_id]
+    
     async def attach_paper(self, user_id: str, paper_id: str) -> bool:
         """attach paper to chat"""
         if user_id not in self.active_chats:
-            self.active_chats[user_id] = {
-                "messages": [],
-                "files": []
-            }
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
         try:
             paper_title = paper_id
             paper = await db_service.get_paper_by_id(paper_id)
@@ -93,10 +104,7 @@ class ChatService:
     async def get_paper(self, user_id: str, paper_id: str) -> bool:
         """get paper pdf"""
         if user_id not in self.active_chats:
-            self.active_chats[user_id] = {
-                "messages": [],
-                "files": []
-            }
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
         try:
             file_path = await pdf_service.get_pdf(paper_id)
 

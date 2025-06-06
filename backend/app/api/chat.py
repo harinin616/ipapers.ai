@@ -32,6 +32,7 @@ class ChatResponseChunk:
 @router.get("/messages")
 async def get_chat_messages(
     request: Request,
+    session_id: str = Query(...)
 ):
     """
     Get user's history messages
@@ -43,13 +44,14 @@ async def get_chat_messages(
             detail="User ID not found"
         )
     messages = []
-    messages = chat_service.get_messages(user_id)
+    messages = chat_service.get_messages(user_id,session_id)
     return messages
 
 
 @router.post("/stream_chat")
 async def chat(
     request: Request,
+    session_id: str = Body(...),
     message: str = Body(embed=True),
     selected_files: List[str] = Body(embed=True)
 ):
@@ -65,8 +67,8 @@ async def chat(
 
     if user_id not in chat_service.active_chats:
         chat_service.active_chats[user_id] = {
-            "messages": [],
-            "files": []
+            "files": [],
+            "sessions": {}
         }
     if selected_files and chat_service.active_chats[user_id]["files"]:
         for file in chat_service.active_chats[user_id]["files"]:
@@ -77,7 +79,7 @@ async def chat(
     
     async def stream_chat_response():
         try:
-            async for content_chunk, is_done in chat_service.generate_response(user_id, message):
+            async for content_chunk, is_done in chat_service.generate_response(user_id,session_id, message):
                 response_chunk = ChatResponseChunk(content=content_chunk, done=is_done)
                 json_chunk = response_chunk.to_json() + "\n"
                 yield json_chunk
@@ -112,9 +114,9 @@ async def get_user_files(
         )
     
     if user_id not in chat_service.active_chats:
-        chat_service.active_chats[user_id] = {
-            "messages": [],
-            "files": []
+       chat_service.active_chats[user_id] = {
+            "files": [],
+            "sessions": {}
         }
     
     chat_data = chat_service.active_chats[user_id]
