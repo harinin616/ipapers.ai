@@ -1,58 +1,219 @@
 <template>
   <div class="review-page">
     <div v-if="initialLoading" class="loading">Loading...</div>
-    <div v-else class="full-layout">
-      <!-- Review Area -->
-      <div class="review-view">
-        <div class="review-section">
-          <div class="review-header">
-            <div class="header-main">
-              <h2>Related Work Generation</h2>
+    <div v-else class="two-panel-layout">
+      <!-- Left Panel: File Upload & Papers Relation Graph -->
+      <div class="left-panel">
+        <div class="panel-header">
+          <h3>Papers & Relations</h3>
+        </div>
+        
+        <!-- File Upload Area -->
+        <div class="file-upload-section">
+          <div 
+            class="file-drop-zone"
+            :class="{ 'drag-over': isDragOver, 'has-files': uploadedFiles.length > 0 }"
+            @drop="handleFileDrop"
+            @dragover.prevent="isDragOver = true"
+            @dragleave="isDragOver = false"
+            @dragenter.prevent
+            @click="triggerFileInput"
+          >
+            <div v-if="uploadedFiles.length === 0" class="drop-zone-content">
+              <div class="drop-icon">📄</div>
+              <p>Drag & drop files here</p>
+              <p class="drop-hint">or click to browse files</p>
+              <div class="supported-formats">Supports: PDF, DOC, DOCX, TXT</div>
+            </div>
+            <div v-else class="uploaded-files-preview">
+              <div class="files-count">{{ uploadedFiles.length }} files uploaded</div>
+              <button @click.stop="triggerFileInput" class="add-more-btn">+ Add More</button>
             </div>
           </div>
-
-          <div class="review-container">
-            <div class="review-messages" ref="messagesContainer">
-              <div v-for="message in rwgMessages" :key="message.id" 
-                   :class="[
-                     'review-message', 
-                     message.role === 'user' ? 'user-message' : 'assistant-message',
-                     message.role === 'assistant' && isTyping && message.id === currentTypingMessageId ? 'typing' : ''
-                   ]"
-                   :data-message-id="message.id">
-                <div class="message-content" v-html="formatMessage(message.content)" :class="{ 'live-typing': message.role === 'assistant' && isTyping && message.id === currentTypingMessageId }"></div>
+          
+          <!-- Hidden File Input -->
+          <input 
+            ref="fileInputRef"
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.txt"
+            @change="handleFileInput"
+            style="display: none;"
+          />
+          
+          <!-- Upload Progress -->
+          <div v-if="uploadProgress.length > 0" class="upload-progress-section">
+            <h5>Uploading Files...</h5>
+            <div v-for="progress in uploadProgress" :key="progress.id" class="upload-item">
+              <div class="upload-info">
+                <span class="file-name">{{ progress.name }}</span>
+                <span class="file-size">{{ formatFileSize(progress.size) }}</span>
               </div>
-              <div v-if="isLoading && rwgMessages.length === 0" class="review-loading">
-                <div class="review-loader"></div>
-                <div>AI is thinking...</div>
+              <div class="progress-bar">
+                <div 
+                  class="progress-fill" 
+                  :style="{ width: progress.progress + '%' }"
+                  :class="{ 'completed': progress.progress === 100, 'error': progress.error }"
+                ></div>
               </div>
-            </div>
-            <div class="review-input-container">
-              <div class="review-input-wrapper" 
-                :class="{ 
-                  'processing-mode': isLoading || isPaperProcessing
-                }"
-              >
-                <textarea 
-                  ref="inputField" 
-                  v-model="userInput"
-                  @keydown.enter.exact.prevent="sendMessage"
-                  placeholder="Extra guidance for related work generation..."
-                  :disabled="false"
-                  class="review-input"
-                ></textarea>
+              <div class="upload-status">
+                <span v-if="progress.error" class="error-text">{{ progress.error }}</span>
+                <span v-else-if="progress.progress === 100" class="success-text">✓ Complete</span>
+                <span v-else class="progress-text">{{ progress.progress }}%</span>
               </div>
-              <button 
-                @click="sendMessage" 
-                :disabled="isLoading || !userInput.trim() || isPaperProcessing"
-                class="review-send-button"
-              >
-                <span v-if="isLoading">⏳</span>
-                <span v-else-if="isPaperProcessing">⌛</span>
-                <span v-else>Generate</span>
-              </button>
             </div>
           </div>
+        </div>
+        
+        <!-- Papers Relation Graph -->
+        <div class="graph-section">
+          <div class="graph-header">
+            <h4>Papers Relation Graph</h4>
+          </div>
+          <div class="graph-container" ref="graphContainer">
+            <div v-if="uploadedFiles.length === 0" class="graph-placeholder">
+              <div class="placeholder-icon">🔗</div>
+              <p>Upload files to see relations</p>
+            </div>
+            <div v-else class="graph-content">
+              <!-- Simple Graph Visualization -->
+              <svg class="relation-graph" :width="graphWidth" :height="graphHeight">
+                <!-- Draw connections between papers -->
+                <g class="connections">
+                  <line 
+                    v-for="connection in paperConnections" 
+                    :key="`${connection.from}-${connection.to}`"
+                    :x1="connection.x1" 
+                    :y1="connection.y1"
+                    :x2="connection.x2" 
+                    :y2="connection.y2"
+                    stroke="#90caf9" 
+                    stroke-width="2"
+                    opacity="0.6"
+                  />
+                </g>
+                <!-- Draw paper nodes -->
+                <g class="nodes">
+                  <g 
+                    v-for="(file, index) in uploadedFiles" 
+                    :key="file.paper_id"
+                    :transform="`translate(${file.x}, ${file.y})`"
+                    class="paper-node"
+                  >
+                    <circle 
+                      :r="30" 
+                      fill="#2196f3" 
+                      opacity="0.8"
+                      stroke="#fff"
+                      stroke-width="2"
+                    />
+                    <text 
+                      text-anchor="middle" 
+                      dy="5" 
+                      fill="white" 
+                      font-size="10"
+                      font-weight="bold"
+                    >
+                      {{ index + 1 }}
+                    </text>
+                  </g>
+                </g>
+              </svg>
+              
+              <!-- Paper List -->
+              <div class="paper-list">
+                <div 
+                  v-for="(file, index) in uploadedFiles" 
+                  :key="file.paper_id"
+                  class="paper-item"
+                >
+                  <span class="paper-number">{{ index + 1 }}</span>
+                  <span class="paper-name">{{ file.filename }}</span>
+                  <button 
+                    @click="removeFile(file.paper_id)"
+                    class="remove-btn"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Panel: Guidance Input & Generation -->
+      <div class="right-panel">
+        <div class="panel-header">
+          <h3>Related Work Generation</h3>
+        </div>
+        
+        <!-- Guidance Section -->
+        <div class="guidance-section">
+          <div class="guidance-messages" ref="guidanceContainer">
+            <div v-for="guidance in guidanceList" :key="guidance.id" class="guidance-item">
+              <div class="guidance-content">{{ guidance.content }}</div>
+              <button @click="removeGuidance(guidance.id)" class="remove-guidance">×</button>
+            </div>
+            <div v-if="guidanceList.length === 0" class="guidance-placeholder">
+              <p>Add guidance to help generate better related work sections</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Generated Result -->
+        <div class="result-section">
+          <div class="result-header">
+            <h4>Generated Related Work</h4>
+            <button 
+              v-if="generatedContent"
+              @click="copyToClipboard"
+              class="copy-btn"
+            >
+              📋 Copy
+            </button>
+          </div>
+          <div class="result-content" ref="resultContainer">
+            <div v-if="!generatedContent && !isGenerating" class="result-placeholder">
+              <p>Click "Generate" to create related work content</p>
+            </div>
+            <div v-else-if="isGenerating" class="generating-indicator">
+              <div class="spinner"></div>
+              <p>Generating related work...</p>
+            </div>
+            <div v-else class="generated-text" v-html="formatMessage(generatedContent)"></div>
+          </div>
+        </div>
+        
+        <!-- Input & Generate Section -->
+        <div class="input-section">
+          <div class="input-container">
+            <textarea 
+              ref="guidanceInputRef" 
+              v-model="guidanceInputText"
+              @keydown.enter.exact.prevent="addGuidance"
+              placeholder="Extra guidance for related work generation..."
+              class="guidance-input"
+              rows="2"
+            ></textarea>
+            <button 
+              @click="addGuidance"
+              :disabled="!guidanceInputText.trim()"
+              class="add-guidance-btn"
+            >
+              + Add
+            </button>
+          </div>
+          
+          <button 
+            @click="generateRelatedWork"
+            :disabled="uploadedFiles.length === 0 || isGenerating"
+            class="generate-btn"
+            :class="{ 'generating': isGenerating }"
+          >
+            <span v-if="isGenerating">⏳</span>
+            <span v-else>Generate</span>
+          </button>
         </div>
       </div>
     </div>
@@ -68,25 +229,34 @@ import 'highlight.js/styles/github.css';
 import { chatSessionStore } from '../stores/chatSession';
 import api from '../services/api'
 
-// Review data
-const user_id = ref("");
+// UI refs
 const initialLoading = ref(true);
-const messagesContainer = ref(null);
-const inputField = ref(null);
+const graphContainer = ref(null);
+const guidanceContainer = ref(null);
+const resultContainer = ref(null);
+const guidanceInputRef = ref(null);
+const fileInputRef = ref(null);
 
-// Message storage for RWG (files are shared with chat)
-const rwgMessages = ref([]);
-
-// Chat functionality
-const userInput = ref('');
-const isLoading = ref(false);
-const isTyping = ref(false);
-const currentTypingMessageId = ref(null);
-
-// check if paper is processing
+// File upload state
+const uploadedFiles = ref([]);
+const isDragOver = ref(false);
 const isPaperProcessing = ref(false);
+const uploadProgress = ref([]);
 
-// watch paper processing state
+// Guidance state
+const guidanceList = ref([]);
+const guidanceInputText = ref('');
+
+// Generation state
+const generatedContent = ref('');
+const isGenerating = ref(false);
+
+// Graph state
+const graphWidth = ref(400);
+const graphHeight = ref(300);
+const paperConnections = ref([]);
+
+// Watch paper processing state
 watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
   isPaperProcessing.value = isProcessing;
 }, { immediate: true });
@@ -95,71 +265,93 @@ onBeforeUnmount(() => {
   chatSessionStore.resetProcessingState();
 });
 
-// Send message
-async function sendMessage() {
-  // if input is empty or loading or processing, return
-  if (!userInput.value.trim() || isLoading.value) return;
+// File handling functions
+async function handleFileDrop(event) {
+  event.preventDefault();
+  isDragOver.value = false;
   
-  // check if paper is processing
-  if (isPaperProcessing.value) {
-    return;
-  }
-  
-  const messageContent = userInput.value.trim();
-  userInput.value = '';
-  
-  // Add user message to RWG message list
-  const userMessage = {
-    id: Date.now().toString(),
-    role: 'user',
-    content: messageContent,
-    created_at: new Date().toISOString()
-  };
-  
-  rwgMessages.value.push(userMessage);
-  
-  // Scroll to bottom
-  await nextTick();
-  scrollToBottom();
-  
-  // Start processing reply
-  try {
-    isLoading.value = true;
-    isTyping.value = true;
-    
-    // Add an empty assistant message as placeholder
-    const assistantMessage = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: '',
-      created_at: new Date().toISOString()
-    };
-    
-    currentTypingMessageId.value = assistantMessage.id;
-    
-    rwgMessages.value.push(assistantMessage);
-    
-    await streamResponse(messageContent, assistantMessage);
-  } catch (err) {
-    console.error('Failed to send message:', err);
-    // Remove empty assistant message on error
-    if (rwgMessages.value.length > 0 && 
-        rwgMessages.value[rwgMessages.value.length - 1].role === 'assistant' && 
-        rwgMessages.value[rwgMessages.value.length - 1].content === '') {
-      rwgMessages.value.pop();
-    }
-  } finally {
-    isLoading.value = false;
-    isTyping.value = false;
-    currentTypingMessageId.value = null;
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    await processFiles(files);
+  } else {
+    // Load existing files from the system if no files dropped
+    await loadUserFiles();
   }
 }
 
-// Stream response for related work generation
-async function streamResponse(userMessage, assistantMessage) {
+async function loadUserFiles() {
   try {
-    // Use RWG API endpoint
-    const response = await api.chat_rwg(userMessage);
+    const files = await api.get_user_files();
+    uploadedFiles.value = files.map((file, index) => ({
+      ...file,
+      x: 50 + (index % 3) * 120,
+      y: 50 + Math.floor(index / 3) * 80
+    }));
+    updatePaperConnections();
+  } catch (error) {
+    console.error('Failed to load user files:', error);
+  }
+}
+
+function removeFile(paperId) {
+  uploadedFiles.value = uploadedFiles.value.filter(file => file.paper_id !== paperId);
+  updatePaperConnections();
+}
+
+function updatePaperConnections() {
+  // Create simple connections between papers (for demo)
+  const connections = [];
+  for (let i = 0; i < uploadedFiles.value.length - 1; i++) {
+    for (let j = i + 1; j < uploadedFiles.value.length; j++) {
+      const file1 = uploadedFiles.value[i];
+      const file2 = uploadedFiles.value[j];
+      connections.push({
+        from: file1.paper_id,
+        to: file2.paper_id,
+        x1: file1.x,
+        y1: file1.y,
+        x2: file2.x,
+        y2: file2.y
+      });
+    }
+  }
+  paperConnections.value = connections;
+}
+
+// Guidance functions
+function addGuidance() {
+  if (!guidanceInputText.value.trim()) return;
+  
+  const guidance = {
+    id: Date.now().toString(),
+    content: guidanceInputText.value.trim()
+  };
+  
+  guidanceList.value.push(guidance);
+  guidanceInputText.value = '';
+}
+
+function removeGuidance(id) {
+  guidanceList.value = guidanceList.value.filter(g => g.id !== id);
+}
+
+// Generation function
+async function generateRelatedWork() {
+  if (uploadedFiles.value.length === 0 || isGenerating.value) return;
+  
+  isGenerating.value = true;
+  generatedContent.value = '';
+  
+  try {
+    // Prepare the guidance message
+    const guidanceText = guidanceList.value.length > 0 
+      ? `Please consider the following guidance:\n${guidanceList.value.map(g => `- ${g.content}`).join('\n')}\n\n`
+      : '';
+    
+    const message = `${guidanceText}Generate a comprehensive related work section based on the ${uploadedFiles.value.length} uploaded papers. Focus on identifying key contributions, methodologies, and relationships between these works.`;
+    
+    // Use the RWG API
+    const response = await api.chat_rwg(message);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -168,30 +360,19 @@ async function streamResponse(userMessage, assistantMessage) {
     // Process streaming response
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let receivedChunks = 0;
     let accumulatedData = '';
-    
-    // Message container reference - for direct DOM manipulation
-    const messageEl = document.querySelector(`[data-message-id="${assistantMessage.id}"]`);
     
     while (true) {
       const { done, value } = await reader.read();
       
       if (done) {
-        isTyping.value = false;
-        scrollToBottom();
         break;
       }
       
-      // Decode data
       const chunk = decoder.decode(value, { stream: true });
-      receivedChunks++;
-      
-      // Add new chunk to accumulated data
       accumulatedData += chunk;
       
       try {
-        // Try to parse JSON lines
         const lines = accumulatedData.split('\n');
         let remainingLines = [];
         
@@ -200,104 +381,66 @@ async function streamResponse(userMessage, assistantMessage) {
           if (!line.trim()) continue;
           
           try {
-            // Try to parse as JSON
             const jsonData = JSON.parse(line);
-            // If successfully parsed, add to message content
             if (jsonData.content) {
-              assistantMessage.content += jsonData.content;
-              updateMessageDisplay(messageEl, assistantMessage.content);
+              generatedContent.value += jsonData.content;
             }
           } catch (e) {
-            // If this line is not complete JSON, keep for next processing
             remainingLines.push(line);
           }
         }
         
-        // Update accumulated data, only keeping unparsed parts
         accumulatedData = remainingLines.join('\n');
         
-        // If there's remaining plain text data, directly add to message
         if (accumulatedData) {
-          assistantMessage.content += accumulatedData;
-          updateMessageDisplay(messageEl, assistantMessage.content);
+          generatedContent.value += accumulatedData;
           accumulatedData = '';
         }
       } catch (e) {
         console.error('Error processing chunk:', e);
       }
+      
+      // Auto-scroll result container
+      if (resultContainer.value) {
+        resultContainer.value.scrollTop = resultContainer.value.scrollHeight;
+      }
     }
   } catch (error) {
-    console.error('Failed to get streaming response:', error);
-    assistantMessage.content = "Failed to get response. Please try again.";
-    throw error;
+    console.error('Failed to generate related work:', error);
+    generatedContent.value = "Failed to generate related work. Please try again.";
+  } finally {
+    isGenerating.value = false;
   }
 }
 
-// Helper function to update message display
-function updateMessageDisplay(messageEl, content) {
-  if (messageEl) {
-    // Create temporary div to parse HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = DOMPurify.sanitize(marked(content));
-    
-    // Get content container and update
-    const contentEl = messageEl.querySelector('.message-content');
-    if (contentEl) {
-      contentEl.innerHTML = tempDiv.innerHTML;
-    }
-  }
-  
-  // Scroll to bottom
-  scrollToBottom();
-}
-
-// Format message using markdown
+// Utility functions
 function formatMessage(content) {
   if (!content) return '';
   const html = marked(content);
   return DOMPurify.sanitize(html);
 }
 
-// Scroll to bottom
-function scrollToBottom() {
-  if (messagesContainer.value) {
-    window.requestAnimationFrame(() => {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-    });
+async function copyToClipboard() {
+  try {
+    await navigator.clipboard.writeText(generatedContent.value);
+    // You could add a toast notification here
+    console.log('Content copied to clipboard');
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error);
   }
 }
-
-// Watch for message changes to auto-scroll
-watch(
-  () => rwgMessages.value.map(m => m.content),
-  () => {
-    nextTick(() => {
-      scrollToBottom();
-    });
-  },
-  { deep: true }
-);
 
 // Initialization
 onMounted(async () => {
   try {
     initialLoading.value = true;
     
-    user_id.value = localStorage.getItem('X-User-ID');
-
-    // Load review data
-    await loadReviewData();
+    // Load existing files
+    await loadUserFiles();
     
     initialLoading.value = false;
   } catch (err) {
     console.error('Initialization error:', err);
-    if (err.response) {
-      console.error('API response:', err.response.status, err.response.data);
-    } else if (err.request) {
-      console.error('No response received:', err.request);
-    } else {
-      console.error('Error message:', err.message);
-    }
     initialLoading.value = false;
   }
   
@@ -312,22 +455,107 @@ onMounted(async () => {
   });
 });
 
-// Load review data
-async function loadReviewData() {
-  try {
-    console.log('Loading review data...');
-    
-    // Load RWG messages
-    const rwgMessagesData = await api.get_rwg_messages();
-    
-    // Set messages (files are managed by the shared system)
-    rwgMessages.value = rwgMessagesData || [];
-    
-    await nextTick();
-    scrollToBottom();
-  } catch (error) {
-    console.error('Failed to load review data:', error);
+function triggerFileInput() {
+  fileInputRef.value.click();
+}
+
+async function handleFileInput(event) {
+  const files = event.target.files;
+  if (files.length > 0) {
+    await processFiles(files);
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
   }
+}
+
+async function processFiles(fileList) {
+  const files = Array.from(fileList);
+  
+  // Validate files
+  const validFiles = files.filter(file => {
+    const validTypes = ['application/pdf', 'application/msword', 
+                       'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                       'text/plain'];
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    
+    if (!validTypes.includes(file.type)) {
+      alert(`File "${file.name}" is not supported. Please upload PDF, DOC, DOCX, or TXT files.`);
+      return false;
+    }
+    
+    if (file.size > maxSize) {
+      alert(`File "${file.name}" is too large. Maximum size is 50MB.`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  if (validFiles.length === 0) return;
+  
+  // Process each valid file
+  for (const file of validFiles) {
+    await uploadFile(file);
+  }
+}
+
+async function uploadFile(file) {
+  const progressId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  
+  // Add to progress tracking
+  const progressItem = {
+    id: progressId,
+    name: file.name,
+    size: file.size,
+    progress: 0,
+    error: null
+  };
+  
+  uploadProgress.value.push(progressItem);
+  
+  try {
+    // Simulate file upload progress
+    for (let progress = 0; progress <= 100; progress += 10) {
+      await new Promise(resolve => setTimeout(resolve, 100)); // Simulate upload time
+      progressItem.progress = progress;
+    }
+    
+    // Simulate successful upload - add to uploaded files
+    const uploadedFile = {
+      paper_id: progressId,
+      filename: file.name,
+      file_size: file.size,
+      upload_date: new Date().toISOString(),
+      x: 50 + (uploadedFiles.value.length % 3) * 120,
+      y: 50 + Math.floor(uploadedFiles.value.length / 3) * 80,
+      // Store file data for potential use
+      fileData: file
+    };
+    
+    uploadedFiles.value.push(uploadedFile);
+    updatePaperConnections();
+    
+    // Remove from progress after a delay
+    setTimeout(() => {
+      uploadProgress.value = uploadProgress.value.filter(p => p.id !== progressId);
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Upload error:', error);
+    progressItem.error = 'Upload failed';
+    
+    // Remove failed upload after delay
+    setTimeout(() => {
+      uploadProgress.value = uploadProgress.value.filter(p => p.id !== progressId);
+    }, 3000);
+  }
+}
+
+function formatFileSize(size) {
+  if (size < 1024) return size + ' B';
+  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB';
+  if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)).toFixed(2) + ' MB';
+  return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
 </script>
 
@@ -339,267 +567,499 @@ async function loadReviewData() {
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
-  overflow: hidden;
-}
-
-.full-layout {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  overflow: visible;
-  margin: 0;
-  padding: 12px;
-  box-sizing: border-box;
-  transition: all 0.3s ease;
 }
 
 .loading {
-  text-align: center;
-  padding: 2rem;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.review-view {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0;
-  overflow: hidden;
-  height: 100%;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.review-section {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
-  padding: 1rem;
-}
-
-.review-header {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 0.75rem;
-}
-
-.header-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.header-main h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-}
-
-.review-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-}
-
-.review-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.review-message {
-  max-width: 80%;
-  padding: 10px 14px;
-  border-radius: 12px;
-  position: relative;
-  line-height: 1.5;
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
-}
-
-.review-message.user-message {
-  align-self: flex-end;
-  background-color: #e3f2fd;
-  color: #0d47a1;
-  border-bottom-right-radius: 2px;
-}
-
-.review-message.assistant-message {
-  align-self: flex-start;
-  background-color: #fff;
-  color: #333;
-  border-bottom-left-radius: 2px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.message-content {
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
-  font-size: 0.95rem;
-}
-
-.message-content p {
-  margin: 0 0 0.75rem;
-}
-
-.message-content p:last-child {
-  margin-bottom: 0;
-}
-
-.review-input-container {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  border-top: 1px solid #eee;
-  background-color: white;
-  border-radius: 0 0 8px 8px;
-  gap: 0.5rem;
-}
-
-.review-input-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  border: 1px solid #ddd;
-  border-radius: 24px;
-  background-color: #fff;
-  transition: all 0.2s;
-  overflow: hidden;
-  padding: 0.5rem 1rem 0;
-}
-
-.review-input-wrapper:focus-within {
-  border-color: #3f51b5;
-  box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
-}
-
-.review-input {
-  width: 100%;
-  min-height: 44px;
-  max-height: 120px;
-  padding: 0.25rem 0;
-  border: none;
-  outline: none;
-  resize: none;
-  font-family: inherit;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  overflow-y: auto;
-  background-color: transparent;
-}
-
-.review-send-button {
-  background-color: #3f51b5;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  min-width: 44px;
-  height: 44px;
-  cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  padding: 0 14px;
+  height: 100%;
+  font-size: 1.2rem;
+  color: #666;
 }
 
-.review-send-button:hover:not(:disabled) {
-  background-color: #303f9f;
-  transform: translateY(-1px);
+.two-panel-layout {
+  display: flex;
+  height: 100%;
+  gap: 1rem;
+  padding: 1rem;
 }
 
-.review-send-button:disabled {
-  background-color: #bdbdbd;
-  cursor: not-allowed;
+/* Left Panel Styles */
+.left-panel {
+  flex: 0 0 45%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.review-loading {
+.panel-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.file-upload-section {
+  padding: 1rem;
+}
+
+.file-drop-zone {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background: #fafafa;
+}
+
+.file-drop-zone.drag-over {
+  border-color: #3f51b5;
+  background-color: #f3f4ff;
+}
+
+.file-drop-zone.has-files {
+  border-color: #4caf50;
+  background-color: #f1f8e9;
+}
+
+.drop-zone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drop-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.drop-hint {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.uploaded-files-preview {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.graph-section {
+  flex: 1;
+  padding: 1rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-header h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.graph-container {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
+.placeholder-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.graph-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.relation-graph {
+  flex: 0 0 200px;
+  background: #f9f9f9;
+}
+
+.paper-node {
+  cursor: pointer;
+}
+
+.paper-list {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.paper-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
-  font-style: italic;
   padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  background: #f5f5f5;
 }
 
-.review-loader {
+.paper-number {
+  background: #2196f3;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.paper-name {
+  flex: 1;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 50%;
   width: 20px;
   height: 20px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #3f51b5;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Right Panel Styles */
+.right-panel {
+  flex: 0 0 55%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.guidance-section {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  max-height: 150px;
+}
+
+.guidance-messages {
+  max-height: 100px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.guidance-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #e3f2fd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.guidance-content {
+  flex: 1;
+}
+
+.remove-guidance {
+  background: #666;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.guidance-placeholder {
+  color: #999;
+  text-align: center;
+  font-style: italic;
+  padding: 1rem;
+}
+
+.result-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1rem 0.5rem 1rem;
+}
+
+.result-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.copy-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.result-content {
+  flex: 1;
+  padding: 0 1rem 1rem 1rem;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  margin: 0 1rem;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.result-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  font-style: italic;
+}
+
+.generating-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: #666;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3f51b5;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  flex-shrink: 0;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.review-input:disabled {
-  background-color: #f8f9fa;
-  color: #6c757d;
+.generated-text {
+  padding: 1rem;
+  line-height: 1.6;
+  background: white;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.input-section {
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.input-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.guidance-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 44px;
+}
+
+.guidance-input:focus {
+  outline: none;
+  border-color: #3f51b5;
+}
+
+.add-guidance-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.add-guidance-btn:disabled {
+  background: #ccc;
   cursor: not-allowed;
 }
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.review-input-wrapper.processing-mode {
-  border-color: #ffb74d;
-  background-color: #fff8e1;
-}
-
-.review-input-wrapper.processing-mode .review-input {
-  background-color: transparent;
-}
-
-.review-input-wrapper.processing-mode::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background-color: #ff9800;
-  animation: processing-bar 2s infinite linear;
+.generate-btn {
   width: 100%;
-  transform: scaleX(0);
-  transform-origin: 0 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-@keyframes processing-bar {
-  0% {
-    transform: scaleX(0);
-  }
-  50% {
-    transform: scaleX(1);
-  }
-  100% {
-    transform: scaleX(0);
-    transform-origin: 100% 0;
-  }
+.generate-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.generate-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.generate-btn.generating {
+  background: #ff9800;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.add-more-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.upload-progress-section {
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.upload-info {
+  flex: 1;
+}
+
+.file-name {
+  font-size: 0.9rem;
+}
+
+.file-size {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 10px;
+  background: #f0f0f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4caf50;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.completed {
+  background: #4caf50;
+}
+
+.progress-fill.error {
+  background: #f44336;
+}
+
+.upload-status {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.error-text {
+  color: #f44336;
+}
+
+.success-text {
+  color: #4caf50;
+}
+
+.progress-text {
+  color: #666;
+}
+
+.supported-formats {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background: #f0f8ff;
+  border-radius: 4px;
+  border: 1px solid #e3f2fd;
 }
 </style>
 
