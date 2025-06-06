@@ -5,9 +5,9 @@
 
         <div class="sidebar">
         <div class="sidebar-header">
-          <h3>Chat session</h3>
+          <h3>Chat Session</h3>
 
-          <button @click="createNewSession" class="new-session-button">＋ New conversation</button>
+          <button @click="createNewSession" class="new-session-button">＋ New Conversation</button>
         </div>
         <ul class="session-list">
           <!-- Render existing sessions via the chatSessions array. -->
@@ -498,6 +498,9 @@ watch(
 }
 
 .session-item {
+  display: flex;
+  justify-content: space-between; /* 两端对齐 */
+  align-items: center;  
   padding: 10px 12px;
   cursor: pointer;
   font-size: 0.95rem;
