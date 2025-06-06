@@ -183,7 +183,7 @@ async function deleteThisSession(sessionId) {
   try {
     await chatSessionStore.deleteSession(sessionId);
     // 删除成功后，再把最新列表同步到本地
-    chatSessions.value = chatSessionStore.sessions as { id: string; title: string }[];
+    chatSessions.value = chatSessionStore.sessions;
   } catch (e) {
     console.error('删除会话失败：', e);
   }
