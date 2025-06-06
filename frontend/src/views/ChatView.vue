@@ -145,11 +145,11 @@ async function createNewSession() {
 }
 
 // 加载指定会话的消息
-async function loadChatSession(sessionId) {
+async function loadChatSession(sessionId=null) {
   try {
     isLoading.value = true;
     // 假设后端接口：api.get_messages({ session_id })
-    const response = await api.get_messages();//await api.get_messages({ session_id: sessionId });
+    const response = await api.get_messages({ session_id: sessionId });
     messages.value = response || [];
     await nextTick();
     scrollToBottom();
@@ -164,7 +164,6 @@ async function loadChatSession(sessionId) {
 
 
 
-
 // Initialization
 onMounted(async () => {
   try {
@@ -175,6 +174,8 @@ onMounted(async () => {
     if (sessions.length > 0) {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
+    }else{
+        await loadChatSession();
     }
 
 
@@ -183,7 +184,6 @@ onMounted(async () => {
     
     user_id.value = localStorage.getItem('X-User-ID');
 
-    await loadChatSession();
     
     initialLoading.value = false;
   } catch (err) {
