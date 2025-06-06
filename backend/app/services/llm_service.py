@@ -24,7 +24,7 @@ class LLMService:
         """Initialize LLM service"""
         # api key and url
         self.embedding_api_key = os.getenv("EMBEDDING_API_KEY", "")
-                 
+        
         self.api_url = os.getenv("EMBEDDING_API_URL", "")
 
         self.llm_api_key = os.getenv("LLM_API_KEY", "")

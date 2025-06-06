@@ -2,6 +2,28 @@
   <div class="chat-page">
     <div v-if="initialLoading" class="loading">Loading...</div>
     <div v-else class="full-layout">
+
+        <div class="sidebar">
+        <div class="sidebar-header">
+          <h3>Chat session</h3>
+
+          <button @click="createNewSession" class="new-session-button">＋ New conversation</button>
+        </div>
+        <ul class="session-list">
+          <!-- Render existing sessions via the chatSessions array. -->
+          <li
+            v-for="session in chatSessions"
+            :key="session.id"
+            :class="['session-item', { active: session.id === currentSessionId }]"
+            @click="switchSession(session.id)"
+          >
+            {{ session.title || 'Untitled session' }}
+          </li>
+        </ul>
+      </div>
+
+
+
       <!-- Chat Area -->
       <div class="chat-view">
         <div class="chat-section">
@@ -97,9 +119,66 @@ const inputPlaceholder = computed(() => {
   return 'Type your message...';
 });
 
+const chatSessions = ref([]); 
+const currentSessionId = ref(null);
+
+
+// 切换会话
+async function switchSession(sessionId) {
+  if (sessionId === currentSessionId.value) return;
+  currentSessionId.value = sessionId;
+  initialLoading.value = true;
+  await loadChatSession(sessionId);
+  initialLoading.value = false;
+}
+
+// 新建会话
+async function createNewSession() {
+  try {
+    const newSession = await chatSessionStore.createSession({ title: '未命名会话' });
+    chatSessions.value.unshift(newSession);
+    // 切换到新会话
+    switchSession(newSession.id);
+  } catch (e) {
+    console.error('新建会话失败：', e);
+  }
+}
+
+// 加载指定会话的消息
+async function loadChatSession(sessionId) {
+  try {
+    isLoading.value = true;
+    // 假设后端接口：api.get_messages({ session_id })
+    const response = await api.get_messages();//await api.get_messages({ session_id: sessionId });
+    messages.value = response || [];
+    await nextTick();
+    scrollToBottom();
+  } catch (error) {
+    console.error('Failed to load session:', error);
+    messages.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+
+
+
+
 // Initialization
 onMounted(async () => {
   try {
+    const sessions = await chatSessionStore.fetchAllSessions(); 
+    // fetchAllSessions() 返回 [{ id, title, ... }, ...]
+    chatSessions.value = sessions;
+    // 如果有已有会话，默认选第一个
+    if (sessions.length > 0) {
+      currentSessionId.value = sessions[0].id;
+      await loadChatSession(sessions[0].id);
+    }
+
+
+
     initialLoading.value = true;
     
     user_id.value = localStorage.getItem('X-User-ID');
@@ -130,26 +209,6 @@ onMounted(async () => {
   });
 });
 
-// Load existing chat session
-async function loadChatSession() {
-  try {
-    isLoading.value = true;
-    const response = await api.get_messages();
-    
-    if (response) {
-      messages.value = response;
-    } else {
-      messages.value = [];
-    }
-    
-    await nextTick();
-    scrollToBottom();
-  } catch (error) {
-    console.error('Failed to load session:');
-  } finally {
-    isLoading.value = false;
-  }
-}
 
 // Send message or execute search
 async function sendMessage() {
@@ -357,6 +416,93 @@ watch(
   transition: all 0.3s ease;
 }
 
+
+/* 1. 侧边栏 */
+.sidebar {
+  width: 240px;              /* 你可以根据需要调整宽度 */
+  min-width: 200px;
+  max-width: 260px;
+  background-color: #ffffff; /* 白底，或 #f7f7f8 之类浅灰 */
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 侧边栏顶部，包括标题和“新建会话”按钮 */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.new-session-button {
+  background-color: #3f51b5;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.new-session-button:hover {
+  background-color: #303f9f;
+}
+
+/* 会话列表 */
+.session-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #444;
+  border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+
+.session-item:hover {
+  background-color: #f5f5f5;
+}
+
+.session-item.active {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  font-weight: bold;
+}
+
+/* 2. 聊天区域：稍微改一下，将宽度撑满剩余空间 */
+.chat-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;           /* 剩余空间由聊天区域占满 */
+  min-width: 0;      /* 使 flex 项可以正确收缩 */
+  overflow: hidden;
+  background-color: white;
+  border-radius: 0;  /* 如果不想圆角可以去掉 */
+  box-shadow: none;  /* 如果不想阴影也可以去掉 */
+}
+
+
+
 .loading{
   text-align: center;
   padding: 2rem;
@@ -367,7 +513,7 @@ watch(
 }
 
 
-.chat-view {
+/*.chat-view {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -379,7 +525,7 @@ watch(
   background-color: white;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
+}*/
 
 .chat-section {
   display: flex;
