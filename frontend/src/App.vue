@@ -268,8 +268,11 @@ export default defineComponent({
       localStorage.removeItem('X-User-ID')
       userId.value = null
       await getOrCreateUserId()
-      await nextTick()
+ 
       tryRenderGoogleButton()
+      
+      // Refresh page after logout
+      window.location.reload()
     }
 
     return {
