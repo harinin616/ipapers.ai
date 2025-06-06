@@ -130,7 +130,8 @@ const inputPlaceholder = computed(() => {
   return 'Type your message...';
 });
 
-const chatSessions = ref([]); 
+const chatSessions = computed(() => chatSessionStore.sessions);
+
 const currentSessionId = ref(null);
 
 
@@ -147,7 +148,7 @@ async function switchSession(sessionId) {
 async function createNewSession() {
   try {
     const newSession = await chatSessionStore.createSession({ title: 'Untitled session' });
-    chatSessions.value.unshift(newSession);
+    //chatSessions.value.unshift(newSession);
     // 切换到新会话
     switchSession(newSession.id);
   } catch (e) {
@@ -183,7 +184,7 @@ async function deleteThisSession(sessionId) {
   try {
     await chatSessionStore.deleteSession(sessionId);
     // 删除成功后，再把最新列表同步到本地
-    chatSessions.value = chatSessionStore.sessions;
+   // chatSessions.value = chatSessionStore.sessions;
   } catch (e) {
     console.error('删除会话失败：', e);
   }
@@ -196,7 +197,7 @@ onMounted(async () => {
   try {
     const sessions = await chatSessionStore.fetchAllSessions(); 
     // fetchAllSessions() 返回 [{ id, title, ... }, ...]
-    chatSessions.value = sessions;
+  //  chatSessions.value = sessions;
     // 如果有已有会话，默认选第一个
     if (sessions.length > 0) {
       currentSessionId.value = sessions[0].id;

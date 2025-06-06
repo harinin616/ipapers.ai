@@ -96,7 +96,7 @@ class ChatSessionStore {
       }, 200);
     });
   }
-  
+
   async deleteSession(sessionId: string): Promise<void> {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -118,7 +118,7 @@ async loadMessages(sessionId: string): Promise<any[]> {
     });
   }
   get sessions(): SessionMeta[] {
-    return this.state.sessions;
+   return _sessions.value;
   }
   //resetProcessingState(): void {}
   /**
