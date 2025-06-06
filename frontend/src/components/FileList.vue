@@ -610,29 +610,5 @@ export default defineComponent({
 .chat-button-inside-sidebar:hover {
   background-color: #303f9f;
 }
-.delete-btn {
-  background: transparent;
-  border: none;
-  color: #666;
-  font-size: 1rem;
-  cursor: pointer;
-  /* 保证按钮始终靠右，并与文字之间有一定空隙 */
-  margin-left: 12px;
-  padding: 4px;
-  line-height: 1;
-  border-radius: 4px;
-
-  /* 让按钮的背景有一个轻微的框，看起来更易点击 */
-  background-color: #fafafa;
-  border: 1px solid #ddd;
-  transition: background-color 0.2s, border-color 0.2s;
-}
-
-.delete-btn:hover {
-  /* hover 时稍微点红，提示“危险操作” */
-  color: #d32f2f;
-  background-color: #ffecec;
-  border-color: #f5c2c2;
-}
 
 </style> 
