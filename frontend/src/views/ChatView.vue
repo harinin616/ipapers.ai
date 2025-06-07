@@ -255,8 +255,7 @@ async function sendMessage() {
     return;
   }
   if (!currentSessionId.value) {
-    const title = userInput.value.trim().slice(0, 20);
-    await createNewSession(title);
+    await createNewSession();
   }
   
   const messageContent = userInput.value.trim();
