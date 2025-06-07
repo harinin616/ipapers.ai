@@ -78,18 +78,7 @@ class ChatSessionStore {
       throw e;
     }
   }
-  /*async createSession(payload: { title: string }): Promise<SessionMeta> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newSession: SessionMeta = {
-          id: Date.now().toString(),
-          title: payload.title,
-        };
-        _sessions.value.unshift(newSession);
-        resolve(newSession);
-      }, 200);
-    });
-  }*/
+
 
   async deleteSession(sessionId: string): Promise<void> {
   try {

@@ -3,37 +3,13 @@
     <div v-if="initialLoading" class="loading">Loading...</div>
     <div v-else class="full-layout">
 
-        <div class="sidebar">
-        <div class="sidebar-header">
-          <h3>Chat Session</h3>
-
-          <button @click="() => createNewSession()" class="new-session-button">＋ New Conversation</button>
-        </div>
-        <ul class="session-list">
-          <!-- Render existing sessions via the chatSessions array. -->
-          <li
-            v-for="session in chatSessions"
-            :key="session.id"
-            :class="['session-item', { active: session.id === currentSessionId }]"
-            @click="switchSession(session.id)"
-          >
-          <span @click="switchSession(session.id)" class="session-title">
-              {{ session.title || 'Untitled Session' }}
-            </span>
-
-            <!-- 在同一行加一个删除图标/按钮 --> 
-            <button
-              class="delete-btn"
-              @click="deleteThisSession(session.id)"
-              title="Delete session"
-            >
-              🗑
-            </button>
-          </li>
-        </ul>
-      </div>
-
-
+      <ChatSidebar 
+        :chat-sessions="chatSessions"
+        :current-session-id="currentSessionId"
+        @create-session="createNewSession"
+        @switch-session="switchSession"
+        @delete-session="deleteThisSession"
+      />
 
       <!-- Chat Area -->
       <div class="chat-view">
@@ -100,6 +76,7 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import { chatSessionStore } from '../stores/chatSession';
 import api from '../services/api'
+import ChatSidebar from '../components/ChatSidebar.vue'
 
 
 // Chat data
@@ -144,16 +121,10 @@ async function switchSession(sessionId) {
   initialLoading.value = false;
 }
 
-// 新建会话
-async function createNewSession(title = null) {
-  try {
-    const newSession = await chatSessionStore.createSession({ title });
-    //chatSessions.value.unshift(newSession);
-    // 切换到新会话
-    switchSession(newSession.id);
-  } catch (e) {
-    console.error('Failed to load session:', e);
-  }
+// create new session
+async function createNewSession() {
+  currentSessionId.value = null;
+  messages.value = [];
 }
 
 // 加载指定会话的消息
@@ -206,25 +177,13 @@ async function deleteThisSession(sessionId) {
 // Initialization
 onMounted(async () => {
   try {
-    const sessions = await chatSessionStore.fetchAllSessions(); 
-    // fetchAllSessions() 返回 [{ id, title, ... }, ...]
-  //  chatSessions.value = sessions;
-    // 如果有已有会话，默认选第一个
-    if (sessions.length > 0) {
-      currentSessionId.value = sessions[0].id;
-      await loadChatSession(sessions[0].id);
-    }else{
-
-       currentSessionId.value = null;
-    }
-
-
+    await chatSessionStore.fetchAllSessions(); 
+    currentSessionId.value = null
 
     initialLoading.value = true;
     
     user_id.value = localStorage.getItem('X-User-ID');
 
-    
     initialLoading.value = false;
   } catch (err) {
     console.error('Initialization error:', err);
@@ -265,7 +224,8 @@ async function sendMessage() {
     return;
   }
   if (!currentSessionId.value) {
-    await createNewSession();
+    const newSession = await chatSessionStore.createSession({ title: 'Untitled Session' });
+    switchSession(newSession.id);
   }
   
   const messageContent = userInput.value.trim();
@@ -487,96 +447,6 @@ watch(
   transition: all 0.3s ease;
 }
 
-
-/* 1. 侧边栏 */
-.sidebar {
-  width: 240px;              /* 你可以根据需要调整宽度 */
-  min-width: 200px;
-  max-width: 260px;
-  background-color: #ffffff; /* 白底，或 #f7f7f8 之类浅灰 */
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* 侧边栏顶部，包括标题和“新建会话”按钮 */
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #333;
-}
-
-.new-session-button {
-  background-color: #3f51b5;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.new-session-button:hover {
-  background-color: #303f9f;
-}
-
-/* 会话列表 */
-.session-list {
-  flex: 1;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.session-item {
-  display: flex;
-  justify-content: space-between; /* 两端对齐 */
-  align-items: center;  
-  padding: 10px 12px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  color: #444;
-  border-bottom: 1px solid #f0f0f0;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-
-.session-item:hover {
-  background-color: #f5f5f5;
-}
-
-.session-item.active {
-  background-color: #e3f2fd;
-  color: #0d47a1;
-  font-weight: bold;
-}
-
-/* 2. 聊天区域：稍微改一下，将宽度撑满剩余空间 */
-.chat-view {
-  display: flex;
-  flex-direction: column;
-  flex: 1;           /* 剩余空间由聊天区域占满 */
-  min-width: 0;      /* 使 flex 项可以正确收缩 */
-  overflow: hidden;
-  background-color: white;
-  border-radius: 0;  /* 如果不想圆角可以去掉 */
-  box-shadow: none;  /* 如果不想阴影也可以去掉 */
-}
-
-
-
 .loading{
   text-align: center;
   padding: 2rem;
@@ -586,20 +456,16 @@ watch(
   margin-bottom: 2rem;
 }
 
-
-/*.chat-view {
+.chat-view {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  max-width: 100%;
-  padding: 0;
   overflow: hidden;
-  height: 100%;
   background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}*/
+  border-radius: 0;
+  box-shadow: none;
+}
 
 .chat-section {
   display: flex;
@@ -817,38 +683,6 @@ button:disabled {
   width: 100%;
   transform: scaleX(0);
   transform-origin: 0 0;
-}
-
-.delete-btn {
-  background: transparent;
-  border: none;
-  color: #666;
-  font-size: 1rem;
-  cursor: pointer;
-  /* 保证按钮始终靠右，并与文字之间有一定空隙 */
-  margin-left: 12px;
-  padding: 4px;
-  line-height: 1;
-  border-radius: 4px;
-
-  /* 让按钮的背景有一个轻微的框，看起来更易点击 */
-  background-color: #fafafa;
-  border: 1px solid #ddd;
-  transition: background-color 0.2s, border-color 0.2s;
-}
-
-.delete-btn:hover {
-  /* hover 时稍微点红，提示“危险操作” */
-  color: #d32f2f;
-  background-color: #ffecec;
-  border-color: #f5c2c2;
-}
-.session-title {
-  display: block;
-  max-width: 160px;         /* 根据需要调整最大宽度 */
-  overflow: hidden;         /* 关键：隐藏超出部分 */
-  white-space: nowrap;      /* 不换行 */
-  text-overflow: ellipsis;  /* 超出显示省略号 */
 }
 
 @keyframes processing-bar {

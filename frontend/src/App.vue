@@ -5,20 +5,23 @@
         <router-link to="/">Home</router-link>
         <router-link to="/chat">Chat</router-link>
         <!-- <router-link to="/review">Review</router-link> -->
-        <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
-          <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-          </svg>
-          <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
-        </button>
 
-       <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
-       <div class="user-info" v-show="user">
-         <img :src="user?.picture" alt="avatar" class="avatar" />
-         <span class="user-name">{{ user?.name }}</span>
-         <button @click="logout" class="logout-btn">Logout</button>
-       </div>
-       
+        <div class="nav-right-section">
+          <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
+          <div class="user-info" v-show="user">
+            <img :src="user?.picture" alt="avatar" class="avatar" />
+            <span class="user-name">{{ user?.name }}</span>
+            <button @click="logout" class="logout-btn">Logout</button>
+          </div>
+
+          <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
+            <svg class="icon-svg" viewBox="0 0 24 24">
+              <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+            <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
+          </button>
+        </div>
+
       </nav>
     </header>
     
@@ -379,7 +382,6 @@ body {
   color: white;
   cursor: pointer;
   padding: 0.5rem;
-  margin-left: auto;
   display: flex;
   align-items: center;
   border-radius: 4px;
@@ -453,5 +455,12 @@ body.pdf-active-page {
 
 .logout-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-right-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 </style> 
