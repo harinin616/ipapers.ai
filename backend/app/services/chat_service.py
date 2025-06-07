@@ -38,7 +38,8 @@ class ChatService:
         session_id = str(uuid.uuid4())
         self.active_chats[user_id]["sessions"][session_id] = {
             "messages": [],
-            "title": title
+            "title": title,
+            "lastMessageAt": time.time()
         }
         return session_id
     
@@ -46,19 +47,25 @@ class ChatService:
         if user_id not in self.active_chats:
             return []
         return [
-            {"id": sid, "title": ctx.get("title", "Untitled Session")}
-            for sid, ctx in self.active_chats[user_id]["sessions"].items()
-        ]
+            {
+                "id": sid,
+            "title": ctx.get("title", "Untitled Session"),
+            "lastMessageAt": ctx.get("lastMessageAt", 0)  # 新增
+        }
+        for sid, ctx in self.active_chats[user_id]["sessions"].items()
+    ]
     
     def add_message(self, user_id: str, session_id: str, role: str, content: str):
         if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
             logger.error(f"Chat session not found: {user_id} {session_id}")
             return
+        now=    time.time()
         self.active_chats[user_id]["sessions"][session_id]["messages"].append({
             "role": role,
             "content": content,
-            "timestamp": time.time()
+            "timestamp": now
         })
+        self.active_chats[user_id]["sessions"][session_id]["lastMessageAt"] = now
 
     def get_messages(self, user_id: str, session_id: str, limit: int = None):
         if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:

@@ -49,10 +49,14 @@ class ChatSessionStore {
 
   async fetchAllSessions(): Promise<SessionMeta[]> {
     try {
-      // 调用后端接口
-      const res: SessionMeta[] = await api.get_sessions();
-      // 将拿到的结果写入到 state.sessions
+  
+ 
+
+      let res: SessionMeta[] = await api.get_sessions();
+
+      res = res.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
       this.state.sessions = Array.isArray(res) ? res : [];
+      
       return this.state.sessions;
     } catch (e) {
       console.error('fetchAllSessions 出错：', e);
