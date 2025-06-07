@@ -93,6 +93,8 @@ const inputField = ref(null);
 // check if paper is processing
 const isPaperProcessing = ref(false);
 
+
+
 // watch paper processing state
 watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
   isPaperProcessing.value = isProcessing;
@@ -109,13 +111,13 @@ const inputPlaceholder = computed(() => {
 
 const chatSessions = computed(() => chatSessionStore.sessions || []);
 
-const currentSessionId = ref(null);
+const currentSessionId = ref(localStorage.getItem('currentSessionId') || null);
 
 
-// 切换会话
 async function switchSession(sessionId) {
   if (sessionId === currentSessionId.value) return;
   currentSessionId.value = sessionId;
+  localStorage.setItem('currentSessionId', sessionId); 
   initialLoading.value = true;
   await loadChatSession(sessionId);
   initialLoading.value = false;
@@ -147,6 +149,7 @@ async function deleteThisSession(sessionId) {
   if (sessionId === currentSessionId.value) {
     messages.value = [];
     currentSessionId.value = null;
+    localStorage.removeItem('currentSessionId');
   }
 
   try {
@@ -163,7 +166,14 @@ async function deleteThisSession(sessionId) {
 onMounted(async () => {
   try {
     await chatSessionStore.fetchAllSessions();
-    currentSessionId.value = null
+    const savedSessionId = localStorage.getItem('currentSessionId');
+    if (savedSessionId && chatSessionStore.sessions.some(s => s.id === savedSessionId)) {
+      currentSessionId.value = savedSessionId;
+      await loadChatSession(savedSessionId);
+    }
+    else {
+      currentSessionId.value = null
+    }
 
     initialLoading.value = true;
     

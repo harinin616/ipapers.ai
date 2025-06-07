@@ -2,11 +2,9 @@ import axios, { AxiosInstance } from 'axios';
 import type { Paper } from '@/types/paper';
 import { fileSelectionStore } from '@/stores/fileSelectionStore';
 
-
 /**
  * API Service interface
  */
-
 export interface IApiService {
   getRecentPapers(limit?: number, offset?: number): Promise<Paper[]>;
   countPapers(): Promise<number>;
@@ -20,7 +18,6 @@ export interface IApiService {
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
 
-  // 会话相关
   get_sessions(): Promise<{ id: string; title: string }[]>;
   create_session(payload: { title: string }): Promise<{ id: string; title: string }>;
   delete_session(payload: { session_id: string }): Promise<any>;
