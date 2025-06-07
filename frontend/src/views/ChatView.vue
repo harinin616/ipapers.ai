@@ -225,7 +225,7 @@ async function sendMessage() {
   }
   if (!currentSessionId.value) {
     const newSession = await chatSessionStore.createSession({ title: 'Untitled Session' });
-    switchSession(newSession.id);
+    await switchSession(newSession.id);
   }
   
   const messageContent = userInput.value.trim();
