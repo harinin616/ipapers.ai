@@ -145,9 +145,9 @@ async function switchSession(sessionId) {
 }
 
 // 新建会话
-async function createNewSession() {
+async function createNewSession(title = 'Untitled Session') {
   try {
-    const newSession = await chatSessionStore.createSession({ title: 'Untitled Session' });
+    const newSession = await chatSessionStore.createSession({ title });
     //chatSessions.value.unshift(newSession);
     // 切换到新会话
     switchSession(newSession.id);
@@ -248,6 +248,10 @@ async function sendMessage() {
   // check if paper is processing
   if (isPaperProcessing.value) {
     return;
+  }
+  if (!currentSessionId.value) {
+    const title = userInput.value.trim().slice(0, 20);
+    await createNewSession(title);
   }
   
   const messageContent = userInput.value.trim();
