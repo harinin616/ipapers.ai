@@ -30,11 +30,29 @@ class ReviewResponseChunk:
         }, ensure_ascii=False)
 
 
+@router.get("/rwg_messages")
+async def get_rwg_messages(
+    request: Request,
+):
+    """
+    Get user's related work generation history messages
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="User ID not found"
+        )
+    messages = []
+    messages = review_service.get_rwg_messages(user_id)
+    return messages
+
+
 @router.post("/chat_rwg")
 async def chat_rwg(
     request: Request,
     message: str = Body(embed=True),
-    selected_files: List[str] = Body(default=[], embed=True)
+    selected_files: List[str] = Body(embed=True)
 ):
     """
     get stream response for related work generation (uses shared file system)
@@ -46,14 +64,11 @@ async def chat_rwg(
             detail="User ID not found"
         )
 
-    # Initialize shared chat session if not exists
     if user_id not in chat_service.active_chats:
         chat_service.active_chats[user_id] = {
             "messages": [],
             "files": []
         }
-    
-    # Mark selected files in shared chat system
     if selected_files and chat_service.active_chats[user_id]["files"]:
         for file in chat_service.active_chats[user_id]["files"]:
             if file["paper_id"] in selected_files:
@@ -81,23 +96,3 @@ async def chat_rwg(
             "X-Accel-Buffering": "no" 
         }
     )
-
-
-@router.get("/rwg_messages")
-async def get_rwg_messages(
-    request: Request,
-):
-    """
-    Get user's related work generation history messages
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-    messages = review_service.get_rwg_messages(user_id)
-    return messages
-
-
-
