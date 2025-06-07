@@ -7,7 +7,7 @@
         <div class="sidebar-header">
           <h3>Chat Session</h3>
 
-          <button @click="createNewSession" class="new-session-button">＋ New Conversation</button>
+          <button @click="() => createNewSession()" class="new-session-button">＋ New Conversation</button>
         </div>
         <ul class="session-list">
           <!-- Render existing sessions via the chatSessions array. -->
@@ -203,7 +203,7 @@ onMounted(async () => {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }else{
-       await createNewSession();
+       await createNewSession("Untitled Session");
        currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }
