@@ -221,6 +221,7 @@ async function sendMessage() {
   if (!currentSessionId.value) {
     const newSession = await chatSessionStore.createSession({ title: null});
     currentSessionId.value = newSession.id;
+    localStorage.setItem('currentSessionId', newSession.id); 
   }
   
   const messageContent = userInput.value.trim();

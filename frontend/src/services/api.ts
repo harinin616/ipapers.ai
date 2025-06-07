@@ -258,6 +258,21 @@ async stream_chat(payload: { session_id: string; message: string; selected_files
       throw error;
     }
   }
+  async update_file_selection(payload: { paper_id: string; selected: boolean }): Promise<any> {
+  const userId = localStorage.getItem('X-User-ID');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (userId) {
+    headers['X-User-ID'] = userId;
+  }
+  const response = await fetch('/api/chat/update_file_selection', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  });
+  return response.json();
+}
 
 }
 

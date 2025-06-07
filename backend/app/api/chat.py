@@ -9,7 +9,7 @@ from pydantic import BaseModel
 class StreamChatRequest(BaseModel):
     session_id: str
     message: str
-    selected_files: List[str]
+    #selected_files: List[str]
 
 logger = logging.getLogger(__name__)
 
@@ -69,19 +69,19 @@ async def chat(
         )
     session_id = body.session_id
     message = body.message
-    selected_files = body.selected_files
+   # selected_files = body.selected_files
     if user_id not in chat_service.active_chats:
         chat_service.active_chats[user_id] = {
             "files": [],
             "sessions": {}
         }
     
-    if chat_service.active_chats[user_id]["files"]:
-        for file in chat_service.active_chats[user_id]["files"]:
-            if file["paper_id"] in selected_files:
-                file["selected"] = True
-            else:
-                file["selected"] = False
+    #if chat_service.active_chats[user_id]["files"]:
+     #   for file in chat_service.active_chats[user_id]["files"]:
+      #      if file["paper_id"] in selected_files:
+       #         file["selected"] = True
+        #    else:
+         #       file["selected"] = False
     
     async def stream_chat_response():
         try:
@@ -166,6 +166,20 @@ async def delete_file(
                 return True
     
     return False
+
+@router.post("/update_file_selection")
+async def update_file_selection(request: Request, data: dict = Body(...)):
+    user_id = request.headers.get('X-User-ID')
+    paper_id = data.get("paper_id")
+    selected = data.get("selected")
+    if not user_id or paper_id is None or selected is None:
+        raise HTTPException(status_code=400, detail="Missing parameters")
+    files = chat_service.active_chats[user_id]["files"]
+    for file in files:
+        if file["paper_id"] == paper_id:
+            file["selected"] = selected
+            break
+    return {"success": True}
 
 
 @router.post("/get_paper")

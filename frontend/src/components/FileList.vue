@@ -142,6 +142,8 @@ export default defineComponent({
       try {
         const response = await api.get_user_files()
         pdfFiles.value = response
+        const selectedIds = response.filter(f => f.selected).map(f => f.paper_id)
+        fileSelectionStore.setSelection(selectedIds)
         emit('files-updated', pdfFiles.value)
         emit('update-file-count', pdfFiles.value.length)
       } catch (error) {
@@ -161,8 +163,8 @@ export default defineComponent({
       }
     }
     
-    const handleToggleSelect = (paperId: string) => {
-      fileSelectionStore.toggleFileSelection(paperId)
+    const handleToggleSelect = async (paperId: string) => {
+      await fileSelectionStore.toggleFileSelection(paperId)
     }
     
     const isFileSelected = (paperId: string): boolean => {
