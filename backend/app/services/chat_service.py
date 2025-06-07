@@ -186,7 +186,7 @@ class ChatService:
     
     async def generate_response(self, user_id: str, session_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
         self.add_message(user_id, session_id, "user", query)
-        chat_data = self.active_chats[user_id]["sessions"][session_id]
+        chat_data = self.active_chats[user_id]
         
         try:
             relevant_chunks = []
