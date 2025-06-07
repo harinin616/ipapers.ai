@@ -836,12 +836,10 @@ button:disabled {
 }
 .session-title {
   display: block;
-  max-width: 120px;         /* 你可以根据需要调整最大宽度 */
-  overflow-x: auto;         /* 横向滚动 */
+  max-width: 150px;         /* 你可以根据需要调整最大宽度 */
   white-space: nowrap;
   text-overflow: ellipsis;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;    /* 火狐细滚动条 */
 }
 .session-title:hover {
   overflow-x: auto;
