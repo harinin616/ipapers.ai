@@ -141,7 +141,7 @@ class ChatService:
             logger.error(f"Error processing embeddings for paper {paper_id}: {str(e)}", exc_info=True)
             return False
     
-    async def format_messages(self, user_id: str) -> List[Dict[str, str]]:
+    async def format_messages(self, user_id: str, session_id: str) -> List[Dict[str, str]]:
         """
         format messages for API call
         """
@@ -160,7 +160,7 @@ class ChatService:
         )
         
         api_messages = [{"role": "system", "content": system_content}]
-        user_messages = [m for m in chat_data["messages"] if m["role"] in ["user", "assistant"]]
+        user_messages = [m for m in chat_data["sessions"][session_id]["messages"] if m["role"] in ["user", "assistant"]]
         recent_messages = user_messages[-self.max_context_messages:]
         for msg in recent_messages:
             api_messages.append({
@@ -169,10 +169,9 @@ class ChatService:
             })
         return api_messages
     
-    async def generate_response(self, user_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
-        self.add_message(user_id, "user", query)
-        
-        chat_data = self.active_chats[user_id]
+    async def generate_response(self, user_id: str, session_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
+        self.add_message(user_id, session_id, "user", query)
+        chat_data = self.active_chats[user_id]["sessions"][session_id]
         
         try:
             relevant_chunks = []
@@ -184,7 +183,7 @@ class ChatService:
                 )
             
             # format messages
-            api_messages = await self.format_messages(user_id)
+            api_messages = await self.format_messages(user_id,session_id)
             
             # add relevant chunks to the latest user message
             if relevant_chunks:
@@ -205,7 +204,7 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error performing RAG for chat {user_id}: {str(e)}")
             # if failed, fallback to regular message format
-            api_messages = await self.format_messages(user_id)
+            api_messages = await self.format_messages(user_id,session_id)
         
         # generate response from LLM
         assistant_response = ""
@@ -217,7 +216,7 @@ class ChatService:
             
             if not stream_response:
                 error_msg = "Sorry, I encountered an error while processing your request."
-                self.add_message(user_id, "assistant", error_msg)
+                self.add_message(user_id,session_id, "assistant", error_msg)
                 yield error_msg, True
                 return
             
@@ -231,7 +230,7 @@ class ChatService:
             
             # add to chat history after completion
             if assistant_response:
-                self.add_message(user_id, "assistant", assistant_response)
+                self.add_message(user_id,session_id, "assistant", assistant_response)
                 
             # send end flag
             yield "", True
@@ -239,7 +238,7 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error generating response for chat {user_id}: {str(e)}")
             error_msg = "Sorry, I encountered an error while processing your request."
-            self.add_message(user_id, "assistant", error_msg)
+            self.add_message(user_id,session_id, "assistant", error_msg)
             yield error_msg, True
 
 chat_service = ChatService() 
