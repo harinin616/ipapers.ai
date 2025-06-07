@@ -22,7 +22,7 @@
 
           <div class="chat-container">
             <div class="chat-messages" ref="messagesContainer">
-              <div v-for="message in messages" :key="message.id" 
+              <div v-for="message in messages" :key="message.id"
                    :class="[
                      'chat-message', 
                      message.role === 'user' ? 'user-message' : 'assistant-message',
@@ -162,7 +162,7 @@ async function deleteThisSession(sessionId) {
 // Initialization
 onMounted(async () => {
   try {
-    await chatSessionStore.fetchAllSessions(); 
+    await chatSessionStore.fetchAllSessions();
     currentSessionId.value = null
 
     initialLoading.value = true;
@@ -209,7 +209,7 @@ async function sendMessage() {
     return;
   }
   if (!currentSessionId.value) {
-    const newSession = await chatSessionStore.createSession({ title: 'Untitled Session' });
+    const newSession = await chatSessionStore.createSession({ title: null});
     currentSessionId.value = newSession.id;
   }
   
