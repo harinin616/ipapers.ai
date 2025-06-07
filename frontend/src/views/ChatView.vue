@@ -242,17 +242,7 @@ onMounted(async () => {
 function extractTitleFromInput(input) {
   const trimmed = input.trim();
   if (!trimmed) return 'Untitled Session';
-  const words = trimmed.split(/\s+/);
-  let title = '';
-  for (const word of words) {
-    // 如果第一个单词就超长，直接截断
-    if (!title && word.length > 25) {
-      return word.slice(0, 25);
-    }
-    if ((title + ' ' + word).trim().length > 25) break;
-    title = (title + ' ' + word).trim();
-  }
-  return title || 'Untitled Session';
+  return trimmed;
 }
 
 // Send message or execute search
@@ -836,10 +826,10 @@ button:disabled {
 }
 .session-title {
   display: block;
-  max-width: 150px;         /* 你可以根据需要调整最大宽度 */
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  -webkit-overflow-scrolling: touch;
+  max-width: 120px;         /* 根据需要调整最大宽度 */
+  overflow: hidden;         /* 关键：隐藏超出部分 */
+  white-space: nowrap;      /* 不换行 */
+  text-overflow: ellipsis;  /* 超出显示省略号 */
 }
 
 @keyframes processing-bar {
