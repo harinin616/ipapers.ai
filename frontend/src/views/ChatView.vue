@@ -107,7 +107,7 @@ const inputPlaceholder = computed(() => {
   return 'Type your message...';
 });
 
-const chatSessions = computed(() => chatSessionStore.sessions);
+const chatSessions = computed(() => chatSessionStore.sessions || []);
 
 const currentSessionId = ref(null);
 
@@ -121,17 +121,15 @@ async function switchSession(sessionId) {
   initialLoading.value = false;
 }
 
-// create new session
+// just clear the current session, create new session when sending message
 async function createNewSession() {
   currentSessionId.value = null;
   messages.value = [];
 }
 
-// 加载指定会话的消息
 async function loadChatSession(sessionId=null) {
   try {
     isLoading.value = true;
-    // 假设后端接口：api.get_messages({ session_id })
     const response = await api.get_messages({ session_id: sessionId });
     messages.value = response || [];
     await nextTick();
@@ -145,30 +143,17 @@ async function loadChatSession(sessionId=null) {
 }
 
 async function deleteThisSession(sessionId) {
-  // 如果要删除的是当前正在查看的会话，需要先清空右侧或者切换到其他会话
+  // if delete current session, just clear it
   if (sessionId === currentSessionId.value) {
-    // 最简单的处理：先清空右侧消息
     messages.value = [];
     currentSessionId.value = null;
   }
 
   try {
     await chatSessionStore.deleteSession(sessionId);
-    // 删除成功后，再把最新列表同步到本地
-   // chatSessions.value = chatSessionStore.sessions;
-   const sessions = await chatSessionStore.fetchAllSessions();
 
-    // 如果还有会话，自动切换到第一个
-    if (sessions.length > 0) {
-      currentSessionId.value = sessions[0].id;
-      await loadChatSession(sessions[0].id);
-    } else {
-      // 没有会话就清空右侧
-      messages.value = [];
-      currentSessionId.value = null;
-    }
   } catch (e) {
-    console.error('删除会话失败：', e);
+    console.error('failed to delete session:', e);
   }
 }
 
@@ -225,19 +210,18 @@ async function sendMessage() {
   }
   if (!currentSessionId.value) {
     const newSession = await chatSessionStore.createSession({ title: 'Untitled Session' });
-    await switchSession(newSession.id);
+    currentSessionId.value = newSession.id;
   }
   
   const messageContent = userInput.value.trim();
   userInput.value = '';
-    const session = chatSessions.value.find(s => s.id === currentSessionId.value);
+  const session = chatSessions.value?.find(s => s.id === currentSessionId.value);
   if (session && (!session.title || !session.title.trim())) {
     const newTitle = extractTitleFromInput(messageContent);
-    // 假设有 update_session_title 接口
     await api.update_session_title({ session_id: currentSessionId.value, title: newTitle });
     session.title = newTitle;
   }
-  
+  console.log('messagecontent', messageContent);
   // Add user message to UI
   const userMessage = {
     id: Date.now().toString(),
@@ -268,11 +252,11 @@ async function sendMessage() {
     currentTypingMessageId.value = assistantMessage.id;
     messages.value.push(assistantMessage);
     const now = Date.now();
-    const session = chatSessions.value.find(s => s.id === currentSessionId.value);
+    const session = chatSessions.value?.find(s => s.id === currentSessionId.value);
     if (session) {
       session.lastMessageAt = now;
   // 重新排序
-      chatSessions.value.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+      chatSessions.value?.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
     }
     await streamChatResponse(messageContent, assistantMessage);
 

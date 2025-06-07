@@ -50,7 +50,6 @@ export default defineComponent({
             detail: { paperId: props.paperId }
           }));
 
-          // router.push({ name: 'chat'});
           
           // process in background
           setTimeout(async () => {

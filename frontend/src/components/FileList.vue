@@ -115,6 +115,10 @@ export default defineComponent({
     showFilesList: {
       type: Boolean,
       required: true
+    },
+    showPdf: {
+      type: Boolean,
+      required: true
     }
   },
   
@@ -123,27 +127,16 @@ export default defineComponent({
     'file-selected',
     'pdf-closed',
     'files-updated',
-    'width-update',
     'update-file-count'
   ],
   
   setup(props, { emit }) {
     const pdfFiles = ref<ChatFile[]>([])
-    const showPdf = ref(false)
     const currentPdfUrl = ref<string | null>(null)
     const selectedFileId = ref<string | null>(null)
     const isPdfLoading = ref(false)
     const currentFileName = ref('Document')
     const fileListRoot = ref<HTMLElement | null>(null)
-    
-    let resizeObserver: ResizeObserver | null = null
-    
-    const emitCurrentWidth = () => {
-      if (fileListRoot.value && props.showFilesList) {
-        const currentWidth = fileListRoot.value.offsetWidth
-        emit('width-update', `${currentWidth}px`)
-      }
-    }
     
     const loadFiles = async () => {
       try {
@@ -161,13 +154,7 @@ export default defineComponent({
       currentFileName.value = file.filename
       currentPdfUrl.value = file.paper_URL
       
-      showPdf.value = true
-      
       emit('file-selected', file)
-      
-      nextTick(() => {
-        emitCurrentWidth()
-      })
       
       if (window.innerWidth <= 768) {
         emit('update:showFilesList', false)
@@ -209,53 +196,29 @@ export default defineComponent({
     const closePdf = () => {
       currentPdfUrl.value = null
       selectedFileId.value = null
-      showPdf.value = false
       isPdfLoading.value = false
       currentFileName.value = 'Document'
       emit('pdf-closed')
       
-      nextTick(() => {
-        emitCurrentWidth()
-      })
+      if (window.innerWidth <= 768) {
+        emit('update:showFilesList', false)
+      }
     }
     
     watch(() => props.showFilesList, (newValue) => {
-      nextTick(() => {
-        if (newValue) {
-          emitCurrentWidth()
-        } else {
-          emit('width-update', '0px')
-        }
-      })
+      // Watch logic simplified since we no longer need width updates
     })
     
     onMounted(() => {
-      if (fileListRoot.value) {
-        resizeObserver = new ResizeObserver(() => {
-          emitCurrentWidth()
-        })
-        resizeObserver.observe(fileListRoot.value)
-        
-        nextTick(() => {
-          emitCurrentWidth()
-        })
-      }
-      
       loadFiles()
     })
     
     onBeforeUnmount(() => {
-      if (resizeObserver && fileListRoot.value) {
-        resizeObserver.unobserve(fileListRoot.value)
-      }
-      if (resizeObserver) {
-        resizeObserver.disconnect()
-      }
+      // No cleanup needed anymore
     })
     
     return {
       pdfFiles,
-      showPdf,
       currentPdfUrl,
       selectedFileId,
       isPdfLoading,
@@ -275,26 +238,25 @@ export default defineComponent({
 
 <style scoped>
 .files-sidebar {
-  width: 320px;
+  width: 340px;
   height: 100%;
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-left: 2px solid #e0e0e0;
+  box-shadow: -3px 0 10px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out;
   flex-shrink: 0;
-}
-
-.files-sidebar.active {
-  width: 320px;
+  will-change: width, opacity;
+  transform: translateZ(0);
 }
 
 .files-sidebar.pdf-active {
-  width: 50%;
-  max-width: 800px;
-  min-width: 600px;
+  width: 45%;
+  max-width: 750px;
+  min-width: 580px;
 }
 
 .files-sidebar.hidden {
@@ -562,14 +524,14 @@ export default defineComponent({
 /* Responsive styles */
 @media (min-width: 1400px) {
   .files-sidebar.pdf-active {
-    width: 45%;
-    max-width: 850px;
+    width: 42%;
+    max-width: 750px;
   }
 }
 
 @media (max-width: 1200px) {
   .files-sidebar.pdf-active {
-    width: 50%;
+    width: 45%;
     min-width: 500px;
   }
 }
