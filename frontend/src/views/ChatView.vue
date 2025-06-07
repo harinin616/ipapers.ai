@@ -841,9 +841,7 @@ button:disabled {
   text-overflow: ellipsis;
   -webkit-overflow-scrolling: touch;
 }
-.session-title:hover {
-  overflow-x: auto;
-}
+
 @keyframes processing-bar {
   0% {
     transform: scaleX(0);
