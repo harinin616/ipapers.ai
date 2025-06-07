@@ -185,6 +185,17 @@ async function deleteThisSession(sessionId) {
     await chatSessionStore.deleteSession(sessionId);
     // 删除成功后，再把最新列表同步到本地
    // chatSessions.value = chatSessionStore.sessions;
+   const sessions = await chatSessionStore.fetchAllSessions();
+
+    // 如果还有会话，自动切换到第一个
+    if (sessions.length > 0) {
+      currentSessionId.value = sessions[0].id;
+      await loadChatSession(sessions[0].id);
+    } else {
+      // 没有会话就清空右侧
+      messages.value = [];
+      currentSessionId.value = null;
+    }
   } catch (e) {
     console.error('删除会话失败：', e);
   }
