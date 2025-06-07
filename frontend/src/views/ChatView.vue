@@ -203,9 +203,8 @@ onMounted(async () => {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }else{
-       await createNewSession();
-       currentSessionId.value = sessions[0].id;
-      await loadChatSession(sessions[0].id);
+
+       currentSessionId.value = null;
     }
 
 
