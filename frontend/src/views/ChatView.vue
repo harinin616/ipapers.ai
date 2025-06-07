@@ -331,6 +331,9 @@ async function sendMessage() {
   }
 }
 
+import { fileSelectionStore } from '@/stores/fileSelectionStore';
+
+
 // Stream chat response
 async function streamChatResponse(userMessage, assistantMessage) {
   try {
@@ -338,7 +341,7 @@ async function streamChatResponse(userMessage, assistantMessage) {
     const response = await api.stream_chat({
     session_id:    currentSessionId.value,
     message:       userMessage,
-    selected_files: [],                // 如果暂时不选文件就传空列表
+    selected_files: fileSelectionStore.getSelectedFiles(), 
   });
     
     if (!response.ok) {
