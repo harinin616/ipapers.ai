@@ -298,8 +298,15 @@ async function sendMessage() {
     
     currentTypingMessageId.value = assistantMessage.id;
     messages.value.push(assistantMessage);
-    
+    const now = Date.now();
+    const session = chatSessions.value.find(s => s.id === currentSessionId.value);
+    if (session) {
+      session.lastMessageAt = now;
+  // 重新排序
+      chatSessions.value.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+    }
     await streamChatResponse(messageContent, assistantMessage);
+
   } catch (err) {
     console.error('Failed to send message:', err);
     if (messages.value.length > 0 && 
