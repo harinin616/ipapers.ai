@@ -161,6 +161,7 @@ class ChatService:
         format messages for API call
         """
         chat_data = self.active_chats.get(user_id)
+        logger.debug(f"Formatting messages for user {user_id}, session {session_id}")
         
         chat_file_names = []
         if chat_data["files"]:
