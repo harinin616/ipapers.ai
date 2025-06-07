@@ -75,7 +75,8 @@ async def chat(
             "files": [],
             "sessions": {}
         }
-    if selected_files and chat_service.active_chats[user_id]["files"]:
+    
+    if chat_service.active_chats[user_id]["files"]:
         for file in chat_service.active_chats[user_id]["files"]:
             if file["paper_id"] in selected_files:
                 file["selected"] = True
