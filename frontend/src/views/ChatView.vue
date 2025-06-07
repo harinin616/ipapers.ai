@@ -145,7 +145,7 @@ async function switchSession(sessionId) {
 }
 
 // 新建会话
-async function createNewSession(title = 'Untitled Session') {
+async function createNewSession(title = null) {
   try {
     const newSession = await chatSessionStore.createSession({ title });
     //chatSessions.value.unshift(newSession);
@@ -203,7 +203,7 @@ onMounted(async () => {
       currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }else{
-       await createNewSession("Untitled Session");
+       await createNewSession();
        currentSessionId.value = sessions[0].id;
       await loadChatSession(sessions[0].id);
     }
@@ -239,6 +239,21 @@ onMounted(async () => {
   });
 });
 
+function extractTitleFromInput(input) {
+  const trimmed = input.trim();
+  if (!trimmed) return 'Untitled Session';
+  const words = trimmed.split(/\s+/);
+  let title = '';
+  for (const word of words) {
+    // 如果第一个单词就超长，直接截断
+    if (!title && word.length > 25) {
+      return word.slice(0, 25);
+    }
+    if ((title + ' ' + word).trim().length > 25) break;
+    title = (title + ' ' + word).trim();
+  }
+  return title || 'Untitled Session';
+}
 
 // Send message or execute search
 async function sendMessage() {
@@ -256,6 +271,13 @@ async function sendMessage() {
   
   const messageContent = userInput.value.trim();
   userInput.value = '';
+    const session = chatSessions.value.find(s => s.id === currentSessionId.value);
+  if (session && (!session.title || !session.title.trim())) {
+    const newTitle = extractTitleFromInput(messageContent);
+    // 假设有 update_session_title 接口
+    await api.update_session_title({ session_id: currentSessionId.value, title: newTitle });
+    session.title = newTitle;
+  }
   
   // Add user message to UI
   const userMessage = {

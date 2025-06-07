@@ -54,6 +54,14 @@ class ChatService:
         }
         for sid, ctx in self.active_chats[user_id]["sessions"].items()
     ]
+    def update_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+        if user_id not in self.active_chats:
+            return False
+        sessions = self.active_chats[user_id]["sessions"]
+        if session_id not in sessions:
+            return False
+        sessions[session_id]["title"] = title
+        return True
     
     def add_message(self, user_id: str, session_id: str, role: str, content: str):
         if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:

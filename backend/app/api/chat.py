@@ -273,3 +273,21 @@ async def delete_session(request: Request, data: dict = Body(...)):
         raise HTTPException(status_code=400, detail="Missing user_id or session_id")
     chat_service.delete_session(user_id, session_id)
     return {"success": True}
+
+@router.post("/update_session_title")
+async def update_session_title(
+    request: Request,
+    data: dict = Body(...)
+):
+    """
+    更新会话标题
+    """
+    user_id = request.headers.get('X-User-ID')
+    session_id = data.get("session_id")
+    title = data.get("title")
+    if not user_id or not session_id or not title:
+        raise HTTPException(status_code=400, detail="Missing user_id, session_id or title")
+    success = chat_service.update_session_title(user_id, session_id, title)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"success": True}

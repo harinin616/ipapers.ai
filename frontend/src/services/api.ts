@@ -25,6 +25,7 @@ export interface IApiService {
   create_session(payload: { title: string }): Promise<{ id: string; title: string }>;
   delete_session(payload: { session_id: string }): Promise<any>;
   get_messages(payload: { session_id: string }): Promise<any[]>;
+  update_session_title(payload: { session_id: string; title: string }): Promise<any>;
 }
 /**
  * API Service implementation
@@ -248,6 +249,15 @@ async stream_chat(payload: { session_id: string; message: string; selected_files
       return response.data;
     } catch (error) {
       console.error('Failed to get messages:', error);
+      throw error;
+    }
+  }
+  async update_session_title(payload: { session_id: string; title: string }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/chat/update_session_title', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update session title:', error);
       throw error;
     }
   }
