@@ -826,7 +826,7 @@ button:disabled {
 }
 .session-title {
   display: block;
-  max-width: 120px;         /* 根据需要调整最大宽度 */
+  max-width: 160px;         /* 根据需要调整最大宽度 */
   overflow: hidden;         /* 关键：隐藏超出部分 */
   white-space: nowrap;      /* 不换行 */
   text-overflow: ellipsis;  /* 超出显示省略号 */
