@@ -104,6 +104,30 @@ async def get_session_files(
     return files
 
 
+@router.post("/sessions/{session_id}/add_files")
+async def add_files_to_session(
+    request: Request,
+    session_id: str = Path(...),
+    data: dict = Body(...)
+):
+    """
+    Add existing files from global filelist to a specific session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    paper_ids = data.get("paper_ids", [])
+    if not paper_ids:
+        raise HTTPException(status_code=400, detail="No paper IDs provided")
+    
+    success = review_service.add_files_to_session(user_id, session_id, paper_ids)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to add files to session")
+    
+    return {"success": True, "added_count": len(paper_ids)}
+
+
 # ============ SESSION MANAGEMENT ENDPOINTS ============
 
 @router.get("/sessions")

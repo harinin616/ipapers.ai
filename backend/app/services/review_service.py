@@ -440,6 +440,62 @@ class ReviewService:
         session_data = self.active_rws[user_id]["sessions"][session_id]
         return session_data.get("uploaded_files", [])
     
+    def add_files_to_session(self, user_id: str, session_id: str, paper_ids: List[str]) -> bool:
+        """
+        Add existing files from global filelist to a specific session
+        """
+        try:
+            # Get global user files from chat service
+            from app.services.chat_service import chat_service
+            chat_data = chat_service.active_chats.get(user_id)
+            if not chat_data or not chat_data.get("files"):
+                logger.warning(f"No global files found for user {user_id}")
+                return False
+            
+            # Ensure session exists
+            if user_id not in self.active_rws:
+                self.active_rws[user_id] = {"sessions": {}}
+            if session_id not in self.active_rws[user_id]["sessions"]:
+                self.active_rws[user_id]["sessions"][session_id] = {
+                    "messages": [],
+                    "title": "Untitled RWS Session",
+                    "lastMessageAt": time.time(),
+                    "uploaded_files": []
+                }
+            
+            session_data = self.active_rws[user_id]["sessions"][session_id]
+            if "uploaded_files" not in session_data:
+                session_data["uploaded_files"] = []
+            
+            # Get existing paper IDs in session to avoid duplicates
+            existing_paper_ids = {file["paper_id"] for file in session_data["uploaded_files"]}
+            
+            # Add files from global list that match the paper_ids
+            added_count = 0
+            for file_data in chat_data["files"]:
+                if file_data["paper_id"] in paper_ids and file_data["paper_id"] not in existing_paper_ids:
+                    # Create session file entry based on global file
+                    session_file = {
+                        "paper_id": file_data["paper_id"],
+                        "filename": file_data["filename"],
+                        "file_size": file_data.get("file_size", 0),  # May not be available in global files
+                        "upload_date": time.time(),  # Use current time as "added to session" time
+                        "content_type": file_data.get("content_type", "application/pdf"),
+                        "selected": True,  # Auto-select added files
+                        "file_path": file_data.get("file_path"),  # Keep reference to original file
+                        "paper_URL": file_data.get("paper_URL"),
+                        "added_from_global": True  # Flag to indicate this was added from global list
+                    }
+                    session_data["uploaded_files"].append(session_file)
+                    added_count += 1
+            
+            logger.info(f"Added {added_count} files to session {session_id} for user {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding files to session: {str(e)}")
+            return False
+    
     async def query_session_chunks(self, user_id: str, session_id: str, query: str) -> List[str]:
         """
         Query similar chunks from uploaded files in a specific session using pdf_service

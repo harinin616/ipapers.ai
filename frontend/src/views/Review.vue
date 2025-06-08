@@ -37,7 +37,7 @@
             </div>
             
             <!-- Add from Filelist Button -->
-            <div class="upload-button add-from-list">
+            <div class="upload-button add-from-list" @click="openFileSelectionDialog">
               <div class="upload-icon">📁</div>
               <div class="upload-text">Add from Filelist</div>
             </div>
@@ -339,6 +339,70 @@
         </div>
       </div>
     </div>
+
+    <!-- File Selection Dialog -->
+    <div v-if="fileSelectionDialog" class="dialog-overlay" @click="fileSelectionDialog = false">
+      <div class="dialog-content file-selection-dialog" @click.stop>
+        <h3>Add Files from Filelist</h3>
+        <div class="dialog-field">
+          <div v-if="loadingGlobalFiles" class="loading-files">
+            <div class="spinner"></div>
+            <p>Loading files...</p>
+          </div>
+          <div v-else-if="globalFileList.length === 0" class="no-files">
+            <p>No files available in your global filelist.</p>
+            <p class="hint">Upload files in the Chat section first to add them here.</p>
+          </div>
+          <div v-else class="file-list">
+            <div class="file-list-header">
+              <label>
+                <input 
+                  type="checkbox" 
+                  @change="toggleSelectAll"
+                  :checked="selectedGlobalFiles.length === globalFileList.length"
+                  :indeterminate="selectedGlobalFiles.length > 0 && selectedGlobalFiles.length < globalFileList.length"
+                />
+                Select All ({{ selectedGlobalFiles.length }}/{{ globalFileList.length }})
+              </label>
+            </div>
+            <div class="file-items">
+              <div 
+                v-for="file in globalFileList" 
+                :key="file.paper_id"
+                class="file-item"
+                :class="{ 'already-added': isFileAlreadyAdded(file.paper_id) }"
+              >
+                <label class="file-item-label">
+                  <input 
+                    type="checkbox" 
+                    :value="file.paper_id"
+                    v-model="selectedGlobalFiles"
+                    :disabled="isFileAlreadyAdded(file.paper_id)"
+                  />
+                  <div class="file-info">
+                    <div class="file-name">{{ file.filename }}</div>
+                    <div class="file-meta">
+                      <span class="file-date">{{ formatDate(file.added_at) }}</span>
+                      <span v-if="isFileAlreadyAdded(file.paper_id)" class="already-added-label">Already in session</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button @click="fileSelectionDialog = false" class="cancel-btn">Cancel</button>
+          <button 
+            @click="addSelectedFiles" 
+            class="save-btn"
+            :disabled="selectedGlobalFiles.length === 0"
+          >
+            Add {{ selectedGlobalFiles.length }} Files
+          </button>
+        </div>
+      </div>
+    </div>
     </div>
   </div>
 </template>
@@ -386,6 +450,12 @@ const isAddingEdge = ref(false);
 const selectedFromPaper = ref(null);
 const edgeEditDialog = ref(false);
 const currentEdge = ref({ from: '', to: '', relationship_type: 'relates_to', description: '' });
+
+// File selection dialog state
+const fileSelectionDialog = ref(false);
+const globalFileList = ref([]);
+const selectedGlobalFiles = ref([]);
+const loadingGlobalFiles = ref(false);
 
 // Session management
 const currentSessionId = ref(localStorage.getItem('currentRwsSessionId') || null);
@@ -1241,6 +1311,95 @@ function formatFileSize(size) {
   if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)).toFixed(2) + ' MB';
   return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
+
+// File selection dialog functions
+async function openFileSelectionDialog() {
+  // Ensure we have a current session - create one if needed
+  if (!currentSessionId.value) {
+    try {
+      const newSession = await rwsSessionStore.createSession({ title: 'New RWS Session' });
+      currentSessionId.value = newSession.id;
+      localStorage.setItem('currentRwsSessionId', newSession.id);
+    } catch (error) {
+      console.error('Failed to create new session:', error);
+      alert('Failed to create session. Please try again.');
+      return;
+    }
+  }
+  
+  fileSelectionDialog.value = true;
+  selectedGlobalFiles.value = [];
+  await loadGlobalFiles();
+}
+
+async function loadGlobalFiles() {
+  loadingGlobalFiles.value = true;
+  try {
+    const files = await api.get_user_files();
+    globalFileList.value = files || [];
+  } catch (error) {
+    console.error('Failed to load global files:', error);
+    globalFileList.value = [];
+  } finally {
+    loadingGlobalFiles.value = false;
+  }
+}
+
+function isFileAlreadyAdded(paperId) {
+  return uploadedFiles.value.some(file => file.paper_id === paperId);
+}
+
+function toggleSelectAll(event) {
+  const checked = event.target.checked;
+  if (checked) {
+    // Select all files that aren't already added
+    selectedGlobalFiles.value = globalFileList.value
+      .filter(file => !isFileAlreadyAdded(file.paper_id))
+      .map(file => file.paper_id);
+  } else {
+    selectedGlobalFiles.value = [];
+  }
+}
+
+async function addSelectedFiles() {
+  if (selectedGlobalFiles.value.length === 0 || !currentSessionId.value) {
+    return;
+  }
+  
+  try {
+    const response = await api.add_files_to_rws_session(currentSessionId.value, selectedGlobalFiles.value);
+    
+    if (response.success) {
+      // Reload session files to get the updated list
+      const sessionFiles = await api.get_rws_session_files(currentSessionId.value);
+      uploadedFiles.value = sessionFiles.map((file, index) => ({
+        ...file,
+        x: 50 + (index % 3) * 120,
+        y: 50 + Math.floor(index / 3) * 80
+      }));
+      
+      // Update graph nodes and visualization
+      await updateGraphNodes();
+      await nextTick();
+      updateGraphVisualization();
+      
+      // Close dialog
+      fileSelectionDialog.value = false;
+      selectedGlobalFiles.value = [];
+      
+      console.log(`Successfully added ${response.added_count} files to session`);
+    }
+  } catch (error) {
+    console.error('Failed to add files to session:', error);
+    alert('Failed to add files to session. Please try again.');
+  }
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return 'Unknown';
+  const date = new Date(timestamp * 1000); // Convert from seconds to milliseconds
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+}
 </script>
 
 <style scoped>
@@ -1959,6 +2118,137 @@ function formatFileSize(size) {
 
 .dialog-actions .save-btn:hover {
   background: #45a049;
+}
+
+/* File Selection Dialog Styles */
+.file-selection-dialog {
+  min-width: 600px;
+  max-width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.loading-files {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+  color: #666;
+}
+
+.no-files {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.no-files .hint {
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 0.5rem;
+}
+
+.file-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.file-list-header {
+  padding: 1rem;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+}
+
+.file-list-header label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.file-items {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.file-item {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.file-item:hover {
+  background-color: #f8f9fa;
+}
+
+.file-item.already-added {
+  background-color: #f0f0f0;
+  opacity: 0.6;
+}
+
+.file-item.already-added:hover {
+  background-color: #e8e8e8;
+}
+
+.file-item-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  cursor: pointer;
+  width: 100%;
+}
+
+.file-item.already-added .file-item-label {
+  cursor: not-allowed;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 0.25rem;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.file-date {
+  color: #888;
+}
+
+.already-added-label {
+  color: #f57c00;
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.dialog-actions .save-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dialog-actions .save-btn:disabled:hover {
+  background: #ccc;
+  transform: none;
+  box-shadow: none;
 }
 </style>
 
