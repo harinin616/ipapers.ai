@@ -21,25 +21,32 @@
         
         <!-- File Upload Area -->
         <div class="file-upload-section">
-          <div 
-            class="file-drop-zone"
-            :class="{ 'drag-over': isDragOver, 'has-files': uploadedFiles.length > 0 }"
-            @drop="handleFileDrop"
-            @dragover.prevent="isDragOver = true"
-            @dragleave="isDragOver = false"
-            @dragenter.prevent
-            @click="triggerFileInput"
-          >
-            <div v-if="uploadedFiles.length === 0" class="drop-zone-content">
-              <div class="drop-icon">📄</div>
-              <p>Drag & drop files here</p>
-              <p class="drop-hint">or click to browse files</p>
-              <div class="supported-formats">Supports: PDF, DOC, DOCX, TXT</div>
+          <div class="upload-buttons-container">
+            <!-- Upload Own Files Button -->
+            <div 
+              class="upload-button upload-own-files"
+              :class="{ 'drag-over': isDragOver }"
+              @drop="handleFileDrop"
+              @dragover.prevent="isDragOver = true"
+              @dragleave="isDragOver = false"
+              @dragenter.prevent
+              @click="triggerFileInput"
+            >
+              <div class="upload-icon">📄</div>
+              <div class="upload-text">Upload Own Files</div>
             </div>
-            <div v-else class="uploaded-files-preview">
-              <div class="files-count">{{ uploadedFiles.length }} files uploaded</div>
-              <button @click.stop="triggerFileInput" class="add-more-btn">+ Add More</button>
+            
+            <!-- Add from Filelist Button -->
+            <div class="upload-button add-from-list">
+              <div class="upload-icon">📁</div>
+              <div class="upload-text">Add from Filelist</div>
             </div>
+          </div>
+          
+          <!-- Show uploaded files count when files are present -->
+          <div v-if="uploadedFiles.length > 0" class="uploaded-files-info">
+            <span class="files-count">{{ uploadedFiles.length }} files uploaded</span>
+            <div class="supported-formats">Supports: PDF, DOC, DOCX, TXT</div>
           </div>
           
           <!-- Hidden File Input -->
@@ -1166,46 +1173,80 @@ function formatFileSize(size) {
   padding: 1rem;
 }
 
-.file-drop-zone {
+.upload-buttons-container {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.upload-button {
+  flex: 1;
   border: 2px dashed #ddd;
   border-radius: 8px;
-  padding: 2rem;
+  padding: 1.5rem 1rem;
   text-align: center;
   transition: all 0.3s ease;
   cursor: pointer;
   background: #fafafa;
-}
-
-.file-drop-zone.drag-over {
-  border-color: #3f51b5;
-  background-color: #f3f4ff;
-}
-
-.file-drop-zone.has-files {
-  border-color: #4caf50;
-  background-color: #f1f8e9;
-}
-
-.drop-zone-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
 }
 
-.drop-icon {
-  font-size: 2rem;
+.upload-button:hover {
+  border-color: #3f51b5;
+  background-color: #f3f4ff;
+}
+
+.upload-button.drag-over {
+  border-color: #3f51b5;
+  background-color: #f3f4ff;
+}
+
+.upload-own-files {
+  border-color: #2196f3;
+}
+
+.upload-own-files:hover {
+  border-color: #1976d2;
+  background-color: #e3f2fd;
+}
+
+.add-from-list {
+  border-color: #4caf50;
+}
+
+.add-from-list:hover {
+  border-color: #388e3c;
+  background-color: #e8f5e8;
+}
+
+.upload-icon {
+  font-size: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
-.drop-hint {
-  color: #666;
+.upload-text {
   font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
 }
 
-.uploaded-files-preview {
+.uploaded-files-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f1f8e9;
+  border-radius: 6px;
+  border: 1px solid #c8e6c9;
+}
+
+.files-count {
   color: #4caf50;
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .graph-section {
