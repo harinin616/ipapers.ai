@@ -27,6 +27,9 @@ class ReviewService:
         # RWS sessions (similar to chat sessions)
         self.active_rws = {}
         
+        # Paper relation graphs (per user)
+        self.paper_graphs = {}
+        
         # track processing files (shared with chat service)
         self.processing_files = set()
         
@@ -96,6 +99,120 @@ class ReviewService:
             return messages[-limit:]
         return messages
     
+    # ============ GRAPH MANAGEMENT METHODS ============
+    
+    def get_paper_graph(self, user_id: str) -> Dict[str, Any]:
+        """Get the paper relation graph for a user"""
+        if user_id not in self.paper_graphs:
+            self.paper_graphs[user_id] = {
+                "nodes": [],  # paper metadata
+                "edges": []   # directed relationships
+            }
+        return self.paper_graphs[user_id]
+    
+    def update_graph_nodes(self, user_id: str, papers: List[Dict[str, Any]]) -> bool:
+        """Update graph nodes based on user's papers"""
+        try:
+            if user_id not in self.paper_graphs:
+                self.paper_graphs[user_id] = {"nodes": [], "edges": []}
+            
+            # Update nodes
+            self.paper_graphs[user_id]["nodes"] = papers
+            
+            # Remove edges that reference non-existent papers
+            valid_paper_ids = {paper["paper_id"] for paper in papers}
+            self.paper_graphs[user_id]["edges"] = [
+                edge for edge in self.paper_graphs[user_id]["edges"]
+                if edge["from"] in valid_paper_ids and edge["to"] in valid_paper_ids
+            ]
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error updating graph nodes for user {user_id}: {str(e)}")
+            return False
+    
+    def add_graph_edge(self, user_id: str, from_paper: str, to_paper: str, relationship_type: str = "relates_to", description: str = "") -> bool:
+        """Add a directed edge between two papers"""
+        try:
+            graph = self.get_paper_graph(user_id)
+            
+            # Check if papers exist
+            paper_ids = {node["paper_id"] for node in graph["nodes"]}
+            if from_paper not in paper_ids or to_paper not in paper_ids:
+                return False
+            
+            # Check if edge already exists
+            for edge in graph["edges"]:
+                if edge["from"] == from_paper and edge["to"] == to_paper:
+                    # Update existing edge
+                    edge["relationship_type"] = relationship_type
+                    edge["description"] = description
+                    edge["updated_at"] = time.time()
+                    return True
+            
+            # Add new edge
+            edge = {
+                "from": from_paper,
+                "to": to_paper,
+                "relationship_type": relationship_type,
+                "description": description,
+                "created_at": time.time(),
+                "updated_at": time.time()
+            }
+            graph["edges"].append(edge)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding graph edge for user {user_id}: {str(e)}")
+            return False
+    
+    def remove_graph_edge(self, user_id: str, from_paper: str, to_paper: str) -> bool:
+        """Remove a directed edge between two papers"""
+        try:
+            graph = self.get_paper_graph(user_id)
+            original_count = len(graph["edges"])
+            graph["edges"] = [
+                edge for edge in graph["edges"]
+                if not (edge["from"] == from_paper and edge["to"] == to_paper)
+            ]
+            return len(graph["edges"]) < original_count
+        except Exception as e:
+            logger.error(f"Error removing graph edge for user {user_id}: {str(e)}")
+            return False
+    
+    def get_graph_context(self, user_id: str) -> str:
+        """Generate context string about paper relationships for LLM"""
+        try:
+            graph = self.get_paper_graph(user_id)
+            
+            if not graph["edges"]:
+                return ""
+            
+            # Build paper name mapping
+            paper_names = {node["paper_id"]: node.get("filename", node["paper_id"]) for node in graph["nodes"]}
+            
+            # Generate relationship descriptions
+            relationships = []
+            for edge in graph["edges"]:
+                from_name = paper_names.get(edge["from"], edge["from"])
+                to_name = paper_names.get(edge["to"], edge["to"])
+                rel_type = edge.get("relationship_type", "relates_to")
+                description = edge.get("description", "")
+                
+                if description:
+                    relationships.append(f"{from_name} {rel_type} {to_name}: {description}")
+                else:
+                    relationships.append(f"{from_name} {rel_type} {to_name}")
+            
+            if relationships:
+                return f"\n\nPaper Relationships:\n" + "\n".join(f"- {rel}" for rel in relationships)
+            
+            return ""
+            
+        except Exception as e:
+            logger.error(f"Error generating graph context for user {user_id}: {str(e)}")
+            return ""
+    
     # ============ LEGACY METHODS (for backward compatibility) ============
     
     def add_rwg_message(self, user_id: str, role: str, content: str):
@@ -137,6 +254,9 @@ class ReviewService:
                 if file_data.get("selected"):
                     file_names.append(file_data.get("filename", "Unknown file"))
         
+        # Get graph context
+        graph_context = self.get_graph_context(user_id)
+        
         system_content = (
             "You are a professional academic writing assistant specialized in generating related work sections. "
             "Your role is to help users create comprehensive related work sections by analyzing existing papers, "
@@ -144,6 +264,7 @@ class ReviewService:
             "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
             f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
             "Please synthesize information from these papers to generate related work content with proper citations and flow."
+            f"{graph_context}"
         )
         
         api_messages = [{"role": "system", "content": system_content}]
