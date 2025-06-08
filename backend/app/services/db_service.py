@@ -488,9 +488,15 @@ class DBService:
                 session = result.scalars().first()
                 
                 if not session:
-                    logger.info(f"Session {session_id} not found")
+                    logger.warning(f"Session with ID {session_id} not found")
                     return False
                 
+                # First delete all messages associated with this session
+                await db.execute(
+                    delete(DBMessage).where(DBMessage.session_id == session_id)
+                )
+                
+                # Then delete the session
                 await db.execute(
                     delete(DBSession).where(DBSession.session_id == session_id)
                 )
