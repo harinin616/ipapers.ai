@@ -283,6 +283,8 @@ export default defineComponent({
         };
       }
       
+
+      
       return {
         width: showFilesList.value 
           ? `calc(100% - ${showPdf.value ? 'clamp(580px, 45vw, 750px)' : '340px'})` 

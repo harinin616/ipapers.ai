@@ -216,22 +216,31 @@ const handleSwitchSession = (sessionId) => {
 const handleDeleteSession = (sessionId) => {
   emit('delete-session', sessionId)
 }
+
+// Expose isCollapsed for parent component access
+defineExpose({
+  isCollapsed
+})
 </script>
 
 <style scoped>
 .sidebar {
-  width: 280px;
-  background: #f8f9fa;
-  border-right: 1px solid #e9ecef;
+  width: 240px;
+  min-width: 200px;
+  max-width: 260px;
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  transition: width 0.3s ease;
+  overflow: hidden;
+  transition: all 0.3s ease;
   position: relative;
 }
 
 .sidebar.collapsed {
   width: 60px;
+  min-width: 60px;
+  max-width: 60px;
 }
 
 .sidebar-content {
@@ -242,122 +251,151 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .sidebar-top {
-  padding: 16px;
-  border-bottom: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
+  padding: 12px;
   gap: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar.collapsed .sidebar-top {
+  align-items: center;
+  padding: 12px 8px;
 }
 
 .hamburger-toggle {
-  background: none;
+  background-color: transparent;
   border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6c757d;
   transition: all 0.2s ease;
   align-self: flex-start;
 }
 
 .hamburger-toggle:hover {
-  background: #e9ecef;
-  color: #495057;
+  background-color: #f0f0f0;
+}
+
+.hamburger-toggle .icon-svg {
+  fill: #444;
+  transition: fill 0.2s ease;
 }
 
 .new-session-button {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
+  background-color: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 24px;
+  padding: 12px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 0.9rem;
+  color: #444;
   transition: all 0.2s ease;
   width: 100%;
-  justify-content: center;
 }
 
 .new-session-button:hover {
-  background: #0056b3;
+  background-color: #f8f9fa;
+  border-color: #d0d0d0;
 }
 
-.new-session-button.collapsed {
-  display: none;
+.new-session-button .icon-svg {
+  fill: currentColor;
+  flex-shrink: 0;
 }
 
 .new-session-button-collapsed {
-  background: #007bff;
-  color: white;
+  background-color: transparent;
   border: none;
-  padding: 12px;
   border-radius: 8px;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  width: 100%;
 }
 
 .new-session-button-collapsed:hover {
-  background: #0056b3;
+  background-color: #f0f0f0;
+}
+
+.new-session-button-collapsed .icon-svg {
+  fill: #444;
 }
 
 .session-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   flex: 1;
   overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .session-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid #f1f3f4;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.session-item:hover {
-  background: #f1f3f4;
-}
-
-.session-item.active {
-  background: #e3f2fd;
-  border-left: 3px solid #007bff;
+  justify-content: space-between;
+  align-items: center;  
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #444;
+  border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin: 4px 8px;
 }
 
 .session-item.collapsed {
   justify-content: center;
   padding: 12px 8px;
+  margin: 4px 8px;
+}
+
+.session-item:hover {
+  background-color: #f5f5f5;
+}
+
+.session-item.active {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+  font-weight: 500;
 }
 
 .session-icon {
-  color: #6c757d;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+}
+
+.session-icon .icon-svg {
+  fill: currentColor;
 }
 
 .session-title-container {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 .session-title {
-  display: block;
-  font-size: 14px;
-  color: #495057;
+  flex: 1;
+  font-size: 0.95rem;
+  color: #444;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -365,12 +403,18 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .session-title-input {
-  width: 100%;
+  flex: 1;
   padding: 4px 8px;
-  border: 1px solid #ced4da;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 0.9rem;
   background: white;
+  outline: none;
+}
+
+.session-title-input:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
 .session-actions {
@@ -378,6 +422,7 @@ const handleDeleteSession = (sessionId) => {
   gap: 4px;
   opacity: 0;
   transition: opacity 0.2s ease;
+  margin-left: 8px;
 }
 
 .session-item:hover .session-actions {
@@ -397,6 +442,34 @@ const handleDeleteSession = (sessionId) => {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  color: #666;
+}
+
+.edit-btn:hover {
+  background-color: #e3f2fd;
+  color: #1a73e8;
+}
+
+.save-btn:hover {
+  background-color: #e8f5e8;
+  color: #4caf50;
+}
+
+.cancel-btn:hover {
+  background-color: #fff3e0;
+  color: #ff9800;
+}
+
+.delete-btn:hover {
+  background-color: #ffebee;
+  color: #f44336;
+}
+
+.edit-btn .icon-svg,
+.save-btn .icon-svg,
+.cancel-btn .icon-svg,
+.delete-btn .icon-svg {
+  fill: currentColor;
 }
 
 .edit-btn {

@@ -338,7 +338,7 @@ class ApiService implements IApiService {
   
   async get_rws_sessions(): Promise<{ id: string; title: string }[]> {
     try {
-      const response = await this.api.get('/api/chat/sessions');
+      const response = await this.api.get('/api/review/sessions');
       return response.data;
     } catch (error) {
       console.error('Failed to get RWS sessions:', error);
@@ -348,7 +348,7 @@ class ApiService implements IApiService {
 
   async create_rws_session(payload: { title: string }): Promise<{ id: string; title: string }> {
     try {
-      const response = await this.api.post('/api/chat/sessions', payload);
+      const response = await this.api.post('/api/review/sessions', payload);
       return response.data;
     } catch (error) {
       console.error('Failed to create RWS session:', error);
@@ -358,7 +358,7 @@ class ApiService implements IApiService {
   
   async delete_rws_session(payload: { session_id: string }): Promise<any> {
     try {
-      const response = await this.api.delete('/api/chat/sessions', { data: payload });
+      const response = await this.api.delete('/api/review/sessions', { data: payload });
       return response.data;
     } catch (error) {
       console.error('Failed to delete RWS session:', error);
@@ -368,7 +368,7 @@ class ApiService implements IApiService {
 
   async get_rws_messages(payload: { session_id: string }): Promise<any[]> {
     try {
-      const response = await this.api.get('/api/chat/messages', { params: payload });
+      const response = await this.api.get('/api/review/messages', { params: payload });
       return response.data;
     } catch (error) {
       console.error('Failed to get RWS messages:', error);
@@ -378,7 +378,7 @@ class ApiService implements IApiService {
   
   async update_rws_session_title(payload: { session_id: string; title: string }): Promise<any> {
     try {
-      const response = await this.api.post('/api/chat/update_session_title', payload);
+      const response = await this.api.post('/api/review/update_session_title', payload);
       return response.data;
     } catch (error) {
       console.error('Failed to update RWS session title:', error);
@@ -396,7 +396,7 @@ class ApiService implements IApiService {
         headers['X-User-ID'] = userId;
       }
 
-      const response = await fetch(`/api/chat/stream_rws`, {
+      const response = await fetch(`/api/review/stream_rws`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(payload)
@@ -413,7 +413,7 @@ class ApiService implements IApiService {
   
   async get_paper_graph(): Promise<{ nodes: any[], edges: any[] }> {
     try {
-      const response = await this.api.get('/api/chat/graph');
+      const response = await this.api.get('/api/review/graph');
       return response.data;
     } catch (error) {
       console.error('Failed to get paper graph:', error);
@@ -423,7 +423,7 @@ class ApiService implements IApiService {
 
   async update_graph_nodes(papers: any[]): Promise<any> {
     try {
-      const response = await this.api.post('/api/chat/graph/nodes', papers);
+      const response = await this.api.post('/api/review/graph/nodes', papers);
       return response.data;
     } catch (error) {
       console.error('Failed to update graph nodes:', error);
@@ -433,7 +433,7 @@ class ApiService implements IApiService {
 
   async add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string }): Promise<any> {
     try {
-      const response = await this.api.post('/api/chat/graph/edges', payload);
+      const response = await this.api.post('/api/review/graph/edges', payload);
       return response.data;
     } catch (error) {
       console.error('Failed to add graph edge:', error);
@@ -443,7 +443,7 @@ class ApiService implements IApiService {
 
   async remove_graph_edge(payload: { from: string; to: string }): Promise<any> {
     try {
-      const response = await this.api.delete('/api/chat/graph/edges', { data: payload });
+      const response = await this.api.delete('/api/review/graph/edges', { data: payload });
       return response.data;
     } catch (error) {
       console.error('Failed to remove graph edge:', error);

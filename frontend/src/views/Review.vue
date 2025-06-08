@@ -4,6 +4,7 @@
     <div v-else class="full-layout">
 
       <RwsSidebar 
+        ref="rwsSidebarRef"
         :rws-sessions="rwsSessions"
         :current-session-id="currentSessionId"
         @create-session="createNewSession"
@@ -11,7 +12,7 @@
         @delete-session="deleteThisSession"
       />
 
-      <div class="two-panel-layout">
+      <div class="two-panel-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <!-- Left Panel: File Upload & Papers Relation Graph -->
       <div class="left-panel">
         <div class="panel-header">
@@ -106,63 +107,60 @@
             <div v-else class="graph-content">
               <!-- Graph Visualization with Directed Edges -->
               <svg class="relation-graph" :width="graphWidth" :height="graphHeight">
+                <!-- Arrow marker definition -->
+                <defs>
+                  <marker id="arrowhead" markerWidth="8" markerHeight="6" 
+                          refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#4caf50" />
+                  </marker>
+                </defs>
                 <!-- Draw directed connections between papers -->
                 <g class="connections">
                   <g v-for="connection in paperConnections" :key="`${connection.from}-${connection.to}`">
                     <path 
-                      :d="getArrowPath(connection.x1, connection.y1, connection.x2, connection.y2).line"
-                      stroke="#90caf9" 
+                      :d="connection.path"
+                      stroke="#4caf50" 
                       stroke-width="2"
+                      fill="none"
                       opacity="0.8"
                       marker-end="url(#arrowhead)"
                     />
-                    <path 
-                      :d="getArrowPath(connection.x1, connection.y1, connection.x2, connection.y2).arrow"
-                      stroke="#90caf9" 
-                      stroke-width="2"
-                      opacity="0.8"
-                    />
                     <!-- Edge label -->
                     <text 
-                      :x="(connection.x1 + connection.x2) / 2" 
-                      :y="(connection.y1 + connection.y2) / 2 - 5"
+                      :x="connection.labelX" 
+                      :y="connection.labelY"
                       text-anchor="middle" 
-                      font-size="8" 
-                      fill="#666"
+                      font-size="10" 
+                      fill="#333"
                       class="edge-label"
+                      font-weight="500"
                     >
                       {{ connection.relationship_type }}
                     </text>
                     <!-- Remove edge button -->
                     <circle 
-                      :cx="(connection.x1 + connection.x2) / 2 + 15" 
-                      :cy="(connection.y1 + connection.y2) / 2"
+                      :cx="connection.labelX + 25" 
+                      :cy="connection.labelY"
                       r="8"
                       fill="#f44336"
-                      opacity="0.8"
+                      opacity="0.9"
                       class="remove-edge-btn"
                       @click="removeEdge(connection.from, connection.to)"
                       style="cursor: pointer;"
                     />
                     <text 
-                      :x="(connection.x1 + connection.x2) / 2 + 15" 
-                      :y="(connection.y1 + connection.y2) / 2 + 3"
+                      :x="connection.labelX + 25" 
+                      :y="connection.labelY + 3"
                       text-anchor="middle" 
                       font-size="10" 
                       fill="white"
                       style="pointer-events: none;"
+                      font-weight="bold"
                     >
                       ×
                     </text>
                   </g>
                 </g>
-                <!-- Arrow marker definition -->
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                          refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#90caf9" />
-                  </marker>
-                </defs>
                 <!-- Draw paper nodes -->
                 <g class="nodes">
                   <g 
@@ -177,17 +175,17 @@
                     }"
                   >
                     <circle 
-                      :r="30" 
+                      :r="20" 
                       :fill="selectedFromPaper === file.paper_id ? '#ff9800' : '#2196f3'" 
-                      opacity="0.8"
+                      opacity="0.9"
                       stroke="#fff"
                       stroke-width="2"
                     />
                     <text 
                       text-anchor="middle" 
-                      dy="5" 
+                      dy="4" 
                       fill="white" 
-                      font-size="10"
+                      font-size="12"
                       font-weight="bold"
                     >
                       {{ index + 1 }}
@@ -339,7 +337,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, onActivated, watch, nextTick, computed } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
@@ -356,6 +354,7 @@ const guidanceContainer = ref(null);
 const resultContainer = ref(null);
 const guidanceInputRef = ref(null);
 const fileInputRef = ref(null);
+const rwsSidebarRef = ref(null);
 
 // File upload state
 const uploadedFiles = ref([]);
@@ -385,6 +384,10 @@ const currentEdge = ref({ from: '', to: '', relationship_type: 'relates_to', des
 const currentSessionId = ref(localStorage.getItem('currentRwsSessionId') || null);
 const messages = ref([]);
 
+// Layout state
+const isSidebarCollapsed = ref(false);
+let resizeObserver = null;
+
 // Computed properties
 const rwsSessions = computed(() => rwsSessionStore.sessions || []);
 
@@ -393,8 +396,36 @@ watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
   isPaperProcessing.value = isProcessing;
 }, { immediate: true });
 
+// Watch sidebar collapse state
+watch(() => rwsSidebarRef.value?.isCollapsed, (collapsed) => {
+  isSidebarCollapsed.value = collapsed;
+  // Update graph visualization when sidebar state changes
+  nextTick(() => {
+    updateGraphVisualization();
+  });
+}, { immediate: true });
+
+
+
 onBeforeUnmount(() => {
   chatSessionStore.resetProcessingState();
+  
+  // Clean up resize observer
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+});
+
+// When component is activated (e.g., switching back from chat), ensure graph is rendered and session is restored
+onActivated(() => {
+  nextTick(() => {
+    updateGraphVisualization();
+    
+    // If we have a current session but no messages loaded, reload the session
+    if (currentSessionId.value && messages.value.length === 0) {
+      loadRwsSession(currentSessionId.value);
+    }
+  });
 });
 
 // File handling functions
@@ -429,12 +460,14 @@ async function loadUserFiles() {
 
 async function removeFile(paperId) {
   uploadedFiles.value = uploadedFiles.value.filter(file => file.paper_id !== paperId);
-  await updateGraphNodes();
-}
-
-
-
-// Guidance functions
+      await updateGraphNodes();
+    // Update graph visualization after loading files
+    nextTick(() => {
+      updateGraphVisualization();
+    });
+  }
+  
+  // Guidance functions
 function addGuidance() {
   if (!guidanceInputText.value.trim()) return;
   
@@ -462,10 +495,17 @@ async function switchSession(sessionId) {
 }
 
 async function createNewSession() {
-  currentSessionId.value = null;
-  messages.value = [];
-  generatedContent.value = '';
-  guidanceList.value = [];
+  // Create a new RWS session
+  try {
+    const newSession = await rwsSessionStore.createSession({ title: 'New RWS Session' });
+    currentSessionId.value = newSession.id;
+    localStorage.setItem('currentRwsSessionId', newSession.id);
+    messages.value = [];
+    generatedContent.value = '';
+    guidanceList.value = [];
+  } catch (error) {
+    console.error('Failed to create new RWS session:', error);
+  }
 }
 
 async function loadRwsSession(sessionId = null) {
@@ -473,6 +513,7 @@ async function loadRwsSession(sessionId = null) {
     if (!sessionId) {
       messages.value = [];
       generatedContent.value = '';
+      guidanceList.value = [];
       return;
     }
     
@@ -487,11 +528,28 @@ async function loadRwsSession(sessionId = null) {
       generatedContent.value = '';
     }
     
+    // Reconstruct guidance from the last user message
+    guidanceList.value = [];
+    const lastUserMessage = messages.value.filter(m => m.role === 'user').pop();
+    if (lastUserMessage) {
+      // Extract guidance from the user message
+      const guidancePattern = /Please consider the following guidance:\n((?:- .+\n?)+)/;
+      const match = lastUserMessage.content.match(guidancePattern);
+      if (match) {
+        const guidanceItems = match[1].split('\n').filter(line => line.trim().startsWith('-'));
+        guidanceList.value = guidanceItems.map((item, index) => ({
+          id: Date.now() + index,
+          content: item.replace(/^- /, '').trim()
+        }));
+      }
+    }
+    
     await nextTick();
   } catch (error) {
     console.error('Failed to load RWS session:', error);
     messages.value = [];
     generatedContent.value = '';
+    guidanceList.value = [];
   }
 }
 
@@ -539,20 +597,99 @@ async function updateGraphNodes() {
 }
 
 function updateGraphVisualization() {
-  // Update paper connections for visualization
+  if (!graphContainer.value) return;
+  
+  const containerRect = graphContainer.value.getBoundingClientRect();
+  graphWidth.value = Math.max(400, containerRect.width);
+  graphHeight.value = 280;  // Slightly taller for better spacing
+  
+  // Improved positioning algorithm
+  const numFiles = uploadedFiles.value.length;
+  
+  if (numFiles === 0) {
+    paperConnections.value = [];
+    return;
+  }
+  
+  if (numFiles === 1) {
+    // Single node at center
+    uploadedFiles.value[0].x = graphWidth.value / 2;
+    uploadedFiles.value[0].y = graphHeight.value / 2;
+  } else if (numFiles === 2) {
+    // Two nodes horizontally aligned
+    uploadedFiles.value[0].x = graphWidth.value * 0.3;
+    uploadedFiles.value[0].y = graphHeight.value / 2;
+    uploadedFiles.value[1].x = graphWidth.value * 0.7;
+    uploadedFiles.value[1].y = graphHeight.value / 2;
+  } else if (numFiles <= 6) {
+    // Circular layout for 3-6 nodes
+    const centerX = graphWidth.value / 2;
+    const centerY = graphHeight.value / 2;
+    const radius = Math.min(centerX - 40, centerY - 40);
+    
+    uploadedFiles.value.forEach((file, index) => {
+      const angle = (2 * Math.PI * index) / numFiles - Math.PI / 2; // Start from top
+      file.x = centerX + radius * Math.cos(angle);
+      file.y = centerY + radius * Math.sin(angle);
+    });
+  } else {
+    // Grid layout for many nodes
+    const cols = Math.ceil(Math.sqrt(numFiles));
+    const rows = Math.ceil(numFiles / cols);
+    const paddingX = 50;
+    const paddingY = 50;
+    const availableWidth = graphWidth.value - 2 * paddingX;
+    const availableHeight = graphHeight.value - 2 * paddingY;
+    const stepX = availableWidth / (cols - 1 || 1);
+    const stepY = availableHeight / (rows - 1 || 1);
+    
+    uploadedFiles.value.forEach((file, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      file.x = paddingX + col * stepX;
+      file.y = paddingY + row * stepY;
+    });
+    
+    // Adjust height for grid layout
+    graphHeight.value = Math.max(280, rows * 80 + 100);
+  }
+  
+  // Update connections with proper edge calculations
   const connections = [];
   for (const edge of paperGraph.value.edges) {
-    const fromPaper = uploadedFiles.value.find(f => f.paper_id === edge.from);
-    const toPaper = uploadedFiles.value.find(f => f.paper_id === edge.to);
+    const fromFile = uploadedFiles.value.find(f => f.paper_id === edge.from);
+    const toFile = uploadedFiles.value.find(f => f.paper_id === edge.to);
     
-    if (fromPaper && toPaper) {
+    if (fromFile && toFile) {
+      // Calculate edge points to connect circle edges, not centers
+      const dx = toFile.x - fromFile.x;
+      const dy = toFile.y - fromFile.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const nodeRadius = 20;
+      
+      // Calculate start and end points on circle edges
+      const startX = fromFile.x + (dx / distance) * nodeRadius;
+      const startY = fromFile.y + (dy / distance) * nodeRadius;
+      const endX = toFile.x - (dx / distance) * nodeRadius;
+      const endY = toFile.y - (dy / distance) * nodeRadius;
+      
+      // Create curved path for better visualization
+      const midX = (startX + endX) / 2;
+      const midY = (startY + endY) / 2;
+      const curvature = 0.2;
+      const perpX = -(endY - startY) * curvature;
+      const perpY = (endX - startX) * curvature;
+      const controlX = midX + perpX;
+      const controlY = midY + perpY;
+      
+      const path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`;
+      
       connections.push({
         from: edge.from,
         to: edge.to,
-        x1: fromPaper.x + 30, // offset for node center
-        y1: fromPaper.y + 30,
-        x2: toPaper.x + 30,
-        y2: toPaper.y + 30,
+        path: path,
+        labelX: controlX,
+        labelY: controlY - 10,
         relationship_type: edge.relationship_type,
         description: edge.description
       });
@@ -769,6 +906,20 @@ onMounted(async () => {
     await loadPaperGraph();
     
     initialLoading.value = false;
+    
+    // Wait for DOM to be fully rendered, then setup graph
+    await nextTick();
+    
+    // Setup resize observer for graph container
+    if (graphContainer.value) {
+      resizeObserver = new ResizeObserver(() => {
+        updateGraphVisualization();
+      });
+      resizeObserver.observe(graphContainer.value);
+    }
+    
+    // Ensure graph visualization is updated after component is mounted
+    updateGraphVisualization();
   } catch (err) {
     console.error('Initialization error:', err);
     initialLoading.value = false;
@@ -865,6 +1016,11 @@ async function uploadFile(file) {
     uploadedFiles.value.push(uploadedFile);
     await updateGraphNodes();
     
+    // Update graph visualization after adding file
+    nextTick(() => {
+      updateGraphVisualization();
+    });
+    
     // Remove from progress after a delay
     setTimeout(() => {
       uploadProgress.value = uploadProgress.value.filter(p => p.id !== progressId);
@@ -919,6 +1075,12 @@ function formatFileSize(size) {
   height: 100%;
   gap: 1rem;
   padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.two-panel-layout.sidebar-collapsed {
+  /* When sidebar is collapsed, we have more space */
+  padding-left: 0.5rem;
 }
 
 /* Left Panel Styles */
@@ -930,6 +1092,11 @@ function formatFileSize(size) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: flex-basis 0.3s ease;
+}
+
+.two-panel-layout.sidebar-collapsed .left-panel {
+  flex: 0 0 30%;
 }
 
 .panel-header {
@@ -1076,8 +1243,9 @@ function formatFileSize(size) {
 }
 
 .relation-graph {
-  flex: 0 0 200px;
+  flex: 0 0 280px;
   background: #f9f9f9;
+  border-radius: 8px;
 }
 
 .paper-node {
@@ -1161,6 +1329,11 @@ function formatFileSize(size) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: flex-basis 0.3s ease;
+}
+
+.two-panel-layout.sidebar-collapsed .right-panel {
+  flex: 0 0 70%;
 }
 
 .guidance-section {
