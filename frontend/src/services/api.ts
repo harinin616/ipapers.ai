@@ -36,6 +36,12 @@ export interface IApiService {
   get_rws_messages(payload: { session_id: string }): Promise<any[]>;
   update_rws_session_title(payload: { session_id: string; title: string }): Promise<any>;
   stream_rws(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
+  
+  // Graph management methods
+  get_paper_graph(): Promise<{ nodes: any[], edges: any[] }>;
+  update_graph_nodes(papers: any[]): Promise<any>;
+  add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string }): Promise<any>;
+  remove_graph_edge(payload: { from: string; to: string }): Promise<any>;
 }
 /**
  * API Service implementation
@@ -399,6 +405,48 @@ class ApiService implements IApiService {
       return response;
     } catch (error) {
       console.error('Failed to stream RWS:', error);
+      throw error;
+    }
+  }
+
+  // ============ GRAPH MANAGEMENT ============
+  
+  async get_paper_graph(): Promise<{ nodes: any[], edges: any[] }> {
+    try {
+      const response = await this.api.get('/api/chat/graph');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get paper graph:', error);
+      throw error;
+    }
+  }
+
+  async update_graph_nodes(papers: any[]): Promise<any> {
+    try {
+      const response = await this.api.post('/api/chat/graph/nodes', papers);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update graph nodes:', error);
+      throw error;
+    }
+  }
+
+  async add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/chat/graph/edges', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to add graph edge:', error);
+      throw error;
+    }
+  }
+
+  async remove_graph_edge(payload: { from: string; to: string }): Promise<any> {
+    try {
+      const response = await this.api.delete('/api/chat/graph/edges', { data: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to remove graph edge:', error);
       throw error;
     }
   }

@@ -79,6 +79,24 @@
         <div class="graph-section">
           <div class="graph-header">
             <h4>Papers Relation Graph</h4>
+            <div class="graph-controls" v-if="uploadedFiles.length > 1">
+              <button 
+                v-if="!isAddingEdge" 
+                @click="startAddingEdge" 
+                class="add-edge-btn"
+                title="Add relationship between papers"
+              >
+                + Add Edge
+              </button>
+              <button 
+                v-else 
+                @click="cancelAddingEdge" 
+                class="cancel-edge-btn"
+                title="Cancel adding edge"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
           <div class="graph-container" ref="graphContainer">
             <div v-if="uploadedFiles.length === 0" class="graph-placeholder">
@@ -86,22 +104,65 @@
               <p>Upload files to see relations</p>
             </div>
             <div v-else class="graph-content">
-              <!-- Simple Graph Visualization -->
+              <!-- Graph Visualization with Directed Edges -->
               <svg class="relation-graph" :width="graphWidth" :height="graphHeight">
-                <!-- Draw connections between papers -->
+                <!-- Draw directed connections between papers -->
                 <g class="connections">
-                  <line 
-                    v-for="connection in paperConnections" 
-                    :key="`${connection.from}-${connection.to}`"
-                    :x1="connection.x1" 
-                    :y1="connection.y1"
-                    :x2="connection.x2" 
-                    :y2="connection.y2"
-                    stroke="#90caf9" 
-                    stroke-width="2"
-                    opacity="0.6"
-                  />
+                  <g v-for="connection in paperConnections" :key="`${connection.from}-${connection.to}`">
+                    <path 
+                      :d="getArrowPath(connection.x1, connection.y1, connection.x2, connection.y2).line"
+                      stroke="#90caf9" 
+                      stroke-width="2"
+                      opacity="0.8"
+                      marker-end="url(#arrowhead)"
+                    />
+                    <path 
+                      :d="getArrowPath(connection.x1, connection.y1, connection.x2, connection.y2).arrow"
+                      stroke="#90caf9" 
+                      stroke-width="2"
+                      opacity="0.8"
+                    />
+                    <!-- Edge label -->
+                    <text 
+                      :x="(connection.x1 + connection.x2) / 2" 
+                      :y="(connection.y1 + connection.y2) / 2 - 5"
+                      text-anchor="middle" 
+                      font-size="8" 
+                      fill="#666"
+                      class="edge-label"
+                    >
+                      {{ connection.relationship_type }}
+                    </text>
+                    <!-- Remove edge button -->
+                    <circle 
+                      :cx="(connection.x1 + connection.x2) / 2 + 15" 
+                      :cy="(connection.y1 + connection.y2) / 2"
+                      r="8"
+                      fill="#f44336"
+                      opacity="0.8"
+                      class="remove-edge-btn"
+                      @click="removeEdge(connection.from, connection.to)"
+                      style="cursor: pointer;"
+                    />
+                    <text 
+                      :x="(connection.x1 + connection.x2) / 2 + 15" 
+                      :y="(connection.y1 + connection.y2) / 2 + 3"
+                      text-anchor="middle" 
+                      font-size="10" 
+                      fill="white"
+                      style="pointer-events: none;"
+                    >
+                      ×
+                    </text>
+                  </g>
                 </g>
+                <!-- Arrow marker definition -->
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                          refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#90caf9" />
+                  </marker>
+                </defs>
                 <!-- Draw paper nodes -->
                 <g class="nodes">
                   <g 
@@ -109,10 +170,15 @@
                     :key="file.paper_id"
                     :transform="`translate(${file.x}, ${file.y})`"
                     class="paper-node"
+                    @click="selectPaperForEdge(file.paper_id)"
+                    :class="{ 
+                      'adding-edge': isAddingEdge,
+                      'selected': selectedFromPaper === file.paper_id 
+                    }"
                   >
                     <circle 
                       :r="30" 
-                      fill="#2196f3" 
+                      :fill="selectedFromPaper === file.paper_id ? '#ff9800' : '#2196f3'" 
                       opacity="0.8"
                       stroke="#fff"
                       stroke-width="2"
@@ -225,6 +291,47 @@
             <span v-else>Generate</span>
           </button>
         </div>
+              </div>
+    </div>
+    
+    <!-- Edge Edit Dialog -->
+    <div v-if="edgeEditDialog" class="dialog-overlay" @click="edgeEditDialog = false">
+      <div class="dialog-content" @click.stop>
+        <h3>Add Paper Relationship</h3>
+        <div class="dialog-field">
+          <label>From:</label>
+          <span>{{ uploadedFiles.find(f => f.paper_id === currentEdge.from)?.filename || 'Paper' }}</span>
+        </div>
+        <div class="dialog-field">
+          <label>To:</label>
+          <span>{{ uploadedFiles.find(f => f.paper_id === currentEdge.to)?.filename || 'Paper' }}</span>
+        </div>
+        <div class="dialog-field">
+          <label for="relationship-type">Relationship Type:</label>
+          <select id="relationship-type" v-model="currentEdge.relationship_type">
+            <option value="relates_to">relates to</option>
+            <option value="builds_on">builds on</option>
+            <option value="extends">extends</option>
+            <option value="compares_to">compares to</option>
+            <option value="contradicts">contradicts</option>
+            <option value="supports">supports</option>
+            <option value="improves">improves</option>
+            <option value="uses_method_from">uses method from</option>
+          </select>
+        </div>
+        <div class="dialog-field">
+          <label for="relationship-desc">Description (optional):</label>
+          <textarea 
+            id="relationship-desc" 
+            v-model="currentEdge.description" 
+            placeholder="Describe the relationship..."
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="dialog-actions">
+          <button @click="edgeEditDialog = false" class="cancel-btn">Cancel</button>
+          <button @click="saveEdge" class="save-btn">Save</button>
+        </div>
       </div>
     </div>
     </div>
@@ -266,8 +373,13 @@ const isGenerating = ref(false);
 
 // Graph state
 const graphWidth = ref(400);
-const graphHeight = ref(300);
+const graphHeight = ref(250);
 const paperConnections = ref([]);
+const paperGraph = ref({ nodes: [], edges: [] });
+const isAddingEdge = ref(false);
+const selectedFromPaper = ref(null);
+const edgeEditDialog = ref(false);
+const currentEdge = ref({ from: '', to: '', relationship_type: 'relates_to', description: '' });
 
 // Session management
 const currentSessionId = ref(localStorage.getItem('currentRwsSessionId') || null);
@@ -307,36 +419,20 @@ async function loadUserFiles() {
       x: 50 + (index % 3) * 120,
       y: 50 + Math.floor(index / 3) * 80
     }));
-    updatePaperConnections();
+    
+    // Update graph nodes and load graph
+    await updateGraphNodes();
   } catch (error) {
     console.error('Failed to load user files:', error);
   }
 }
 
-function removeFile(paperId) {
+async function removeFile(paperId) {
   uploadedFiles.value = uploadedFiles.value.filter(file => file.paper_id !== paperId);
-  updatePaperConnections();
+  await updateGraphNodes();
 }
 
-function updatePaperConnections() {
-  // Create simple connections between papers (for demo)
-  const connections = [];
-  for (let i = 0; i < uploadedFiles.value.length - 1; i++) {
-    for (let j = i + 1; j < uploadedFiles.value.length; j++) {
-      const file1 = uploadedFiles.value[i];
-      const file2 = uploadedFiles.value[j];
-      connections.push({
-        from: file1.paper_id,
-        to: file2.paper_id,
-        x1: file1.x,
-        y1: file1.y,
-        x2: file2.x,
-        y2: file2.y
-      });
-    }
-  }
-  paperConnections.value = connections;
-}
+
 
 // Guidance functions
 function addGuidance() {
@@ -420,6 +516,124 @@ function extractTitleFromInput(input) {
   const trimmed = input.trim();
   if (!trimmed) return 'Untitled RWS Session';
   return trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed;
+}
+
+// Graph management functions
+async function loadPaperGraph() {
+  try {
+    const graph = await api.get_paper_graph();
+    paperGraph.value = graph;
+    updateGraphVisualization();
+  } catch (error) {
+    console.error('Failed to load paper graph:', error);
+  }
+}
+
+async function updateGraphNodes() {
+  try {
+    await api.update_graph_nodes(uploadedFiles.value);
+    await loadPaperGraph();
+  } catch (error) {
+    console.error('Failed to update graph nodes:', error);
+  }
+}
+
+function updateGraphVisualization() {
+  // Update paper connections for visualization
+  const connections = [];
+  for (const edge of paperGraph.value.edges) {
+    const fromPaper = uploadedFiles.value.find(f => f.paper_id === edge.from);
+    const toPaper = uploadedFiles.value.find(f => f.paper_id === edge.to);
+    
+    if (fromPaper && toPaper) {
+      connections.push({
+        from: edge.from,
+        to: edge.to,
+        x1: fromPaper.x + 30, // offset for node center
+        y1: fromPaper.y + 30,
+        x2: toPaper.x + 30,
+        y2: toPaper.y + 30,
+        relationship_type: edge.relationship_type,
+        description: edge.description
+      });
+    }
+  }
+  paperConnections.value = connections;
+}
+
+function startAddingEdge() {
+  isAddingEdge.value = true;
+  selectedFromPaper.value = null;
+}
+
+function selectPaperForEdge(paperId) {
+  if (!isAddingEdge.value) return;
+  
+  if (!selectedFromPaper.value) {
+    selectedFromPaper.value = paperId;
+  } else if (selectedFromPaper.value !== paperId) {
+    // Open edge edit dialog
+    currentEdge.value = {
+      from: selectedFromPaper.value,
+      to: paperId,
+      relationship_type: 'relates_to',
+      description: ''
+    };
+    edgeEditDialog.value = true;
+  }
+}
+
+function cancelAddingEdge() {
+  isAddingEdge.value = false;
+  selectedFromPaper.value = null;
+}
+
+async function saveEdge() {
+  try {
+    await api.add_graph_edge(currentEdge.value);
+    await loadPaperGraph();
+    edgeEditDialog.value = false;
+    isAddingEdge.value = false;
+    selectedFromPaper.value = null;
+  } catch (error) {
+    console.error('Failed to add edge:', error);
+  }
+}
+
+async function removeEdge(fromPaper, toPaper) {
+  try {
+    await api.remove_graph_edge({ from: fromPaper, to: toPaper });
+    await loadPaperGraph();
+  } catch (error) {
+    console.error('Failed to remove edge:', error);
+  }
+}
+
+function getArrowPath(x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const angle = Math.atan2(dy, dx);
+  const length = Math.sqrt(dx * dx + dy * dy);
+  
+  // Shorten the line to not overlap with node circles
+  const startX = x1 + 30 * Math.cos(angle);
+  const startY = y1 + 30 * Math.sin(angle);
+  const endX = x2 - 30 * Math.cos(angle);
+  const endY = y2 - 30 * Math.sin(angle);
+  
+  // Arrow head
+  const arrowLength = 10;
+  const arrowAngle = Math.PI / 6;
+  
+  const arrowX1 = endX - arrowLength * Math.cos(angle - arrowAngle);
+  const arrowY1 = endY - arrowLength * Math.sin(angle - arrowAngle);
+  const arrowX2 = endX - arrowLength * Math.cos(angle + arrowAngle);
+  const arrowY2 = endY - arrowLength * Math.sin(angle + arrowAngle);
+  
+  return {
+    line: `M ${startX} ${startY} L ${endX} ${endY}`,
+    arrow: `M ${endX} ${endY} L ${arrowX1} ${arrowY1} M ${endX} ${endY} L ${arrowX2} ${arrowY2}`
+  };
 }
 
 // Generation function
@@ -550,8 +764,9 @@ onMounted(async () => {
       currentSessionId.value = null;
     }
     
-    // Load existing files
+    // Load existing files and graph
     await loadUserFiles();
+    await loadPaperGraph();
     
     initialLoading.value = false;
   } catch (err) {
@@ -648,7 +863,7 @@ async function uploadFile(file) {
     };
     
     uploadedFiles.value.push(uploadedFile);
-    updatePaperConnections();
+    await updateGraphNodes();
     
     // Remove from progress after a delay
     setTimeout(() => {
@@ -708,7 +923,7 @@ function formatFileSize(size) {
 
 /* Left Panel Styles */
 .left-panel {
-  flex: 0 0 45%;
+  flex: 0 0 35%;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -784,10 +999,50 @@ function formatFileSize(size) {
   flex-direction: column;
 }
 
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .graph-header h4 {
-  margin: 0 0 1rem 0;
+  margin: 0;
   color: #333;
   font-size: 1.1rem;
+}
+
+.graph-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-edge-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.add-edge-btn:hover {
+  background: #45a049;
+}
+
+.cancel-edge-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.cancel-edge-btn:hover {
+  background: #da190b;
 }
 
 .graph-container {
@@ -827,6 +1082,26 @@ function formatFileSize(size) {
 
 .paper-node {
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.paper-node.adding-edge {
+  cursor: crosshair;
+}
+
+.paper-node.selected circle {
+  stroke: #ff9800;
+  stroke-width: 4;
+}
+
+.edge-label {
+  font-weight: bold;
+  background: white;
+  padding: 2px;
+}
+
+.remove-edge-btn:hover {
+  opacity: 1 !important;
 }
 
 .paper-list {
@@ -879,7 +1154,7 @@ function formatFileSize(size) {
 
 /* Right Panel Styles */
 .right-panel {
-  flex: 0 0 55%;
+  flex: 0 0 65%;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -889,17 +1164,17 @@ function formatFileSize(size) {
 }
 
 .guidance-section {
-  padding: 1rem;
+  padding: 0.75rem;
   border-bottom: 1px solid #e0e0e0;
-  max-height: 150px;
+  max-height: 120px;
 }
 
 .guidance-messages {
-  max-height: 100px;
+  max-height: 80px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
 .guidance-item {
@@ -1181,6 +1456,104 @@ function formatFileSize(size) {
   background: #f0f8ff;
   border-radius: 4px;
   border: 1px solid #e3f2fd;
+}
+
+/* Dialog Styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.dialog-content h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.dialog-field {
+  margin-bottom: 1rem;
+}
+
+.dialog-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.dialog-field span {
+  display: block;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dialog-field select,
+.dialog-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.dialog-field select:focus,
+.dialog-field textarea:focus {
+  outline: none;
+  border-color: #3f51b5;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.dialog-actions .cancel-btn {
+  background: #666;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dialog-actions .save-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dialog-actions .cancel-btn:hover {
+  background: #555;
+}
+
+.dialog-actions .save-btn:hover {
+  background: #45a049;
 }
 </style>
 
