@@ -37,6 +37,10 @@ export interface IApiService {
   update_rws_session_title(payload: { session_id: string; title: string }): Promise<any>;
   stream_rws(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
   
+  // RWS File upload
+  upload_rws_file(session_id: string, file: File): Promise<any>;
+  get_rws_session_files(session_id: string): Promise<any[]>;
+  
   // Graph management methods
   get_paper_graph(): Promise<{ nodes: any[], edges: any[] }>;
   update_graph_nodes(papers: any[]): Promise<any>;
@@ -447,6 +451,35 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to remove graph edge:', error);
+      throw error;
+    }
+  }
+
+  // RWS File upload
+  async upload_rws_file(session_id: string, file: File): Promise<any> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('session_id', session_id);
+
+      const response = await this.api.post(`/api/review/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to upload RWS file:', error);
+      throw error;
+    }
+  }
+
+  async get_rws_session_files(session_id: string): Promise<any[]> {
+    try {
+      const response = await this.api.get(`/api/review/sessions/${session_id}/files`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get RWS session files:', error);
       throw error;
     }
   }

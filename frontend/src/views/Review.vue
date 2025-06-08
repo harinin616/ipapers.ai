@@ -514,11 +514,31 @@ async function loadRwsSession(sessionId = null) {
       messages.value = [];
       generatedContent.value = '';
       guidanceList.value = [];
+      uploadedFiles.value = [];
       return;
     }
     
+    // Load messages
     const response = await api.get_rws_messages({ session_id: sessionId });
     messages.value = response || [];
+    
+    // Load session files
+    try {
+      const sessionFiles = await api.get_rws_session_files(sessionId);
+      uploadedFiles.value = sessionFiles.map((file, index) => ({
+        ...file,
+        x: 50 + (index % 3) * 120,
+        y: 50 + Math.floor(index / 3) * 80
+      }));
+      
+      // Update graph nodes and visualization
+      await updateGraphNodes();
+      await nextTick();
+      updateGraphVisualization();
+    } catch (fileError) {
+      console.error('Failed to load session files:', fileError);
+      uploadedFiles.value = [];
+    }
     
     // Reconstruct the generated content from messages
     const lastAssistantMessage = messages.value.filter(m => m.role === 'assistant').pop();
@@ -550,6 +570,7 @@ async function loadRwsSession(sessionId = null) {
     messages.value = [];
     generatedContent.value = '';
     guidanceList.value = [];
+    uploadedFiles.value = [];
   }
 }
 
@@ -995,40 +1016,58 @@ async function uploadFile(file) {
   uploadProgress.value.push(progressItem);
   
   try {
-    // Simulate file upload progress
-    for (let progress = 0; progress <= 100; progress += 10) {
-      await new Promise(resolve => setTimeout(resolve, 100)); // Simulate upload time
-      progressItem.progress = progress;
+    // Ensure we have a current session
+    if (!currentSessionId.value) {
+      const newSession = await rwsSessionStore.createSession({ title: 'New RWS Session' });
+      currentSessionId.value = newSession.id;
+      localStorage.setItem('currentRwsSessionId', newSession.id);
     }
     
-    // Simulate successful upload - add to uploaded files
-    const uploadedFile = {
-      paper_id: progressId,
-      filename: file.name,
-      file_size: file.size,
-      upload_date: new Date().toISOString(),
-      x: 50 + (uploadedFiles.value.length % 3) * 120,
-      y: 50 + Math.floor(uploadedFiles.value.length / 3) * 80,
-      // Store file data for potential use
-      fileData: file
-    };
+    // Update progress during upload
+    progressItem.progress = 20;
     
-    uploadedFiles.value.push(uploadedFile);
-    await updateGraphNodes();
+    // Actually upload the file to backend
+    const response = await api.upload_rws_file(currentSessionId.value, file);
     
-    // Update graph visualization after adding file
-    nextTick(() => {
-      updateGraphVisualization();
-    });
+    progressItem.progress = 80;
     
-    // Remove from progress after a delay
-    setTimeout(() => {
-      uploadProgress.value = uploadProgress.value.filter(p => p.id !== progressId);
-    }, 2000);
+    if (response.success && response.file_info) {
+      const fileInfo = response.file_info;
+      
+      // Add to uploaded files with position for graph
+      const uploadedFile = {
+        paper_id: fileInfo.paper_id,
+        filename: fileInfo.filename,
+        file_size: fileInfo.file_size,
+        upload_date: new Date(fileInfo.upload_date * 1000).toISOString(),
+        content_type: fileInfo.content_type,
+        x: 50 + (uploadedFiles.value.length % 3) * 120,
+        y: 50 + Math.floor(uploadedFiles.value.length / 3) * 80,
+        selected: fileInfo.selected
+      };
+      
+      uploadedFiles.value.push(uploadedFile);
+      await updateGraphNodes();
+      
+      // Update graph visualization after adding file
+      nextTick(() => {
+        updateGraphVisualization();
+      });
+      
+      progressItem.progress = 100;
+      
+      // Remove from progress after success
+      setTimeout(() => {
+        uploadProgress.value = uploadProgress.value.filter(p => p.id !== progressId);
+      }, 2000);
+      
+    } else {
+      throw new Error('Upload failed - no file info returned');
+    }
     
   } catch (error) {
     console.error('Upload error:', error);
-    progressItem.error = 'Upload failed';
+    progressItem.error = error.message || 'Upload failed';
     
     // Remove failed upload after delay
     setTimeout(() => {

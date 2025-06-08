@@ -2,7 +2,11 @@ import os
 import logging
 import time
 import uuid
+import json
+import aiofiles
 from typing import List, Dict, Any, AsyncGenerator, Tuple
+from pathlib import Path
+from fastapi import UploadFile
 import asyncio
 
 from app.services.llm_service import llm_service
@@ -32,6 +36,8 @@ class ReviewService:
         
         # track processing files (shared with chat service)
         self.processing_files = set()
+        
+
         
         logger.info(f"Review Service initialized. Max context: {self.max_context_messages}")
     
@@ -279,7 +285,7 @@ class ReviewService:
     
     async def generate_rwg_response(self, user_id: str, query: str, session_id: str = None) -> AsyncGenerator[Tuple[str, bool], None]:
         """
-        generate streaming response for related work generation (uses shared file system)
+        generate streaming response for related work generation (uses session-specific uploaded files)
         """
         if session_id is None:
             session_id = "default"
@@ -288,19 +294,27 @@ class ReviewService:
         
         try:
             relevant_chunks = []
-            # Use shared chat system for file access
+            
+            # First try to get chunks from session-specific uploaded files
+            session_chunks = await self.query_session_chunks(user_id, session_id, query)
+            if session_chunks:
+                relevant_chunks.extend(session_chunks)
+            
+            # Also get chunks from shared chat system files if available
             from app.services.chat_service import chat_service
             chat_data = chat_service.active_chats.get(user_id)
             if chat_data and chat_data["files"]:
                 # get relevant chunks from pdf for related work generation using shared system
-                relevant_chunks = await pdf_service.query_similar_chunks(user_id, query)
+                shared_chunks = await pdf_service.query_similar_chunks(user_id, query)
+                if shared_chunks:
+                    relevant_chunks.extend(shared_chunks)
             
             # format messages for related work generation
             api_messages = await self.format_rwg_messages(user_id, session_id)
             
             # add relevant chunks to the latest user message
             if relevant_chunks:
-                context_text = "\n\n".join(relevant_chunks)
+                context_text = "\n\n".join(relevant_chunks[:30])  # Limit to top 30 chunks
                 last_message_idx = len(api_messages) - 1
                 
                 # create enhanced query with context for RWG
@@ -354,5 +368,80 @@ class ReviewService:
             error_msg = "Sorry, I encountered an error while processing your related work generation request."
             self.add_message(user_id, session_id, "assistant", error_msg)
             yield error_msg, True
+
+    # ============ FILE PROCESSING METHODS ============
+    
+    async def process_uploaded_file(self, user_id: str, session_id: str, file: UploadFile, paper_id: str) -> Dict[str, Any]:
+        """
+        Process uploaded file using existing pdf_service methods
+        """
+        try:
+            # Use pdf_service to process the file
+            success = await pdf_service.process_uploaded_file(user_id, session_id, file, paper_id)
+            
+            if not success:
+                logger.error(f"Failed to process uploaded file {file.filename}")
+                return None
+            
+            # Add file to session
+            file_info = {
+                "paper_id": paper_id,
+                "filename": file.filename,
+                "file_size": file.size,
+                "upload_date": time.time(),
+                "content_type": file.content_type,
+                "selected": True  # Auto-select uploaded files
+            }
+            
+            # Store in session data
+            if user_id not in self.active_rws:
+                self.active_rws[user_id] = {"sessions": {}}
+            if session_id not in self.active_rws[user_id]["sessions"]:
+                self.active_rws[user_id]["sessions"][session_id] = {
+                    "messages": [],
+                    "title": "Untitled RWS Session",
+                    "lastMessageAt": time.time(),
+                    "uploaded_files": []
+                }
+            
+            # Add to session's uploaded files
+            if "uploaded_files" not in self.active_rws[user_id]["sessions"][session_id]:
+                self.active_rws[user_id]["sessions"][session_id]["uploaded_files"] = []
+            
+            self.active_rws[user_id]["sessions"][session_id]["uploaded_files"].append(file_info)
+            
+            logger.info(f"Successfully processed uploaded file {file.filename} for user {user_id}, session {session_id}")
+            return file_info
+            
+        except Exception as e:
+            logger.error(f"Error processing uploaded file {file.filename}: {str(e)}")
+            return None
+    
+    def get_session_files(self, user_id: str, session_id: str) -> List[Dict[str, Any]]:
+        """
+        Get uploaded files for a specific session
+        """
+        if (user_id not in self.active_rws or 
+            session_id not in self.active_rws[user_id]["sessions"]):
+            return []
+        
+        session_data = self.active_rws[user_id]["sessions"][session_id]
+        return session_data.get("uploaded_files", [])
+    
+    async def query_session_chunks(self, user_id: str, session_id: str, query: str) -> List[str]:
+        """
+        Query similar chunks from uploaded files in a specific session using pdf_service
+        """
+        try:
+            session_files = self.get_session_files(user_id, session_id)
+            if not session_files:
+                return []
+            
+            # Use pdf_service's existing query method
+            return await pdf_service.query_session_chunks(user_id, session_id, query, session_files)
+            
+        except Exception as e:
+            logger.error(f"Error querying session chunks: {str(e)}")
+            return []
 
 review_service = ReviewService() 

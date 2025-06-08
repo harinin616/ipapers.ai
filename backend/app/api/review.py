@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException, Body, Path, Request, Query
+from fastapi import APIRouter, HTTPException, Body, Path, Request, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
 import logging
 import json
+import uuid
+import os
+from pathlib import Path as PathlibPath
 from pydantic import BaseModel
 
 from app.services.review_service import review_service
@@ -35,6 +38,70 @@ class ReviewResponseChunk:
             "content": self.content,
             "done": self.done
         }, ensure_ascii=False)
+
+
+# ============ FILE UPLOAD ENDPOINT ============
+
+@router.post("/upload")
+async def upload_file(
+    request: Request,
+    session_id: str = Body(...),
+    file: UploadFile = File(...)
+):
+    """
+    Upload a file for a specific RWS session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    # Validate file type
+    allowed_types = ['application/pdf', 'application/msword', 
+                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                     'text/plain']
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="File type not supported. Please upload PDF, DOC, DOCX, or TXT files.")
+    
+    # Validate file size (50MB limit)
+    if file.size > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB.")
+    
+    try:
+        # Generate unique paper_id for uploaded file
+        paper_id = f"upload_{user_id}_{session_id}_{uuid.uuid4().hex[:8]}"
+        
+        # Process the uploaded file
+        file_info = await review_service.process_uploaded_file(
+            user_id, session_id, file, paper_id
+        )
+        
+        if not file_info:
+            raise HTTPException(status_code=500, detail="Failed to process uploaded file")
+        
+        return {
+            "success": True,
+            "file_info": file_info
+        }
+        
+    except Exception as e:
+        logger.error(f"Error uploading file for user {user_id}, session {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upload file")
+
+
+@router.get("/sessions/{session_id}/files")
+async def get_session_files(
+    request: Request,
+    session_id: str = Path(...)
+):
+    """
+    Get uploaded files for a specific RWS session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    files = review_service.get_session_files(user_id, session_id)
+    return files
 
 
 # ============ SESSION MANAGEMENT ENDPOINTS ============

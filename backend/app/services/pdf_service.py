@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 
 import PyPDF2
 import numpy as np
@@ -9,6 +10,7 @@ import aiofiles.os
 import asyncio
 from pathlib import Path
 import re
+from fastapi import UploadFile
 
 
 
@@ -297,5 +299,144 @@ class PdfService:
         except Exception as e:
             logger.error(f"Error generating embeddings for paper {paper_id}: {str(e)}", exc_info=True)
             return False
+
+    async def save_uploaded_file(self, user_id: str, session_id: str, file: UploadFile, paper_id: str) -> str:
+        """
+        Save uploaded file using existing directory structure
+        """
+        try:
+            # Use existing directory structure but add session context
+            target_dir = self.pdf_dir / "uploads" / user_id / session_id
+            await aiofiles.os.makedirs(target_dir, exist_ok=True)
+            
+            # Save with proper extension
+            file_extension = Path(file.filename).suffix
+            saved_filename = f"{paper_id}{file_extension}"
+            file_path = target_dir / saved_filename
+            
+            # Save file to disk
+            async with aiofiles.open(file_path, 'wb') as f:
+                content = await file.read()
+                await f.write(content)
+            
+            return str(file_path)
+            
+        except Exception as e:
+            logger.error(f"Error saving uploaded file {file.filename}: {str(e)}")
+            raise
+
+    async def process_uploaded_file(self, user_id: str, session_id: str, file: UploadFile, paper_id: str) -> bool:
+        """
+        Process uploaded file and generate embeddings using existing methods
+        """
+        try:
+            # Save file using existing pattern
+            file_path = await self.save_uploaded_file(user_id, session_id, file, paper_id)
+            
+            # Extract text based on file type
+            if file.content_type == 'application/pdf':
+                text_content = await self.extract_text_from_pdf(file_path)
+            elif file.content_type == 'text/plain':
+                async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                    text_content = await f.read()
+                text_content = self.clean_text(text_content)
+            else:
+                # Handle other file types
+                text_content = f"Content from {file.filename}"
+            
+            if not text_content:
+                return False
+            
+            # Use existing chunking method
+            chunks = self.chunk_text(text_content)
+            if not chunks:
+                return False
+
+            # Use existing embedding generation
+            all_embeddings = await llm_service.get_embeddings(texts=chunks)
+            
+            if len(all_embeddings) != len(chunks):
+                logger.error(f"Generated embeddings count ({len(all_embeddings)}) doesn't match chunks count ({len(chunks)})")
+                return False
+
+            # Save embeddings using existing format and structure
+            target_dir = self.embedding_dir / "uploads" / user_id / session_id
+            await aiofiles.os.makedirs(target_dir, exist_ok=True)
+            local_path = target_dir / f"{paper_id}.json"
+            
+            embedding_data = {
+                "chunks": chunks, 
+                "embeddings": all_embeddings, 
+                "full_text": text_content,
+                "filename": file.filename,
+                "content_type": file.content_type
+            }
+            
+            async with aiofiles.open(local_path, 'w', encoding='utf-8') as f:
+                await f.write(json.dumps(embedding_data))
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing uploaded file {paper_id}: {str(e)}")
+            return False
+
+    async def query_session_chunks(self, user_id: str, session_id: str, query: str, file_list: List[Dict]) -> List[str]:
+        """
+        Query similar chunks from session files using existing similarity logic
+        """
+        try:
+            all_chunks = []
+            all_embeddings = []
+            
+            # Load embeddings for session files
+            for file_info in file_list:
+                if not file_info.get("selected", True):
+                    continue
+                
+                paper_id = file_info["paper_id"]
+                local_path = self.embedding_dir / "uploads" / user_id / session_id / f"{paper_id}.json"
+                
+                if not local_path.exists():
+                    logger.warning(f"Session embedding file not found: {local_path}")
+                    continue
+                
+                async with aiofiles.open(local_path, 'r', encoding='utf-8') as f:
+                    content = await f.read()
+                    data = json.loads(content)
+                
+                chunks = data.get("chunks", [])
+                embeddings = data.get("embeddings", [])
+                
+                if chunks and embeddings and len(chunks) == len(embeddings):
+                    all_chunks.extend(chunks)
+                    all_embeddings.extend(embeddings)
+            
+            if not all_chunks or not all_embeddings:
+                return []
+            
+            # Use existing similarity calculation logic
+            query_embedding_list = await llm_service.get_embeddings(texts=[query])
+            query_embedding = query_embedding_list[0]
+            
+            similarities = []
+            for i, emb in enumerate(all_embeddings):
+                emb_array = np.array(emb)
+                query_array = np.array(query_embedding)
+                dot_product = np.dot(emb_array, query_array)
+                emb_norm = np.linalg.norm(emb_array)
+                query_norm = np.linalg.norm(query_array)
+                similarity = dot_product / (emb_norm * query_norm)
+                similarities.append((i, similarity))
+            
+            similarities.sort(key=lambda x: x[1], reverse=True)
+            top_chunks = [all_chunks[idx] for idx, _ in similarities[:self.top_k]]
+            
+            logger.info(f"Retrieved {len(top_chunks)} relevant chunks for RWS session {session_id}")
+            return top_chunks
+            
+        except Exception as e:
+            logger.error(f"Error querying session chunks: {str(e)}")
+            return []
 
 pdf_service = PdfService() 
