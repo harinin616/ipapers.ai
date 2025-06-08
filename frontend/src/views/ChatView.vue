@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-page">
+  <div class="chat-page" :style="chatPageStyle">
     <div v-if="initialLoading" class="loading">Loading...</div>
     <div v-else class="full-layout">
 
@@ -101,15 +101,35 @@ const inputField = ref(null);
 // check if paper is processing
 const isPaperProcessing = ref(false);
 
+// Header height calculation
+const headerHeight = ref(60); // Default fallback
 
+// Dynamic height calculation for chat page
+const chatPageStyle = computed(() => ({
+  height: `calc(100vh - ${headerHeight.value}px)`
+}));
+
+// Function to get actual header height
+const getHeaderHeight = () => {
+  const header = document.querySelector('.app-header');
+  if (header) {
+    headerHeight.value = header.offsetHeight;
+  }
+};
 
 // watch paper processing state
 watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
   isPaperProcessing.value = isProcessing;
 }, { immediate: true });
 
+// Clean up on unmount
 onBeforeUnmount(() => {
   chatSessionStore.resetProcessingState();
+  // Restore body overflow when leaving chat
+  document.body.style.overflowY = '';
+  document.documentElement.style.overflowY = '';
+  // Remove resize listener
+  window.removeEventListener('resize', getHeaderHeight);
 });
 
 // input placeholder
@@ -173,6 +193,16 @@ async function deleteThisSession(sessionId) {
 // Initialization
 onMounted(async () => {
   try {
+    // Hide body overflow to prevent outer scrollbar
+    document.body.style.overflowY = 'hidden';
+    document.documentElement.style.overflowY = 'hidden';
+    
+    // Get actual header height
+    getHeaderHeight();
+    
+    // Listen for window resize to update header height
+    window.addEventListener('resize', getHeaderHeight);
+    
     await chatSessionStore.fetchAllSessions();
     const savedSessionId = localStorage.getItem('currentSessionId');
     if (savedSessionId && chatSessionStore.sessions.some(s => s.id === savedSessionId)) {
@@ -430,7 +460,7 @@ watch(
 <style scoped>
 .chat-page {
   width: 100%;
-  height: calc(100vh - 60px);
+  /* height: calc(100vh - 60px); */ /* Remove fixed height calculation */
   position: relative;
   display: flex;
   flex-direction: column;
@@ -715,6 +745,6 @@ button:disabled {
 <style>
 body {
   --app-max-width: none !important;
-  overflow-x: hidden;
+  /* overflow-x: hidden; */ /* Remove as we now control via JavaScript */
 }
 </style> 
