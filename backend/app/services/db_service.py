@@ -1,12 +1,13 @@
 import logging
 from typing import List, Optional
 from sqlalchemy.future import select
-from sqlalchemy import func, text, update
+from sqlalchemy import func, text, update, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, paper_authors
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors
 from app.db.database import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -415,6 +416,151 @@ class DBService:
                 return None
         
         return None
+
+    async def add_session(self, session_id: str, user_id: int, session_time: datetime) -> bool:
+        """
+        Create a new chat session for a user
+        """
+        if not session_id or not user_id:
+            logger.warning("Attempted to create session with empty session_id or user_id")
+            return False
+            
+        async for db in get_async_db():
+            try:
+                # Check if session with this ID already exists
+                result = await db.execute(
+                    select(DBSession).where(DBSession.session_id == session_id)
+                )
+                existing_session = result.scalars().first()
+                
+                if existing_session:
+                    logger.warning(f"Session with ID {session_id} already exists")
+                    return False
+                
+                # Check if user exists
+                result = await db.execute(
+                    select(DBUser).where(DBUser.user_id == user_id)
+                )
+                user = result.scalars().first()
+                
+                if not user:
+                    logger.warning(f"User with ID {user_id} not found")
+                    return False
+                
+                # Create new session with specified time
+                new_session = DBSession(
+                    session_id=session_id,
+                    user_id=user_id,
+                    created_at=session_time,
+                    last_message_at=session_time
+                )
+                
+                db.add(new_session)
+                await db.commit()
+                
+                logger.info(f"Successfully created new session: {session_id} for user: {user_id} at {session_time}")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when creating session {session_id}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when creating session {session_id}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+
+    async def delete_session(self, session_id: str) -> bool:
+        """
+        Delete a chat session and all its messages
+        """
+        if not session_id:
+            logger.warning("the session id is empty")
+            return False
+            
+        async for db in get_async_db():
+            try:
+                # Check if session exists
+                result = await db.execute(
+                    select(DBSession).where(DBSession.session_id == session_id)
+                )
+                session = result.scalars().first()
+                
+                if not session:
+                    logger.warning(f"Session with ID {session_id} not found")
+                    return False
+                
+                await db.execute(
+                    delete(DBSession).where(DBSession.session_id == session_id)
+                )
+                
+                await db.commit()
+                
+                logger.info(f"Successfully deleted session: {session_id} and all messages")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when deleting session {session_id}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when deleting session {session_id}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+
+    async def add_message(self, session_id: str, content: str, role: str, message_time: datetime) -> bool:
+        """
+        Add a new message to a chat session
+        """
+        if not session_id or not content or not role:
+            logger.warning("empty session_id, content, or role")
+            return False
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBSession).where(DBSession.session_id == session_id)
+                )
+                session = result.scalars().first()
+                
+                if not session:
+                    logger.warning(f"Session {session_id} not found")
+                    return False
+                
+                new_message = DBMessage(
+                    session_id=session_id,
+                    content=content,
+                    role=role,
+                    created_at=message_time
+                )
+                
+                db.add(new_message)
+                
+                await db.execute(
+                    update(DBSession)
+                    .where(DBSession.session_id == session_id)
+                    .values(last_message_at=message_time)
+                )
+                
+                await db.commit()
+                
+                logger.info(f"Successfully added message to session: {session_id}, role: {role}, time: {message_time}")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when adding message to session {session_id}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when adding message to session {session_id}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
 
 # Create a global instance
 db_service = DBService() 

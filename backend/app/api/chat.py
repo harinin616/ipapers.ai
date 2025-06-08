@@ -5,6 +5,8 @@ import logging
 import json
 from app.services.chat_service import chat_service
 from pydantic import BaseModel
+from app.services.db_service import db_service
+from datetime import datetime
 
 class StreamChatRequest(BaseModel):
     session_id: str
@@ -69,6 +71,9 @@ async def chat(
         )
     session_id = body.session_id
     message = body.message
+
+    await db_service.add_message(session_id, message, "user", datetime.now())
+
    # selected_files = body.selected_files
     if user_id not in chat_service.active_chats:
         chat_service.active_chats[user_id] = {
@@ -274,6 +279,7 @@ async def create_session(request: Request, data: dict = Body(...)):
         raise HTTPException(status_code=401, detail="User ID not found")
     title = data.get("title", "Untitled Session")
     session_id = chat_service.create_session(user_id, title)
+    await db_service.add_session(session_id, user_id, datetime.now())
     return {"id": session_id, "title": title}
 
 
@@ -287,6 +293,7 @@ async def delete_session(request: Request, data: dict = Body(...)):
     if not user_id or not session_id:
         raise HTTPException(status_code=400, detail="Missing user_id or session_id")
     chat_service.delete_session(user_id, session_id)
+    await db_service.delete_session(session_id)
     return {"success": True}
 
 @router.post("/update_session_title")

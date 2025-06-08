@@ -8,6 +8,7 @@ import asyncio
 from app.services.llm_service import llm_service
 from app.services.pdf_service import pdf_service
 from app.services.db_service import db_service
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,7 @@ class ChatService:
             # add to chat history after completion
             if assistant_response:
                 self.add_message(user_id,session_id, "assistant", assistant_response)
+                await db_service.add_message(session_id, assistant_response, "assistant", datetime.now())
                 
             # send end flag
             yield "", True

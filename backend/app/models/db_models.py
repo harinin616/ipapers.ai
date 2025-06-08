@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignKey, ARRAY, Text
 from sqlalchemy.ext.declarative import declarative_base
@@ -78,5 +78,39 @@ class DBUser(Base):
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
     
+    sessions = relationship("DBSession", back_populates="user", cascade="all, delete-orphan")
+    
     def __repr__(self):
         return f"<User {self.user_id}: {self.name}>"
+
+class DBSession(Base):
+    """Chat session database model"""
+    __tablename__ = "sessions"
+    
+    session_id = Column(String, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_message_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("DBUser", back_populates="sessions")
+    messages = relationship("DBMessage", back_populates="session", cascade="all, delete-orphan", order_by="DBMessage.created_at")
+    
+    def __repr__(self):
+        return f"<Session {self.session_id}: User {self.user_id}>"
+
+class DBMessage(Base):
+    """Chat message database model"""
+    __tablename__ = "messages"
+    
+    message_id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, ForeignKey('sessions.session_id'), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    role = Column(String, nullable=False)  # 'user', 'assistant', 'system', etc.
+    
+    # Relationships
+    session = relationship("DBSession", back_populates="messages")
+    
+    def __repr__(self):
+        return f"<Message {self.message_id}: {self.role} in Session {self.session_id}>"

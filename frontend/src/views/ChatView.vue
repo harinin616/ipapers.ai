@@ -13,7 +13,14 @@
 
       <!-- Chat Area -->
       <div class="chat-view">
-        <div class="chat-section">
+        <!-- Chat content loading state -->
+        <div v-if="chatLoading" class="chat-content-loading">
+          <div class="chat-loader"></div>
+          <div>Loading chat...</div>
+        </div>
+        
+        <!-- Normal chat content -->
+        <div v-else class="chat-section">
           <div class="chat-header">
             <div class="header-main">
               <h2>AI Chat</h2>
@@ -85,6 +92,7 @@ const messages = ref([]);
 const userInput = ref('');
 const isLoading = ref(false);  // Message loading status
 const initialLoading = ref(true);  // Initial loading status
+const chatLoading = ref(false);  // Chat content loading status for session switching
 const isTyping = ref(false);
 const currentTypingMessageId = ref(null); // Current typing message ID
 const messagesContainer = ref(null);
@@ -118,9 +126,9 @@ async function switchSession(sessionId) {
   if (sessionId === currentSessionId.value) return;
   currentSessionId.value = sessionId;
   localStorage.setItem('currentSessionId', sessionId); 
-  initialLoading.value = true;
+  chatLoading.value = true;
   await loadChatSession(sessionId);
-  initialLoading.value = false;
+  chatLoading.value = false;
 }
 
 // just clear the current session, create new session when sending message
@@ -630,6 +638,17 @@ watch(
   color: #666;
   font-style: italic;
   padding: 0.5rem;
+}
+
+.chat-content-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: #666;
+  font-size: 0.95rem;
 }
 
 .chat-loader {
