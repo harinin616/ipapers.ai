@@ -1,7 +1,17 @@
 <template>
   <div class="review-page">
     <div v-if="initialLoading" class="loading">Loading...</div>
-    <div v-else class="two-panel-layout">
+    <div v-else class="full-layout">
+
+      <RwsSidebar 
+        :rws-sessions="rwsSessions"
+        :current-session-id="currentSessionId"
+        @create-session="createNewSession"
+        @switch-session="switchSession"
+        @delete-session="deleteThisSession"
+      />
+
+      <div class="two-panel-layout">
       <!-- Left Panel: File Upload & Papers Relation Graph -->
       <div class="left-panel">
         <div class="panel-header">
@@ -217,16 +227,19 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import { chatSessionStore } from '../stores/chatSession';
+import { rwsSessionStore } from '../stores/rwsSession';
+import RwsSidebar from '../components/RwsSidebar.vue';
 import api from '../services/api'
 
 // UI refs
@@ -255,6 +268,13 @@ const isGenerating = ref(false);
 const graphWidth = ref(400);
 const graphHeight = ref(300);
 const paperConnections = ref([]);
+
+// Session management
+const currentSessionId = ref(localStorage.getItem('currentRwsSessionId') || null);
+const messages = ref([]);
+
+// Computed properties
+const rwsSessions = computed(() => rwsSessionStore.sessions || []);
 
 // Watch paper processing state
 watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
@@ -335,9 +355,87 @@ function removeGuidance(id) {
   guidanceList.value = guidanceList.value.filter(g => g.id !== id);
 }
 
+// Session management functions
+async function switchSession(sessionId) {
+  if (sessionId === currentSessionId.value) return;
+  currentSessionId.value = sessionId;
+  localStorage.setItem('currentRwsSessionId', sessionId); 
+  initialLoading.value = true;
+  await loadRwsSession(sessionId);
+  initialLoading.value = false;
+}
+
+async function createNewSession() {
+  currentSessionId.value = null;
+  messages.value = [];
+  generatedContent.value = '';
+  guidanceList.value = [];
+}
+
+async function loadRwsSession(sessionId = null) {
+  try {
+    if (!sessionId) {
+      messages.value = [];
+      generatedContent.value = '';
+      return;
+    }
+    
+    const response = await api.get_rws_messages({ session_id: sessionId });
+    messages.value = response || [];
+    
+    // Reconstruct the generated content from messages
+    const lastAssistantMessage = messages.value.filter(m => m.role === 'assistant').pop();
+    if (lastAssistantMessage) {
+      generatedContent.value = lastAssistantMessage.content;
+    } else {
+      generatedContent.value = '';
+    }
+    
+    await nextTick();
+  } catch (error) {
+    console.error('Failed to load RWS session:', error);
+    messages.value = [];
+    generatedContent.value = '';
+  }
+}
+
+async function deleteThisSession(sessionId) {
+  // if delete current session, just clear it
+  if (sessionId === currentSessionId.value) {
+    messages.value = [];
+    generatedContent.value = '';
+    guidanceList.value = [];
+    currentSessionId.value = null;
+    localStorage.removeItem('currentRwsSessionId');
+  }
+
+  try {
+    await rwsSessionStore.deleteSession(sessionId);
+  } catch (e) {
+    console.error('failed to delete RWS session:', e);
+  }
+}
+
+function extractTitleFromInput(input) {
+  const trimmed = input.trim();
+  if (!trimmed) return 'Untitled RWS Session';
+  return trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed;
+}
+
 // Generation function
 async function generateRelatedWork() {
   if (uploadedFiles.value.length === 0 || isGenerating.value) return;
+  
+  // Create session if none exists
+  if (!currentSessionId.value) {
+    const guidanceText = guidanceList.value.length > 0 
+      ? guidanceList.value.map(g => g.content).join(' ') 
+      : '';
+    const title = extractTitleFromInput(guidanceText || 'Related Work Generation');
+    const newSession = await rwsSessionStore.createSession({ title });
+    currentSessionId.value = newSession.id;
+    localStorage.setItem('currentRwsSessionId', newSession.id);
+  }
   
   isGenerating.value = true;
   generatedContent.value = '';
@@ -350,8 +448,15 @@ async function generateRelatedWork() {
     
     const message = `${guidanceText}Generate a comprehensive related work section based on the ${uploadedFiles.value.length} uploaded papers. Focus on identifying key contributions, methodologies, and relationships between these works.`;
     
-    // Use the RWG API
-    const response = await api.chat_rwg(message);
+    // Get selected files
+    const selectedFiles = uploadedFiles.value.map(file => file.paper_id);
+    
+    // Use the new RWS API with session support
+    const response = await api.stream_rws({
+      session_id: currentSessionId.value,
+      message: message,
+      selected_files: selectedFiles
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -434,6 +539,16 @@ async function copyToClipboard() {
 onMounted(async () => {
   try {
     initialLoading.value = true;
+    
+    // Initialize RWS sessions
+    await rwsSessionStore.fetchAllSessions();
+    const savedSessionId = localStorage.getItem('currentRwsSessionId');
+    if (savedSessionId && rwsSessionStore.sessions.some(s => s.id === savedSessionId)) {
+      currentSessionId.value = savedSessionId;
+      await loadRwsSession(savedSessionId);
+    } else {
+      currentSessionId.value = null;
+    }
     
     // Load existing files
     await loadUserFiles();
@@ -578,8 +693,14 @@ function formatFileSize(size) {
   color: #666;
 }
 
+.full-layout {
+  display: flex;
+  height: 100%;
+}
+
 .two-panel-layout {
   display: flex;
+  flex: 1;
   height: 100%;
   gap: 1rem;
   padding: 1rem;

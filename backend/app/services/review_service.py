@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import uuid
 from typing import List, Dict, Any, AsyncGenerator, Tuple
 import asyncio
 
@@ -12,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class ReviewService:
     """
-    Service for handling related work generation
-    Uses shared file system with chat service, but maintains separate message history
+    Service for handling related work generation with multiple sessions support
+    Uses shared file system with chat service, but maintains separate session histories
     """
     
     def __init__(self):
@@ -23,43 +24,109 @@ class ReviewService:
         # review config
         self.max_context_messages = 10
         
-        # message storage for RWG (files are shared with chat)
-        self.rwg_messages = {}
+        # RWS sessions (similar to chat sessions)
+        self.active_rws = {}
         
         # track processing files (shared with chat service)
         self.processing_files = set()
         
         logger.info(f"Review Service initialized. Max context: {self.max_context_messages}")
     
-    # ============ RWG (RELATED WORK GENERATION) METHODS ============
+    # ============ SESSION MANAGEMENT METHODS ============
     
-    def add_rwg_message(self, user_id: str, role: str, content: str):
-        """
-        add message to related work generation conversation
-        """
-        if user_id not in self.rwg_messages:
-            self.rwg_messages[user_id] = []
-        
-        self.rwg_messages[user_id].append({
+    def create_session(self, user_id: str, title: str = "Untitled RWS Session") -> str:
+        """Create a new RWS session"""
+        if user_id not in self.active_rws:
+            self.active_rws[user_id] = {"sessions": {}}
+        session_id = str(uuid.uuid4())
+        self.active_rws[user_id]["sessions"][session_id] = {
+            "messages": [],
+            "title": title,
+            "lastMessageAt": time.time()
+        }
+        return session_id
+    
+    def get_sessions(self, user_id: str):
+        """Get all RWS sessions for a user"""
+        if user_id not in self.active_rws:
+            return []
+        return [
+            {
+                "id": sid,
+                "title": ctx.get("title", "Untitled RWS Session"),
+                "lastMessageAt": ctx.get("lastMessageAt", 0)
+            }
+            for sid, ctx in self.active_rws[user_id]["sessions"].items()
+        ]
+    
+    def update_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+        """Update session title"""
+        if user_id not in self.active_rws:
+            return False
+        sessions = self.active_rws[user_id]["sessions"]
+        if session_id not in sessions:
+            return False
+        sessions[session_id]["title"] = title
+        return True
+    
+    def delete_session(self, user_id: str, session_id: str):
+        """Delete a session"""
+        if user_id in self.active_rws and session_id in self.active_rws[user_id]["sessions"]:
+            del self.active_rws[user_id]["sessions"][session_id]
+    
+    def add_message(self, user_id: str, session_id: str, role: str, content: str):
+        """Add message to a specific session"""
+        if user_id not in self.active_rws or session_id not in self.active_rws[user_id]["sessions"]:
+            logger.error(f"RWS session not found: {user_id} {session_id}")
+            return
+        now = time.time()
+        self.active_rws[user_id]["sessions"][session_id]["messages"].append({
             "role": role,
             "content": content,
-            "timestamp": time.time()
+            "timestamp": now
         })
-    
-    def get_rwg_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
-        """get user's related work generation history messages"""
-        if user_id not in self.rwg_messages:
-            self.rwg_messages[user_id] = []
-        messages = self.rwg_messages[user_id]
-        
+        self.active_rws[user_id]["sessions"][session_id]["lastMessageAt"] = now
+
+    def get_messages(self, user_id: str, session_id: str, limit: int = None):
+        """Get messages from a specific session"""
+        if user_id not in self.active_rws or session_id not in self.active_rws[user_id]["sessions"]:
+            return []
+        messages = self.active_rws[user_id]["sessions"][session_id]["messages"]
         if limit:
             return messages[-limit:]
         return messages
+    
+    # ============ LEGACY METHODS (for backward compatibility) ============
+    
+    def add_rwg_message(self, user_id: str, role: str, content: str):
+        """Legacy method - add message to default session"""
+        # For backward compatibility, use a default session
+        if user_id not in self.active_rws:
+            self.active_rws[user_id] = {"sessions": {}}
+        
+        # Create default session if it doesn't exist
+        default_session_id = "default"
+        if default_session_id not in self.active_rws[user_id]["sessions"]:
+            self.active_rws[user_id]["sessions"][default_session_id] = {
+                "messages": [],
+                "title": "Default RWS Session",
+                "lastMessageAt": time.time()
+            }
+        
+        self.add_message(user_id, default_session_id, role, content)
+    
+    def get_rwg_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
+        """Legacy method - get messages from default session"""
+        default_session_id = "default"
+        return self.get_messages(user_id, default_session_id, limit)
 
-    async def format_rwg_messages(self, user_id: str) -> List[Dict[str, str]]:
+    async def format_rwg_messages(self, user_id: str, session_id: str = None) -> List[Dict[str, str]]:
         """
         format related work generation messages for API call (uses shared file system)
         """
+        if session_id is None:
+            session_id = "default"
+            
         from app.services.chat_service import chat_service
         
         # Get file names from shared chat system
@@ -80,7 +147,7 @@ class ReviewService:
         )
         
         api_messages = [{"role": "system", "content": system_content}]
-        user_messages = [m for m in self.rwg_messages.get(user_id, []) if m["role"] in ["user", "assistant"]]
+        user_messages = [m for m in self.get_messages(user_id, session_id) if m["role"] in ["user", "assistant"]]
         recent_messages = user_messages[-self.max_context_messages:]
         for msg in recent_messages:
             api_messages.append({
@@ -89,11 +156,14 @@ class ReviewService:
             })
         return api_messages
     
-    async def generate_rwg_response(self, user_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
+    async def generate_rwg_response(self, user_id: str, query: str, session_id: str = None) -> AsyncGenerator[Tuple[str, bool], None]:
         """
         generate streaming response for related work generation (uses shared file system)
         """
-        self.add_rwg_message(user_id, "user", query)
+        if session_id is None:
+            session_id = "default"
+            
+        self.add_message(user_id, session_id, "user", query)
         
         try:
             relevant_chunks = []
@@ -105,7 +175,7 @@ class ReviewService:
                 relevant_chunks = await pdf_service.query_similar_chunks(user_id, query)
             
             # format messages for related work generation
-            api_messages = await self.format_rwg_messages(user_id)
+            api_messages = await self.format_rwg_messages(user_id, session_id)
             
             # add relevant chunks to the latest user message
             if relevant_chunks:
@@ -127,7 +197,7 @@ class ReviewService:
         except Exception as e:
             logger.error(f"Error performing RAG for RWG {user_id}: {str(e)}")
             # if failed, fallback to regular message format
-            api_messages = await self.format_rwg_messages(user_id)
+            api_messages = await self.format_rwg_messages(user_id, session_id)
         
         # generate response from LLM
         assistant_response = ""
@@ -139,7 +209,7 @@ class ReviewService:
             
             if not stream_response:
                 error_msg = "Sorry, I encountered an error while processing your related work generation request."
-                self.add_rwg_message(user_id, "assistant", error_msg)
+                self.add_message(user_id, session_id, "assistant", error_msg)
                 yield error_msg, True
                 return
             
@@ -153,7 +223,7 @@ class ReviewService:
             
             # add to RWG history after completion
             if assistant_response:
-                self.add_rwg_message(user_id, "assistant", assistant_response)
+                self.add_message(user_id, session_id, "assistant", assistant_response)
                 
             # send end flag
             yield "", True
@@ -161,10 +231,7 @@ class ReviewService:
         except Exception as e:
             logger.error(f"Error generating RWG response for {user_id}: {str(e)}")
             error_msg = "Sorry, I encountered an error while processing your related work generation request."
-            self.add_rwg_message(user_id, "assistant", error_msg)
+            self.add_message(user_id, session_id, "assistant", error_msg)
             yield error_msg, True
 
-
-
-# Create singleton instance
 review_service = ReviewService() 

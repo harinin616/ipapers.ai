@@ -28,6 +28,14 @@ export interface IApiService {
   // RWS (Review) functionality
   chat_rwg(message: string): Promise<Response>;
   get_rwg_messages(): Promise<any[]>;
+  
+  // RWS Session management methods
+  get_rws_sessions(): Promise<{ id: string; title: string }[]>;
+  create_rws_session(payload: { title: string }): Promise<{ id: string; title: string }>;
+  delete_rws_session(payload: { session_id: string }): Promise<any>;
+  get_rws_messages(payload: { session_id: string }): Promise<any[]>;
+  update_rws_session_title(payload: { session_id: string; title: string }): Promise<any>;
+  stream_rws(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
 }
 /**
  * API Service implementation
@@ -316,6 +324,81 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to get RWG messages:', error);
+      throw error;
+    }
+  }
+
+  // ============ RWS SESSION MANAGEMENT ============
+  
+  async get_rws_sessions(): Promise<{ id: string; title: string }[]> {
+    try {
+      const response = await this.api.get('/api/chat/sessions');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get RWS sessions:', error);
+      throw error;
+    }
+  }
+
+  async create_rws_session(payload: { title: string }): Promise<{ id: string; title: string }> {
+    try {
+      const response = await this.api.post('/api/chat/sessions', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create RWS session:', error);
+      throw error;
+    }
+  }
+  
+  async delete_rws_session(payload: { session_id: string }): Promise<any> {
+    try {
+      const response = await this.api.delete('/api/chat/sessions', { data: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete RWS session:', error);
+      throw error;
+    }
+  }
+
+  async get_rws_messages(payload: { session_id: string }): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/chat/messages', { params: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get RWS messages:', error);
+      throw error;
+    }
+  }
+  
+  async update_rws_session_title(payload: { session_id: string; title: string }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/chat/update_session_title', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update RWS session title:', error);
+      throw error;
+    }
+  }
+
+  async stream_rws(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response> {
+    try {
+      const userId = localStorage.getItem('X-User-ID');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+
+      const response = await fetch(`/api/chat/stream_rws`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Failed to stream RWS:', error);
       throw error;
     }
   }

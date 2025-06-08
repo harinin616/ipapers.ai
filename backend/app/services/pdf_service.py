@@ -290,7 +290,7 @@ class PdfService:
 
             
             with open(local_path, 'w', encoding='utf-8') as f:
-                json.dump({"chunks": chunks, "embeddings": all_embeddings}, f)
+                json.dump({"chunks": chunks, "embeddings": all_embeddings, "full_text": text_content}, f)
             
             return True
             
