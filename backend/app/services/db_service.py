@@ -610,5 +610,91 @@ class DBService:
         
         return False
 
+    async def get_sessions_by_user_id(self, user_id: int) -> List[dict]:
+        """
+        Get all sessions for a specific user
+        """
+        if not user_id:
+            logger.info("empty user_id")
+            return []
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBSession)
+                    .where(DBSession.user_id == user_id)
+                    .order_by(DBSession.last_message_at.desc())
+                )
+                sessions = result.scalars().all()
+                
+                session_list = []
+                for session in sessions:
+                    session_list.append({
+                        "session_id": session.session_id,
+                        "title": session.title,
+                        "created_at": session.created_at.isoformat() if session.created_at else None,
+                        "last_message_at": session.last_message_at.isoformat() if session.last_message_at else None
+                    })
+                
+                logger.info(f"get {len(session_list)} sessions for user {user_id}")
+                return session_list
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting sessions for user {user_id}: {str(e)}")
+                return []
+            except Exception as e:
+                logger.error(f"Unexpected error when getting sessions for user {user_id}: {str(e)}", exc_info=True)
+                return []
+        
+        return []
+
+    async def get_messages_by_session_id(self, session_id: str) -> List[dict]:
+        """
+        Get all messages for a session
+        """
+        if not session_id:
+            logger.warning("empty session_id")
+            return []
+            
+        async for db in get_async_db():
+            try:
+                session_result = await db.execute(
+                    select(DBSession).where(DBSession.session_id == session_id)
+                )
+                session = session_result.scalars().first()
+                
+                if not session:
+                    logger.info(f"Session {session_id} not found")
+                    return []
+                
+                # Get all messages for this session
+                result = await db.execute(
+                    select(DBMessage)
+                    .where(DBMessage.session_id == session_id)
+                    .order_by(DBMessage.created_at.asc())
+                )
+                messages = result.scalars().all()
+                
+                message_list = []
+                for message in messages:
+                    message_list.append({
+                        "message_id": message.message_id,
+                        "content": message.content,
+                        "role": message.role,
+                        "created_at": message.created_at.isoformat() if message.created_at else None
+                    })
+                
+                logger.info(f"get    {len(message_list)} messages for session {session_id}")
+                return message_list
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting messages for session {session_id}: {str(e)}")
+                return []
+            except Exception as e:
+                logger.error(f"Unexpected error when getting messages for session {session_id}: {str(e)}", exc_info=True)
+                return []
+        
+        return []
+
 # Create a global instance
 db_service = DBService() 
