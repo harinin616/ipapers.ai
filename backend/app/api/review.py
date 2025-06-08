@@ -239,28 +239,37 @@ async def stream_rws(
 # ============ GRAPH MANAGEMENT ENDPOINTS ============
 
 @router.get("/graph")
-async def get_paper_graph(request: Request):
+async def get_paper_graph(
+    request: Request,
+    session_id: str = Query(...)
+):
     """
-    Get the paper relation graph for the user
+    Get the paper relation graph for the user session
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
     
-    graph = review_service.get_paper_graph(user_id)
+    graph = review_service.get_paper_graph(user_id, session_id)
     return graph
 
 
 @router.post("/graph/nodes")
-async def update_graph_nodes(request: Request, papers: List[dict] = Body(...)):
+async def update_graph_nodes(request: Request, data: dict = Body(...)):
     """
-    Update graph nodes based on user's papers
+    Update graph nodes based on user's papers in a specific session
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
     
-    success = review_service.update_graph_nodes(user_id, papers)
+    papers = data.get("papers", [])
+    session_id = data.get("session_id")
+    
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    success = review_service.update_graph_nodes(user_id, papers, session_id)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update graph nodes")
     
@@ -270,7 +279,7 @@ async def update_graph_nodes(request: Request, papers: List[dict] = Body(...)):
 @router.post("/graph/edges")
 async def add_graph_edge(request: Request, data: dict = Body(...)):
     """
-    Add a directed edge between two papers
+    Add a directed edge between two papers in a specific session
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
@@ -280,11 +289,15 @@ async def add_graph_edge(request: Request, data: dict = Body(...)):
     to_paper = data.get("to")
     relationship_type = data.get("relationship_type", "relates_to")
     description = data.get("description", "")
+    session_id = data.get("session_id")
     
     if not from_paper or not to_paper:
         raise HTTPException(status_code=400, detail="Missing from or to paper")
     
-    success = review_service.add_graph_edge(user_id, from_paper, to_paper, relationship_type, description)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    success = review_service.add_graph_edge(user_id, from_paper, to_paper, relationship_type, description, session_id)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to add edge")
     
@@ -294,7 +307,7 @@ async def add_graph_edge(request: Request, data: dict = Body(...)):
 @router.delete("/graph/edges")
 async def remove_graph_edge(request: Request, data: dict = Body(...)):
     """
-    Remove a directed edge between two papers
+    Remove a directed edge between two papers in a specific session
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
@@ -302,11 +315,15 @@ async def remove_graph_edge(request: Request, data: dict = Body(...)):
     
     from_paper = data.get("from")
     to_paper = data.get("to")
+    session_id = data.get("session_id")
     
     if not from_paper or not to_paper:
         raise HTTPException(status_code=400, detail="Missing from or to paper")
     
-    success = review_service.remove_graph_edge(user_id, from_paper, to_paper)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    success = review_service.remove_graph_edge(user_id, from_paper, to_paper, session_id)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to remove edge")
     

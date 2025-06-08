@@ -31,7 +31,7 @@ class ReviewService:
         # RWS sessions (similar to chat sessions)
         self.active_rws = {}
         
-        # Paper relation graphs (per user)
+        # Paper relation graphs (per user per session)
         self.paper_graphs = {}
         
         # track processing files (shared with chat service)
@@ -107,40 +107,49 @@ class ReviewService:
     
     # ============ GRAPH MANAGEMENT METHODS ============
     
-    def get_paper_graph(self, user_id: str) -> Dict[str, Any]:
-        """Get the paper relation graph for a user"""
-        if user_id not in self.paper_graphs:
-            self.paper_graphs[user_id] = {
+    def get_paper_graph(self, user_id: str, session_id: str = None) -> Dict[str, Any]:
+        """Get the paper relation graph for a user session"""
+        if session_id is None:
+            session_id = "default"
+            
+        graph_key = f"{user_id}:{session_id}"
+        if graph_key not in self.paper_graphs:
+            self.paper_graphs[graph_key] = {
                 "nodes": [],  # paper metadata
                 "edges": []   # directed relationships
             }
-        return self.paper_graphs[user_id]
+        return self.paper_graphs[graph_key]
     
-    def update_graph_nodes(self, user_id: str, papers: List[Dict[str, Any]]) -> bool:
-        """Update graph nodes based on user's papers"""
+    def update_graph_nodes(self, user_id: str, papers: List[Dict[str, Any]], session_id: str = None) -> bool:
+        """Update graph nodes based on user's papers in a specific session"""
         try:
-            if user_id not in self.paper_graphs:
-                self.paper_graphs[user_id] = {"nodes": [], "edges": []}
+            if session_id is None:
+                session_id = "default"
+                
+            graph = self.get_paper_graph(user_id, session_id)
             
             # Update nodes
-            self.paper_graphs[user_id]["nodes"] = papers
+            graph["nodes"] = papers
             
             # Remove edges that reference non-existent papers
             valid_paper_ids = {paper["paper_id"] for paper in papers}
-            self.paper_graphs[user_id]["edges"] = [
-                edge for edge in self.paper_graphs[user_id]["edges"]
+            graph["edges"] = [
+                edge for edge in graph["edges"]
                 if edge["from"] in valid_paper_ids and edge["to"] in valid_paper_ids
             ]
             
             return True
         except Exception as e:
-            logger.error(f"Error updating graph nodes for user {user_id}: {str(e)}")
+            logger.error(f"Error updating graph nodes for user {user_id}, session {session_id}: {str(e)}")
             return False
     
-    def add_graph_edge(self, user_id: str, from_paper: str, to_paper: str, relationship_type: str = "relates_to", description: str = "") -> bool:
-        """Add a directed edge between two papers"""
+    def add_graph_edge(self, user_id: str, from_paper: str, to_paper: str, relationship_type: str = "relates_to", description: str = "", session_id: str = None) -> bool:
+        """Add a directed edge between two papers in a specific session"""
         try:
-            graph = self.get_paper_graph(user_id)
+            if session_id is None:
+                session_id = "default"
+                
+            graph = self.get_paper_graph(user_id, session_id)
             
             # Check if papers exist
             paper_ids = {node["paper_id"] for node in graph["nodes"]}
@@ -169,13 +178,16 @@ class ReviewService:
             return True
             
         except Exception as e:
-            logger.error(f"Error adding graph edge for user {user_id}: {str(e)}")
+            logger.error(f"Error adding graph edge for user {user_id}, session {session_id}: {str(e)}")
             return False
     
-    def remove_graph_edge(self, user_id: str, from_paper: str, to_paper: str) -> bool:
-        """Remove a directed edge between two papers"""
+    def remove_graph_edge(self, user_id: str, from_paper: str, to_paper: str, session_id: str = None) -> bool:
+        """Remove a directed edge between two papers in a specific session"""
         try:
-            graph = self.get_paper_graph(user_id)
+            if session_id is None:
+                session_id = "default"
+                
+            graph = self.get_paper_graph(user_id, session_id)
             original_count = len(graph["edges"])
             graph["edges"] = [
                 edge for edge in graph["edges"]
@@ -183,13 +195,16 @@ class ReviewService:
             ]
             return len(graph["edges"]) < original_count
         except Exception as e:
-            logger.error(f"Error removing graph edge for user {user_id}: {str(e)}")
+            logger.error(f"Error removing graph edge for user {user_id}, session {session_id}: {str(e)}")
             return False
     
-    def get_graph_context(self, user_id: str) -> str:
-        """Generate context string about paper relationships for LLM"""
+    def get_graph_context(self, user_id: str, session_id: str = None) -> str:
+        """Generate context string about paper relationships for LLM in a specific session"""
         try:
-            graph = self.get_paper_graph(user_id)
+            if session_id is None:
+                session_id = "default"
+                
+            graph = self.get_paper_graph(user_id, session_id)
             
             if not graph["edges"]:
                 return ""
@@ -216,7 +231,7 @@ class ReviewService:
             return ""
             
         except Exception as e:
-            logger.error(f"Error generating graph context for user {user_id}: {str(e)}")
+            logger.error(f"Error generating graph context for user {user_id}, session {session_id}: {str(e)}")
             return ""
     
     # ============ LEGACY METHODS (for backward compatibility) ============
@@ -245,23 +260,20 @@ class ReviewService:
 
     async def format_rwg_messages(self, user_id: str, session_id: str = None) -> List[Dict[str, str]]:
         """
-        format related work generation messages for API call (uses shared file system)
+        format related work generation messages for API call (uses session-specific uploaded files)
         """
         if session_id is None:
             session_id = "default"
-            
-        from app.services.chat_service import chat_service
         
-        # Get file names from shared chat system
+        # Get file names from session-specific uploaded files
         file_names = []
-        chat_data = chat_service.active_chats.get(user_id)
-        if chat_data and chat_data["files"]:
-            for file_data in chat_data["files"]:
-                if file_data.get("selected"):
-                    file_names.append(file_data.get("filename", "Unknown file"))
+        session_files = self.get_session_files(user_id, session_id)
+        for file_data in session_files:
+            if file_data.get("selected", True):  # Default to selected for uploaded files
+                file_names.append(file_data.get("filename", "Unknown file"))
         
-        # Get graph context
-        graph_context = self.get_graph_context(user_id)
+        # Get graph context for this session
+        graph_context = self.get_graph_context(user_id, session_id)
         
         system_content = (
             "You are a professional academic writing assistant specialized in generating related work sections. "

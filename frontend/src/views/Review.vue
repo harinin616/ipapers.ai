@@ -600,7 +600,8 @@ function extractTitleFromInput(input) {
 // Graph management functions
 async function loadPaperGraph() {
   try {
-    const graph = await api.get_paper_graph();
+    if (!currentSessionId.value) return;
+    const graph = await api.get_paper_graph(currentSessionId.value);
     paperGraph.value = graph;
     updateGraphVisualization();
   } catch (error) {
@@ -610,7 +611,8 @@ async function loadPaperGraph() {
 
 async function updateGraphNodes() {
   try {
-    await api.update_graph_nodes(uploadedFiles.value);
+    if (!currentSessionId.value) return;
+    await api.update_graph_nodes(uploadedFiles.value, currentSessionId.value);
     await loadPaperGraph();
   } catch (error) {
     console.error('Failed to update graph nodes:', error);
@@ -748,7 +750,11 @@ function cancelAddingEdge() {
 
 async function saveEdge() {
   try {
-    await api.add_graph_edge(currentEdge.value);
+    if (!currentSessionId.value) return;
+    await api.add_graph_edge({ 
+      ...currentEdge.value, 
+      session_id: currentSessionId.value 
+    });
     await loadPaperGraph();
     edgeEditDialog.value = false;
     isAddingEdge.value = false;
@@ -760,7 +766,12 @@ async function saveEdge() {
 
 async function removeEdge(fromPaper, toPaper) {
   try {
-    await api.remove_graph_edge({ from: fromPaper, to: toPaper });
+    if (!currentSessionId.value) return;
+    await api.remove_graph_edge({ 
+      from: fromPaper, 
+      to: toPaper, 
+      session_id: currentSessionId.value 
+    });
     await loadPaperGraph();
   } catch (error) {
     console.error('Failed to remove edge:', error);

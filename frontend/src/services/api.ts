@@ -42,10 +42,10 @@ export interface IApiService {
   get_rws_session_files(session_id: string): Promise<any[]>;
   
   // Graph management methods
-  get_paper_graph(): Promise<{ nodes: any[], edges: any[] }>;
-  update_graph_nodes(papers: any[]): Promise<any>;
-  add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string }): Promise<any>;
-  remove_graph_edge(payload: { from: string; to: string }): Promise<any>;
+  get_paper_graph(session_id: string): Promise<{ nodes: any[], edges: any[] }>;
+  update_graph_nodes(papers: any[], session_id: string): Promise<any>;
+  add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string; session_id: string }): Promise<any>;
+  remove_graph_edge(payload: { from: string; to: string; session_id: string }): Promise<any>;
 }
 /**
  * API Service implementation
@@ -415,9 +415,9 @@ class ApiService implements IApiService {
 
   // ============ GRAPH MANAGEMENT ============
   
-  async get_paper_graph(): Promise<{ nodes: any[], edges: any[] }> {
+  async get_paper_graph(session_id: string): Promise<{ nodes: any[], edges: any[] }> {
     try {
-      const response = await this.api.get('/api/review/graph');
+      const response = await this.api.get('/api/review/graph', { params: { session_id } });
       return response.data;
     } catch (error) {
       console.error('Failed to get paper graph:', error);
@@ -425,9 +425,9 @@ class ApiService implements IApiService {
     }
   }
 
-  async update_graph_nodes(papers: any[]): Promise<any> {
+  async update_graph_nodes(papers: any[], session_id: string): Promise<any> {
     try {
-      const response = await this.api.post('/api/review/graph/nodes', papers);
+      const response = await this.api.post('/api/review/graph/nodes', { papers, session_id });
       return response.data;
     } catch (error) {
       console.error('Failed to update graph nodes:', error);
@@ -435,7 +435,7 @@ class ApiService implements IApiService {
     }
   }
 
-  async add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string }): Promise<any> {
+  async add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string; session_id: string }): Promise<any> {
     try {
       const response = await this.api.post('/api/review/graph/edges', payload);
       return response.data;
@@ -445,7 +445,7 @@ class ApiService implements IApiService {
     }
   }
 
-  async remove_graph_edge(payload: { from: string; to: string }): Promise<any> {
+  async remove_graph_edge(payload: { from: string; to: string; session_id: string }): Promise<any> {
     try {
       const response = await this.api.delete('/api/review/graph/edges', { data: payload });
       return response.data;
