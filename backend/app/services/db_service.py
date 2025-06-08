@@ -422,12 +422,11 @@ class DBService:
         Create a new chat session for a user
         """
         if not session_id or not user_id:
-            logger.warning("Attempted to create session with empty session_id or user_id")
+            logger.info("empty user_id")
             return False
             
         async for db in get_async_db():
             try:
-                # Check if session with this ID already exists
                 result = await db.execute(
                     select(DBSession).where(DBSession.session_id == session_id)
                 )
@@ -489,7 +488,7 @@ class DBService:
                 session = result.scalars().first()
                 
                 if not session:
-                    logger.warning(f"Session with ID {session_id} not found")
+                    logger.info(f"Session {session_id} not found")
                     return False
                 
                 await db.execute(
@@ -516,8 +515,8 @@ class DBService:
         """
         Add a new message to a chat session
         """
-        if not session_id or not content or not role:
-            logger.warning("empty session_id, content, or role")
+        if not session_id:
+            logger.info("empty session id")
             return False
             
         async for db in get_async_db():
@@ -528,7 +527,7 @@ class DBService:
                 session = result.scalars().first()
                 
                 if not session:
-                    logger.warning(f"Session {session_id} not found")
+                    logger.info(f"Session {session_id} not found")
                     return False
                 
                 new_message = DBMessage(

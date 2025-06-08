@@ -69,6 +69,7 @@ async def chat(
             status_code=401,
             detail="User ID not found"
         )
+    
     session_id = body.session_id
     message = body.message
 
@@ -279,7 +280,16 @@ async def create_session(request: Request, data: dict = Body(...)):
         raise HTTPException(status_code=401, detail="User ID not found")
     title = data.get("title", "Untitled Session")
     session_id = chat_service.create_session(user_id, title)
-    await db_service.add_session(session_id, user_id, datetime.now())
+    
+    # Try to convert user_id to integer for database operation
+    try:
+        int_user_id = int(user_id)
+        await db_service.add_session(session_id, int_user_id, datetime.now())
+    except (ValueError, TypeError):
+        # If conversion fails, skip database operation
+        logger.info("user not logged in")
+        pass
+    
     return {"id": session_id, "title": title}
 
 

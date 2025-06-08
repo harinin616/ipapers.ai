@@ -240,7 +240,6 @@ async function sendMessage() {
     await api.update_session_title({ session_id: currentSessionId.value, title: newTitle });
     session.title = newTitle;
   }
-  console.log('messagecontent', messageContent);
   // Add user message to UI
   const userMessage = {
     id: Date.now().toString(),
