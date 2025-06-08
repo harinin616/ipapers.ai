@@ -417,16 +417,17 @@ class DBService:
         
         return None
 
-    async def add_session(self, session_id: str, user_id: int, session_time: datetime) -> bool:
+    async def add_session(self, session_id: str, user_id: int, session_time: datetime, title: str = "untitled") -> bool:
         """
         Create a new chat session for a user
         """
         if not session_id or not user_id:
-            logger.info("empty user_id")
+            logger.warning("Attempted to create session with empty session_id or user_id")
             return False
             
         async for db in get_async_db():
             try:
+                # Check if session with this ID already exists
                 result = await db.execute(
                     select(DBSession).where(DBSession.session_id == session_id)
                 )
@@ -446,10 +447,11 @@ class DBService:
                     logger.warning(f"User with ID {user_id} not found")
                     return False
                 
-                # Create new session with specified time
+                # Create new session with specified time and title
                 new_session = DBSession(
                     session_id=session_id,
                     user_id=user_id,
+                    title=title,
                     created_at=session_time,
                     last_message_at=session_time
                 )
@@ -457,7 +459,7 @@ class DBService:
                 db.add(new_session)
                 await db.commit()
                 
-                logger.info(f"Successfully created new session: {session_id} for user: {user_id} at {session_time}")
+                logger.info(f"Successfully created new session: {session_id} for user: {user_id} with title: {title} at {session_time}")
                 return True
                 
             except SQLAlchemyError as e:
@@ -563,6 +565,47 @@ class DBService:
             except Exception as e:
                 await db.rollback()
                 logger.error(f"Unexpected error when adding message to session {session_id}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+
+    async def update_session_title(self, session_id: str, title: str) -> bool:
+        """
+        Update the title of a chat session
+        """
+        if not session_id:
+            logger.info("empty session id")
+            return False
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBSession).where(DBSession.session_id == session_id)
+                )
+                session = result.scalars().first()
+                
+                if not session:
+                    logger.info(f"Session {session_id} not found")
+                    return False
+                
+                await db.execute(
+                    update(DBSession)
+                    .where(DBSession.session_id == session_id)
+                    .values(title=title)
+                )
+                
+                await db.commit()
+                
+                logger.info(f"Successfully updated session title: {session_id} -> {title}")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when updating session title {session_id}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when updating session title {session_id}: {str(e)}", exc_info=True)
                 return False
         
         return False

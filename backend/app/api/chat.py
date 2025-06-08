@@ -284,7 +284,7 @@ async def create_session(request: Request, data: dict = Body(...)):
     # Try to convert user_id to integer for database operation
     try:
         int_user_id = int(user_id)
-        await db_service.add_session(session_id, int_user_id, datetime.now())
+        await db_service.add_session(session_id, int_user_id, datetime.now(), title)
     except (ValueError, TypeError):
         # If conversion fails, skip database operation
         logger.info("user not logged in")
@@ -319,7 +319,11 @@ async def update_session_title(
     title = data.get("title")
     if not user_id or not session_id or not title:
         raise HTTPException(status_code=400, detail="Missing user_id, session_id or title")
+    
     success = chat_service.update_session_title(user_id, session_id, title)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
+    
+    await db_service.update_session_title(session_id, title)
+    
     return {"success": True}

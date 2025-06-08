@@ -89,6 +89,7 @@ class DBSession(Base):
     
     session_id = Column(String, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, index=True)
+    title = Column(String, nullable=False, default="untitled")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_message_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     
