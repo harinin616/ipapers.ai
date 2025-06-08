@@ -178,7 +178,7 @@ class PdfService:
                 "paper_id": paper_id,
                 "paper_URL":f"https://arxiv.org/pdf/{paper_id}.pdf",
                 "added_at": datetime.now().isoformat(),
-                "selected": False
+                "selected": True
             }
             
             chat_service.active_chats[user_id]["files"].append(file_info)

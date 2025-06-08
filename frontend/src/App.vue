@@ -5,20 +5,23 @@
         <router-link to="/">Home</router-link>
         <router-link to="/chat">Chat</router-link>
         <router-link to="/review">Review</router-link>
-        <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
-          <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-          </svg>
-          <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
-        </button>
 
-       <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
-       <div class="user-info" v-show="user">
-         <img :src="user?.picture" alt="avatar" class="avatar" />
-         <span class="user-name">{{ user?.name }}</span>
-         <button @click="logout" class="logout-btn">Logout</button>
-       </div>
-       
+        <div class="nav-right-section">
+          <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
+          <div class="user-info" v-show="user">
+            <img :src="user?.picture" alt="avatar" class="avatar" />
+            <span class="user-name">{{ user?.name }}</span>
+            <button @click="logout" class="logout-btn">Logout</button>
+          </div>
+
+          <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
+            <svg class="icon-svg" viewBox="0 0 24 24">
+              <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+            <span v-if="fileCount > 0" class="file-count-badge">{{ fileCount }}</span>
+          </button>
+        </div>
+
       </nav>
     </header>
     
@@ -36,6 +39,7 @@
     <FileList
       ref="fileListRef"
       v-model:show-files-list="showFilesList"
+      :show-pdf="showPdf"
       :user_id="userId || ''"
       class="global-file-list"
       :style="fileListStyle"
@@ -43,7 +47,6 @@
       @pdf-closed="handlePdfClosed"
       @files-updated="handleFilesUpdated"
       @update-file-count="(count: number) => fileCount = count"
-      @width-update="updateFileListWidth"
     />
   </div>
 </template>
@@ -53,6 +56,20 @@ import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed,  nex
 import { useRouter } from 'vue-router'
 import apiService from './services/api'
 import FileList from './components/FileList.vue'
+
+// Google API type declaration
+declare global {
+  interface Window {
+    google: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+        }
+      }
+    }
+  }
+}
 
 export default defineComponent({
   name: 'App',
@@ -66,14 +83,13 @@ export default defineComponent({
     const fileListRef = ref(null);
     const fileCount = ref(0);
     const userId = ref<string | null>(null);
+    const windowWidth = ref(window.innerWidth);
     
     
     const user = ref<{ email: string; name: string; picture: string; user_id: string } | null>(null)
 
     const appHeaderRef = ref<HTMLElement | null>(null);
     const headerHeight = ref(0);
-    const currentFileListActualWidth = ref('');
-    const fallbackFileListWidth = ref('clamp(300px, 30vw, 450px)');
 
     const saveScrollPosition = (path: string): void => {
       sessionStorage.setItem(
@@ -123,7 +139,8 @@ export default defineComponent({
 
     const handleFilesUpdated = (count?: number) => {
       showFilesList.value = true;
-      showPdf.value = true;
+      // Don't automatically show PDF when files are updated/attached
+      // PDF should only show when user manually selects a file
       if (typeof count === 'number') {
         fileCount.value = count;
       }
@@ -225,6 +242,7 @@ export default defineComponent({
         headerHeight.value = appHeaderRef.value.offsetHeight;
       }
       window.addEventListener('resize', updateHeaderHeight);
+      window.addEventListener('resize', updateWindowWidth);
       
       // Listen for paper-attached events
       window.addEventListener('paper-attached', handlePaperAttached);
@@ -237,6 +255,7 @@ export default defineComponent({
     onBeforeUnmount(() => {
       document.body.classList.remove('pdf-active-page');
       window.removeEventListener('resize', updateHeaderHeight);
+      window.removeEventListener('resize', updateWindowWidth);
       window.removeEventListener('paper-attached', handlePaperAttached);
     });
     
@@ -246,21 +265,32 @@ export default defineComponent({
       }
     };
 
+    const updateWindowWidth = () => {
+      windowWidth.value = window.innerWidth;
+    };
+
     const fileListStyle = computed(() => ({
       transform: showFilesList.value ? 'translateX(0)' : 'translateX(100%)',
       top: headerHeight.value + 'px',
       height: `calc(100vh - ${headerHeight.value}px)`,
     }));
 
-    const appContentStyle = computed(() => ({
-      width: showFilesList.value 
-        ? `calc(100% - ${currentFileListActualWidth.value || fallbackFileListWidth.value})` 
-        : '100%',
-    }));
-
-    const updateFileListWidth = (newWidth: string) => {
-      currentFileListActualWidth.value = newWidth;
-    };
+    const appContentStyle = computed(() => {
+      if (windowWidth.value <= 1024) {
+        return {
+          width: '100%',
+          transition: 'width 0.3s ease-in-out',
+        };
+      }
+      
+      return {
+        width: showFilesList.value 
+          ? `calc(100% - ${showPdf.value ? 'clamp(580px, 45vw, 750px)' : '340px'})` 
+          : '100%',
+        transition: 'width 0.3s ease-in-out, margin-right 0.3s ease-in-out',
+        marginRight: showFilesList.value ? '20px' : '0px',
+      };
+    });
 
     const logout = async () => {
       user.value = null
@@ -288,7 +318,6 @@ export default defineComponent({
       appHeaderRef,
       fileListStyle,
       appContentStyle,
-      updateFileListWidth,
       googleBtn,
       user,
       logout,
@@ -363,6 +392,8 @@ body {
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease-in-out;
+  position: relative;
+  z-index: 1;
 }
 
 .app-footer {
@@ -379,7 +410,6 @@ body {
   color: white;
   cursor: pointer;
   padding: 0.5rem;
-  margin-left: auto;
   display: flex;
   align-items: center;
   border-radius: 4px;
@@ -409,14 +439,15 @@ body {
 .global-file-list {
   position: fixed;
   right: 0;
-  width: clamp(300px, 30vw, 450px);
   background-color: #ffffff;
   box-shadow: -3px 0 10px rgba(0,0,0,0.15);
-  z-index: 1050;
-  transition: transform 0.3s ease-in-out;
+  z-index: 100;
+  transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  will-change: transform, width;
+  transform: translateZ(0);
 }
 
 body.pdf-active-page {
@@ -453,5 +484,33 @@ body.pdf-active-page {
 
 .logout-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-right-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Responsive adjustments to prevent overlay issues */
+@media (max-width: 1024px) {
+  .app-content {
+    width: 100% !important;
+  }
+  
+  .global-file-list {
+    z-index: 200;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-content {
+    width: 100% !important;
+  }
+  
+  .global-file-list {
+    z-index: 200;
+  }
 }
 </style> 

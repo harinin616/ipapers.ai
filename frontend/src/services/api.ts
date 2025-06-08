@@ -2,7 +2,6 @@ import axios, { AxiosInstance } from 'axios';
 import type { Paper } from '@/types/paper';
 import { fileSelectionStore } from '@/stores/fileSelectionStore';
 
-
 /**
  * API Service interface
  */
@@ -15,16 +14,21 @@ export interface IApiService {
   process_embeddings(paperId: string): Promise<boolean>;
   get_user_files(): Promise<any[]>;
   delete_file(paper_id: string): Promise<boolean>;
-  get_messages(): Promise<any[]>;
-  stream_chat(message: string): Promise<Response>;
-  chat_rwg(message: string): Promise<Response>;
+  stream_chat(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
   
-  // Review message methods (using shared file system)
+  // Session management methods
+  get_sessions(): Promise<{ id: string; title: string }[]>;
+  create_session(payload: { title: string }): Promise<{ id: string; title: string }>;
+  delete_session(payload: { session_id: string }): Promise<any>;
+  get_messages(payload: { session_id: string }): Promise<any[]>;
+  update_session_title(payload: { session_id: string; title: string }): Promise<any>;
+  
+  // RWS (Review) functionality
+  chat_rwg(message: string): Promise<Response>;
   get_rwg_messages(): Promise<any[]>;
 }
-
 /**
  * API Service implementation
  */
@@ -161,17 +165,7 @@ class ApiService implements IApiService {
     }
   }
 
-  async get_messages(): Promise<any[]> {
-    try {
-      const response = await this.api.get(`/api/chat/messages`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get messages:', error);
-      throw error;
-    }
-  }
-
-  async stream_chat(message: string): Promise<Response> {
+  async stream_chat(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response> {
     try {
       const userId = localStorage.getItem('X-User-ID');
       const headers: HeadersInit = {
@@ -181,15 +175,13 @@ class ApiService implements IApiService {
         headers['X-User-ID'] = userId;
       }
 
-      const selectedFiles = fileSelectionStore.getSelectedFiles();
-
       const response = await fetch(`/api/chat/stream_chat`, {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ message: message, selected_files: selectedFiles })
+        body: JSON.stringify(payload)
       });
-      
-      return response; 
+
+      return response;
     } catch (error) {
       console.error('Failed to stream chat:', error);
       throw error;
@@ -241,7 +233,82 @@ class ApiService implements IApiService {
     }
   }
 
-  // ============ REVIEW MESSAGE METHODS (using shared file system) ============
+  /**
+   * 获取所有会话列表
+   */
+  async get_sessions(): Promise<{ id: string; title: string }[]> {
+    try {
+      const response = await this.api.get('/api/chat/sessions');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get sessions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 新建会话
+   */
+  async create_session(payload: { title: string }): Promise<{ id: string; title: string }> {
+    try {
+      const response = await this.api.post('/api/chat/sessions', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      throw error;
+    }
+  }
+  
+  async delete_session(payload: { session_id: string }): Promise<any> {
+    try {
+      const response = await this.api.delete('/api/chat/sessions', { data: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取指定会话的消息
+   */
+  async get_messages(payload: { session_id: string }): Promise<any[]> {
+    try {
+      const response = await this.api.get('/api/chat/messages', { params: payload });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get messages:', error);
+      throw error;
+    }
+  }
+  
+  async update_session_title(payload: { session_id: string; title: string }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/chat/update_session_title', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update session title:', error);
+      throw error;
+    }
+  }
+  
+  async update_file_selection(payload: { paper_id: string; selected: boolean }): Promise<any> {
+    const userId = localStorage.getItem('X-User-ID');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (userId) {
+      headers['X-User-ID'] = userId;
+    }
+    const response = await fetch('/api/chat/update_file_selection', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    return response.json();
+  }
+
+  // ============ RWS (REVIEW) FUNCTIONALITY ============
   
   async get_rwg_messages(): Promise<any[]> {
     try {
