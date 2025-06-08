@@ -412,9 +412,36 @@ watch(() => rwsSidebarRef.value?.isCollapsed, (collapsed) => {
   });
 }, { immediate: true });
 
+// Watch guidance changes and save to session storage
+watch(() => guidanceList.value, (newGuidance) => {
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
+}, { deep: true });
+
+// Watch paper graph changes and save to session storage
+watch(() => paperConnections.value, (newConnections) => {
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
+}, { deep: true });
+
+// Watch generated content changes and save to session storage
+watch(() => generatedContent.value, (newContent) => {
+  if (currentSessionId.value && !isGenerating.value) {
+    // Only save if not currently generating to avoid excessive saves
+    saveSessionState();
+  }
+});
+
 
 
 onBeforeUnmount(() => {
+  // Save current session state before unmounting
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
+  
   chatSessionStore.resetProcessingState();
   
   // Clean up resize observer
@@ -443,36 +470,53 @@ async function handleFileDrop(event) {
   const files = event.dataTransfer.files;
   if (files.length > 0) {
     await processFiles(files);
-  } else {
-    // Load existing files from the system if no files dropped
-    await loadUserFiles();
   }
+  // Note: Removed automatic loading of user files - sessions should be isolated
 }
 
-async function loadUserFiles() {
-  try {
-    const files = await api.get_user_files();
-    uploadedFiles.value = files.map((file, index) => ({
-      ...file,
-      x: 50 + (index % 3) * 120,
-      y: 50 + Math.floor(index / 3) * 80
-    }));
-    
-    // Update graph nodes and load graph
-    await updateGraphNodes();
-  } catch (error) {
-    console.error('Failed to load user files:', error);
-  }
-}
+// Note: Removed loadUserFiles() function - sessions should be isolated
+// Files are only loaded per-session via loadRwsSession() -> get_rws_session_files()
 
 async function removeFile(paperId) {
-  uploadedFiles.value = uploadedFiles.value.filter(file => file.paper_id !== paperId);
+  try {
+    // Remove from backend session first if we have a current session
+    if (currentSessionId.value) {
+      await api.remove_rws_session_file(currentSessionId.value, paperId);
+    }
+    
+    // Remove from local state after successful backend removal
+    uploadedFiles.value = uploadedFiles.value.filter(file => file.paper_id !== paperId);
+    
+    // Update graph nodes to reflect the change
+    if (currentSessionId.value) {
       await updateGraphNodes();
-    // Update graph visualization after loading files
+    }
+    
+    // Update graph visualization after removing file
     nextTick(() => {
       updateGraphVisualization();
     });
+  } catch (error) {
+    console.error('Failed to remove file:', error);
+    // If backend removal failed, reload session files to ensure consistency
+    if (currentSessionId.value) {
+      try {
+        const sessionFiles = await api.get_rws_session_files(currentSessionId.value);
+        uploadedFiles.value = sessionFiles.map((file, index) => ({
+          ...file,
+          x: 50 + (index % 3) * 120,
+          y: 50 + Math.floor(index / 3) * 80
+        }));
+        await updateGraphNodes();
+        nextTick(() => {
+          updateGraphVisualization();
+        });
+      } catch (reloadError) {
+        console.error('Failed to reload session files after remove error:', reloadError);
+      }
+    }
   }
+}
   
   // Guidance functions
 function addGuidance() {
@@ -485,15 +529,79 @@ function addGuidance() {
   
   guidanceList.value.push(guidance);
   guidanceInputText.value = '';
+  
+  // Save session state immediately
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
 }
 
 function removeGuidance(id) {
   guidanceList.value = guidanceList.value.filter(g => g.id !== id);
+  
+  // Save session state immediately
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
+}
+
+// Session state persistence functions
+function saveSessionState() {
+  if (!currentSessionId.value) return;
+  
+  const sessionState = {
+    guidanceList: guidanceList.value,
+    generatedContent: generatedContent.value,
+    lastUpdated: Date.now()
+  };
+  
+  localStorage.setItem(`rws_session_state_${currentSessionId.value}`, JSON.stringify(sessionState));
+}
+
+function loadSessionState() {
+  if (!currentSessionId.value) return;
+  
+  try {
+    const stateData = localStorage.getItem(`rws_session_state_${currentSessionId.value}`);
+    if (stateData) {
+      const sessionState = JSON.parse(stateData);
+      
+      // Restore guidance list
+      if (sessionState.guidanceList && Array.isArray(sessionState.guidanceList)) {
+        guidanceList.value = sessionState.guidanceList;
+      }
+      
+      // Restore generated content if it exists
+      if (sessionState.generatedContent) {
+        generatedContent.value = sessionState.generatedContent;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load session state:', error);
+  }
+}
+
+function clearSessionState(sessionId) {
+  localStorage.removeItem(`rws_session_state_${sessionId}`);
 }
 
 // Session management functions
 async function switchSession(sessionId) {
   if (sessionId === currentSessionId.value) return;
+  
+  // Save current session state before switching
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
+  
+  // Clear current state to prevent bleed-through
+  messages.value = [];
+  generatedContent.value = '';
+  guidanceList.value = [];
+  uploadedFiles.value = [];
+  paperConnections.value = [];
+  paperGraph.value = { nodes: [], edges: [] };
+  
   currentSessionId.value = sessionId;
   localStorage.setItem('currentRwsSessionId', sessionId); 
   initialLoading.value = true;
@@ -502,6 +610,11 @@ async function switchSession(sessionId) {
 }
 
 async function createNewSession() {
+  // Save current session state before creating new session
+  if (currentSessionId.value) {
+    saveSessionState();
+  }
+  
   // Create a new RWS session
   try {
     const newSession = await rwsSessionStore.createSession({ title: 'New RWS Session' });
@@ -510,6 +623,9 @@ async function createNewSession() {
     messages.value = [];
     generatedContent.value = '';
     guidanceList.value = [];
+    uploadedFiles.value = [];
+    paperConnections.value = [];
+    paperGraph.value = { nodes: [], edges: [] };
   } catch (error) {
     console.error('Failed to create new RWS session:', error);
   }
@@ -524,6 +640,14 @@ async function loadRwsSession(sessionId = null) {
       uploadedFiles.value = [];
       return;
     }
+    
+    // Clear all current state first to ensure clean session loading
+    messages.value = [];
+    generatedContent.value = '';
+    guidanceList.value = [];
+    uploadedFiles.value = [];
+    paperConnections.value = [];
+    paperGraph.value = { nodes: [], edges: [] };
     
     // Load messages
     const response = await api.get_rws_messages({ session_id: sessionId });
@@ -547,27 +671,31 @@ async function loadRwsSession(sessionId = null) {
       uploadedFiles.value = [];
     }
     
-    // Reconstruct the generated content from messages
-    const lastAssistantMessage = messages.value.filter(m => m.role === 'assistant').pop();
-    if (lastAssistantMessage) {
-      generatedContent.value = lastAssistantMessage.content;
-    } else {
-      generatedContent.value = '';
+    // Load session state first (this includes generated content and guidance)
+    loadSessionState();
+    
+    // If no saved content, fallback to loading from messages
+    if (!generatedContent.value) {
+      const lastAssistantMessage = messages.value.filter(m => m.role === 'assistant').pop();
+      if (lastAssistantMessage) {
+        generatedContent.value = lastAssistantMessage.content;
+      }
     }
     
-    // Reconstruct guidance from the last user message
-    guidanceList.value = [];
-    const lastUserMessage = messages.value.filter(m => m.role === 'user').pop();
-    if (lastUserMessage) {
-      // Extract guidance from the user message
-      const guidancePattern = /Please consider the following guidance:\n((?:- .+\n?)+)/;
-      const match = lastUserMessage.content.match(guidancePattern);
-      if (match) {
-        const guidanceItems = match[1].split('\n').filter(line => line.trim().startsWith('-'));
-        guidanceList.value = guidanceItems.map((item, index) => ({
-          id: Date.now() + index,
-          content: item.replace(/^- /, '').trim()
-        }));
+    // If no saved guidance, try to reconstruct from messages (fallback)
+    if (guidanceList.value.length === 0) {
+      const lastUserMessage = messages.value.filter(m => m.role === 'user').pop();
+      if (lastUserMessage) {
+        // Extract guidance from the user message
+        const guidancePattern = /Please consider the following guidance:\n((?:- .+\n?)+)/;
+        const match = lastUserMessage.content.match(guidancePattern);
+        if (match) {
+          const guidanceItems = match[1].split('\n').filter(line => line.trim().startsWith('-'));
+          guidanceList.value = guidanceItems.map((item, index) => ({
+            id: Date.now() + index,
+            content: item.replace(/^- /, '').trim()
+          }));
+        }
       }
     }
     
@@ -582,11 +710,17 @@ async function loadRwsSession(sessionId = null) {
 }
 
 async function deleteThisSession(sessionId) {
+  // Clear the session state from localStorage
+  clearSessionState(sessionId);
+  
   // if delete current session, just clear it
   if (sessionId === currentSessionId.value) {
     messages.value = [];
     generatedContent.value = '';
     guidanceList.value = [];
+    uploadedFiles.value = [];
+    paperConnections.value = [];
+    paperGraph.value = { nodes: [], edges: [] };
     currentSessionId.value = null;
     localStorage.removeItem('currentRwsSessionId');
   }
@@ -905,6 +1039,10 @@ async function generateRelatedWork() {
     generatedContent.value = "Failed to generate related work. Please try again.";
   } finally {
     isGenerating.value = false;
+    // Save session state after generation is complete
+    if (currentSessionId.value) {
+      saveSessionState();
+    }
   }
 }
 
@@ -938,11 +1076,14 @@ onMounted(async () => {
       await loadRwsSession(savedSessionId);
     } else {
       currentSessionId.value = null;
+      // Clear all data when no session is selected - sessions should start clean
+      uploadedFiles.value = [];
+      paperConnections.value = [];
+      paperGraph.value = { nodes: [], edges: [] };
+      messages.value = [];
+      generatedContent.value = '';
+      guidanceList.value = [];
     }
-    
-    // Load existing files and graph
-    await loadUserFiles();
-    await loadPaperGraph();
     
     initialLoading.value = false;
     

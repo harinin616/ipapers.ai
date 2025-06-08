@@ -40,6 +40,7 @@ export interface IApiService {
   // RWS File upload
   upload_rws_file(session_id: string, file: File): Promise<any>;
   get_rws_session_files(session_id: string): Promise<any[]>;
+  remove_rws_session_file(session_id: string, paper_id: string): Promise<any>;
   
   // Graph management methods
   get_paper_graph(session_id: string): Promise<{ nodes: any[], edges: any[] }>;
@@ -480,6 +481,16 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to get RWS session files:', error);
+      throw error;
+    }
+  }
+
+  async remove_rws_session_file(session_id: string, paper_id: string): Promise<any> {
+    try {
+      const response = await this.api.delete(`/api/review/sessions/${session_id}/files/${paper_id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to remove RWS session file:', error);
       throw error;
     }
   }
