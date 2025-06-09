@@ -44,6 +44,9 @@
             <router-link to="/chat" class="chat-button-inside-sidebar">
               Chat
           </router-link>
+          <button class="share-btn" @click="shareList" title="Share file list">
+            Share
+          </button>
         <button class="close-btn" @click="toggleFilesList">×</button>
       </div>
        </div>
@@ -86,6 +89,14 @@
         <div v-if="pdfFiles.length === 0" class="text-center p-4 text-gray-500">
           No files available.
         </div>
+      </div>
+    </div>
+     <div v-if="showConfirm" class="confirm-overlay">
+      <div class="confirm-box">
+        <p>当前已加载 {{ pdfFiles.length }} 个文件，检测到分享列表包含 {{ pendingShared.length }} 个文件，如何处理？</p>
+        <button @click="applyShared('replace')">替换</button>
+        <button @click="applyShared('merge')">合并</button>
+        <button @click="cancelShared">取消</button>
       </div>
     </div>
   </div>
@@ -574,5 +585,20 @@ export default defineComponent({
 .chat-button-inside-sidebar:hover {
   background-color: #303f9f;
 }
+.confirm-overlay {
+  position: fixed; top: 0; left: 0; right:0; bottom:0;
+  background: rgba(0,0,0,0.3);
+  display: flex; align-items:center; justify-content:center;
+}
+.confirm-box {
+  background: #fff; padding: 1.5rem; border-radius:8px; width:300px;
+  text-align: center;
+}
+.confirm-box button { margin: 0 .5rem; }
+.share-btn {
+  background: none; border: none; color: #3f51b5; cursor: pointer;
+  padding: 5px 10px; border-radius:4px; transition: background 0.2s;
+}
+.share-btn:hover { background: rgba(63,81,181,0.1); }
 
 </style> 
