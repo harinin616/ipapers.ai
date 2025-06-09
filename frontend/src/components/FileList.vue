@@ -223,8 +223,46 @@ export default defineComponent({
     })
     
     onMounted(() => {
-      loadFiles()
+      await loadFiles()
+      const shareId = route.params.share_id as string
+      if (shareId) {
+        const { data } = await api.getShare(shareId)
+        // 假设 data.files 为 paper_id 数组
+        pendingShared.value = data.files.map((id: string) => ({ paper_id: id, filename: id, file_path:'', paper_URL:'', added_at: '' }))
+        if (pdfFiles.value.length) {
+          showConfirm.value = true
+        } else {
+          pdfFiles.value = pendingShared.value
+        }
+      }
     })
+
+    const shareList = async () => {
+      if (!pdfFiles.value.length) return alert('No files to share')
+      const ids = pdfFiles.value.map(f => f.paper_id)
+      const { data } = await api.shareFiles({ files: ids })
+      const link = `${window.location.origin}/share/${data.share_id}`
+      await navigator.clipboard.writeText(link)
+      alert(`Link copied:\n${link}`)
+    }
+    const applyShared = (mode: 'replace' | 'merge') => {
+      if (mode === 'replace') {
+        pdfFiles.value = pendingShared.value
+      } else {
+        const existing = new Set(pdfFiles.value.map(f => f.paper_id))
+        const toAdd = pendingShared.value.filter(f => !existing.has(f.paper_id))
+        pdfFiles.value = pdfFiles.value.concat(toAdd)
+      }
+      showConfirm.value = false
+      pendingShared.value = []
+      emit('files-updated', pdfFiles.value)
+      emit('update-file-count', pdfFiles.value.length)
+    }
+
+    const cancelShared = () => {
+      showConfirm.value = false
+      pendingShared.value = []
+    }
     
     onBeforeUnmount(() => {
       // No cleanup needed anymore
@@ -232,6 +270,10 @@ export default defineComponent({
     
     return {
       pdfFiles,
+      pendingShared, showConfirm, 
+  
+      shareList, applyShared, cancelShared,
+
       currentPdfUrl,
       selectedFileId,
       isPdfLoading,
