@@ -98,6 +98,14 @@
               >
                 Cancel
               </button>
+              <button 
+                v-if="uploadedFiles.length > 2"
+                @click="regenerateLayout" 
+                class="regenerate-btn"
+                title="Regenerate graph layout"
+              >
+                🔄 Rearrange
+              </button>
             </div>
           </div>
           <div class="graph-container" ref="graphContainer">
@@ -841,10 +849,9 @@ function updateGraphVisualization() {
   if (!graphContainer.value) return;
   
   const containerRect = graphContainer.value.getBoundingClientRect();
-  graphWidth.value = Math.max(400, containerRect.width);
-  graphHeight.value = 200;  // Compact height for smaller UI
+  graphWidth.value = Math.max(600, containerRect.width);
+  graphHeight.value = Math.max(400, uploadedFiles.value.length > 6 ? 500 : 400);  // More space for better visualization
   
-  // Improved positioning algorithm
   const numFiles = uploadedFiles.value.length;
   
   if (numFiles === 0) {
@@ -857,42 +864,14 @@ function updateGraphVisualization() {
     uploadedFiles.value[0].x = graphWidth.value / 2;
     uploadedFiles.value[0].y = graphHeight.value / 2;
   } else if (numFiles === 2) {
-    // Two nodes horizontally aligned
-    uploadedFiles.value[0].x = graphWidth.value * 0.3;
+    // Two nodes with more spacing
+    uploadedFiles.value[0].x = graphWidth.value * 0.25;
     uploadedFiles.value[0].y = graphHeight.value / 2;
-    uploadedFiles.value[1].x = graphWidth.value * 0.7;
+    uploadedFiles.value[1].x = graphWidth.value * 0.75;
     uploadedFiles.value[1].y = graphHeight.value / 2;
-  } else if (numFiles <= 6) {
-    // Circular layout for 3-6 nodes
-    const centerX = graphWidth.value / 2;
-    const centerY = graphHeight.value / 2;
-    const radius = Math.min(centerX - 40, centerY - 40);
-    
-    uploadedFiles.value.forEach((file, index) => {
-      const angle = (2 * Math.PI * index) / numFiles - Math.PI / 2; // Start from top
-      file.x = centerX + radius * Math.cos(angle);
-      file.y = centerY + radius * Math.sin(angle);
-    });
   } else {
-    // Grid layout for many nodes
-    const cols = Math.ceil(Math.sqrt(numFiles));
-    const rows = Math.ceil(numFiles / cols);
-    const paddingX = 50;
-    const paddingY = 50;
-    const availableWidth = graphWidth.value - 2 * paddingX;
-    const availableHeight = graphHeight.value - 2 * paddingY;
-    const stepX = availableWidth / (cols - 1 || 1);
-    const stepY = availableHeight / (rows - 1 || 1);
-    
-    uploadedFiles.value.forEach((file, index) => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
-      file.x = paddingX + col * stepX;
-      file.y = paddingY + row * stepY;
-    });
-    
-    // Adjust height for grid layout
-    graphHeight.value = Math.max(200, rows * 60 + 80);
+    // Use force-directed layout for better node positioning and edge crossing reduction
+    applyForceDirectedLayout();
   }
   
   // Update connections with proper edge calculations
@@ -914,10 +893,25 @@ function updateGraphVisualization() {
       const endX = toFile.x - (dx / distance) * nodeRadius;
       const endY = toFile.y - (dy / distance) * nodeRadius;
       
-      // Create curved path for better visualization
+      // Create curved path with adaptive curvature to reduce edge crossings
       const midX = (startX + endX) / 2;
       const midY = (startY + endY) / 2;
-      const curvature = 0.2;
+      
+      // Calculate adaptive curvature based on edge density and angle
+      const edgeAngle = Math.atan2(dy, dx);
+      const edgeLength = distance;
+      
+      // Base curvature that increases with shorter edges
+      let curvature = Math.min(0.4, 0.1 + (200 / edgeLength));
+      
+      // Add variation based on edge index to spread out parallel edges
+      const edgeIndex = paperGraph.value.edges.findIndex(e => 
+        (e.from === edge.from && e.to === edge.to) || 
+        (e.from === edge.to && e.to === edge.from)
+      );
+      const curvatureVariation = (edgeIndex % 3 - 1) * 0.15;
+      curvature += curvatureVariation;
+      
       const perpX = -(endY - startY) * curvature;
       const perpY = (endX - startX) * curvature;
       const controlX = midX + perpX;
@@ -937,6 +931,145 @@ function updateGraphVisualization() {
     }
   }
   paperConnections.value = connections;
+}
+
+// Force-directed layout algorithm for better node positioning
+function applyForceDirectedLayout() {
+  const nodes = uploadedFiles.value;
+  const edges = paperGraph.value.edges;
+  
+  // Initialize positions if not set
+  nodes.forEach((node, index) => {
+    if (!node.x || !node.y) {
+      // Start with circular initial positions with some randomization to avoid overlaps
+      const angle = (2 * Math.PI * index) / nodes.length + (Math.random() - 0.5) * 0.5;
+      const radius = Math.min(graphWidth.value, graphHeight.value) * (0.15 + Math.random() * 0.1);
+      const centerX = graphWidth.value / 2 + (Math.random() - 0.5) * 50;
+      const centerY = graphHeight.value / 2 + (Math.random() - 0.5) * 50;
+      node.x = centerX + radius * Math.cos(angle);
+      node.y = centerY + radius * Math.sin(angle);
+    }
+    // Initialize velocity
+    node.vx = node.vx || 0;
+    node.vy = node.vy || 0;
+  });
+  
+  // Force simulation parameters
+  const iterations = 300;
+  const repulsionStrength = 8000;
+  const attractionStrength = 0.01;
+  const dampening = 0.9;
+  const minDistance = 120; // Minimum distance between nodes
+  const centerForce = 0.02;
+  
+  for (let iteration = 0; iteration < iterations; iteration++) {
+    // Reset forces
+    nodes.forEach(node => {
+      node.fx = 0;
+      node.fy = 0;
+    });
+    
+    // Repulsion forces between all nodes
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const nodeA = nodes[i];
+        const nodeB = nodes[j];
+        
+        const dx = nodeB.x - nodeA.x;
+        const dy = nodeB.y - nodeA.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+          // Strong repulsion when nodes are too close
+          const force = repulsionStrength / (distance * distance);
+          const fx = (dx / distance) * force;
+          const fy = (dy / distance) * force;
+          
+          nodeA.fx -= fx;
+          nodeA.fy -= fy;
+          nodeB.fx += fx;
+          nodeB.fy += fy;
+          
+          // Additional force if nodes are too close
+          if (distance < minDistance) {
+            const extraForce = (minDistance - distance) * 0.5;
+            const extraFx = (dx / distance) * extraForce;
+            const extraFy = (dy / distance) * extraForce;
+            
+            nodeA.fx -= extraFx;
+            nodeA.fy -= extraFy;
+            nodeB.fx += extraFx;
+            nodeB.fy += extraFy;
+          }
+        }
+      }
+    }
+    
+    // Attraction forces along edges
+    edges.forEach(edge => {
+      const nodeA = nodes.find(n => n.paper_id === edge.from);
+      const nodeB = nodes.find(n => n.paper_id === edge.to);
+      
+      if (nodeA && nodeB) {
+        const dx = nodeB.x - nodeA.x;
+        const dy = nodeB.y - nodeA.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 0) {
+          const force = attractionStrength * distance;
+          const fx = (dx / distance) * force;
+          const fy = (dy / distance) * force;
+          
+          nodeA.fx += fx;
+          nodeA.fy += fy;
+          nodeB.fx -= fx;
+          nodeB.fy -= fy;
+        }
+      }
+    });
+    
+    // Center force to keep nodes in the middle
+    nodes.forEach(node => {
+      const centerX = graphWidth.value / 2;
+      const centerY = graphHeight.value / 2;
+      node.fx += (centerX - node.x) * centerForce;
+      node.fy += (centerY - node.y) * centerForce;
+    });
+    
+    // Update velocities and positions
+    nodes.forEach(node => {
+      node.vx = (node.vx + node.fx) * dampening;
+      node.vy = (node.vy + node.fy) * dampening;
+      
+      node.x += node.vx;
+      node.y += node.vy;
+      
+      // Keep nodes within bounds with padding
+      const padding = 60;
+      node.x = Math.max(padding, Math.min(graphWidth.value - padding, node.x));
+      node.y = Math.max(padding, Math.min(graphHeight.value - padding, node.y));
+    });
+  }
+  
+  // Clean up velocity properties
+  nodes.forEach(node => {
+    delete node.vx;
+    delete node.vy;
+    delete node.fx;
+    delete node.fy;
+  });
+}
+
+// Function to regenerate layout with slight randomization
+function regenerateLayout() {
+  // Clear current positions to force recalculation
+  uploadedFiles.value.forEach(node => {
+    delete node.x;
+    delete node.y;
+  });
+  
+  // Apply the force-directed layout again
+  updateGraphVisualization();
 }
 
 function startAddingEdge() {
@@ -1687,6 +1820,24 @@ function formatDate(timestamp) {
   background: #da190b;
 }
 
+.regenerate-btn {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.regenerate-btn:hover {
+  background: #1976d2;
+  transform: translateY(-1px);
+}
+
 
 
 .graph-container {
@@ -1720,33 +1871,93 @@ function formatDate(timestamp) {
 }
 
 .relation-graph {
-  flex: 0 0 200px;
-  background: #f9f9f9;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .paper-node {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.paper-node:hover circle {
+  stroke-width: 3;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.paper-node circle {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+  transition: all 0.3s ease;
+}
+
+.paper-node text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 500;
+  filter: drop-shadow(0 1px 1px rgba(255,255,255,0.8));
 }
 
 .paper-node.adding-edge {
   cursor: crosshair;
 }
 
+.paper-node.adding-edge circle {
+  stroke: #2196f3;
+  stroke-width: 3;
+  stroke-dasharray: 5,5;
+  animation: dash 1.5s linear infinite;
+}
+
 .paper-node.selected circle {
   stroke: #ff9800;
   stroke-width: 4;
+  filter: drop-shadow(0 3px 6px rgba(255,152,0,0.3));
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.connections path {
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+.connections path:hover {
+  stroke-width: 3 !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 2px 4px rgba(76,175,80,0.3));
 }
 
 .edge-label {
-  font-weight: bold;
-  background: white;
-  padding: 2px;
+  font-weight: 600;
+  font-size: 11px;
+  background: rgba(255,255,255,0.95);
+  padding: 3px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(76,175,80,0.2);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.05));
+  transition: all 0.2s ease;
+}
+
+.edge-label:hover {
+  background: rgba(255,255,255,1);
+  transform: scale(1.05);
+}
+
+.remove-edge-btn {
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 .remove-edge-btn:hover {
   opacity: 1 !important;
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 4px rgba(244,67,54,0.3));
 }
 
 .paper-list {
