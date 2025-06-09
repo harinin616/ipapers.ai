@@ -324,7 +324,7 @@ I have {len(paper_full_texts)} papers with their complete content:
 Current existing relationships:
 {chr(10).join(existing_edges_desc) if existing_edges_desc else "None"}
 
-Please analyze the COMPLETE CONTENT of these papers and suggest additional relationships that would complete the graph. Consider the following relationship types:
+Please analyze the COMPLETE CONTENT of these papers and suggest additional relationships that would complete the graph. The graph build be used to generate a related work section. Therefore, consider "builds_on", "compares_to" and "contradicts" relationships more than "relates_to". Consider the following relationship types:
 - relates_to: General topical relationship or shared research area
 - builds_on: One paper builds upon, extends, or improves another's work/methodology  
 - compares_to: Papers that compare methodologies, results, or approaches
@@ -549,6 +549,8 @@ Focus on meaningful relationships that would help understand the research landsc
         if graph_context:
             formatted_query = formatted_query + graph_context
             
+        print("formatted_query: ", formatted_query)
+            
         # Add user message to conversation history
         # For display: show only the original guidance if it exists, otherwise show the base message
         display_content = original_guidance if original_guidance else (base_message if not is_first_round else None)
@@ -592,13 +594,7 @@ Focus on meaningful relationships that would help understand the research landsc
                     {context_text}
                     ---
                     Please synthesize this information into a coherent related work section with proper flow and citations. 
-                    Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc.
-                    After finishing the related work section, you should also provide a reference list for the papers you mentioned. Notice that you should only mention the papers I gave to you, i.e., the papers you cited in the related work section. The format of the reference list should be:
-                    References: 
-                    [1] <paper_title> 
-                    [2] <paper_title> 
-                    ...
-                    [n] <paper_title>
+                    Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc. Do not cite them too many times. Write at most two sentences for each paper. Please directly output the related work section, do not include any other text.
                     """
                     
                     api_messages[last_message_idx]["content"] = enhanced_query
