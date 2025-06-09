@@ -238,10 +238,16 @@ class ReviewService:
 
     async def format_rwg_messages(self, user_id: str, session_id: str = None) -> List[Dict[str, str]]:
         """
-        format related work generation messages for API call (uses session-specific uploaded files)
+        Format related work generation messages for API call with conversation support
+        - Different system prompts for first round vs subsequent rounds
+        - Maintains conversation context appropriately
         """
         if session_id is None:
             session_id = "default"
+        
+        # Check if this is the first round
+        existing_messages = self.get_messages(user_id, session_id)
+        is_first_round = len(existing_messages) <= 1  # Only the user message just added
         
         # Get file names from session-specific uploaded files
         file_names = []
@@ -250,30 +256,61 @@ class ReviewService:
             if file_data.get("selected", True):  # Default to selected for uploaded files
                 file_names.append(file_data.get("filename", "Unknown file"))
         
-        system_content = (
-            "You are a professional academic writing assistant specialized in generating related work sections. "
-            "Your role is to help users create comprehensive related work sections by analyzing complete papers, "
-            "identifying key contributions, methodologies, and relationships between different research efforts. "
-            "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
-            f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
-            "You have access to the complete content of these papers to provide detailed and accurate analysis. "
-            "Please synthesize information from these papers to generate related work content with proper citations and flow."
-        )
+        # Add shared files from chat service
+        try:
+            from app.services.chat_service import chat_service
+            chat_data = chat_service.active_chats.get(user_id)
+            if chat_data and chat_data.get("files"):
+                shared_files = [f for f in chat_data["files"] if f.get("selected", True)]
+                for file_data in shared_files:
+                    file_names.append(file_data.get("filename", "Unknown file"))
+        except:
+            pass
+        
+        # Create appropriate system prompt based on conversation round
+        if is_first_round:
+            # First round: Full analysis capabilities
+            system_content = (
+                "You are a professional academic writing assistant specialized in generating related work sections. "
+                "Your role is to help users create comprehensive related work sections by analyzing complete papers, "
+                "identifying key contributions, methodologies, and relationships between different research efforts. "
+                "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
+                f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
+                "You have access to the complete content of these papers to provide detailed and accurate analysis. "
+                "Please synthesize information from these papers to generate related work content with proper citations and flow."
+            )
+        else:
+            # Subsequent rounds: Conversational refinement
+            system_content = (
+                "You are a professional academic writing assistant helping to refine and improve a related work section. "
+                "You have previously analyzed complete papers and generated an initial related work section. "
+                "Now you should respond to the user's follow-up requests, questions, or refinement suggestions. "
+                f"The analysis is based on {len(file_names)} papers: {', '.join(file_names)}. "
+                "You can refer to the papers by their IDs as established in your previous response. "
+                "Focus on making improvements, clarifications, or additions as requested while maintaining academic quality and proper citation format. "
+                "Consider any paper relationships and guidance provided by the user."
+            )
         
         api_messages = [{"role": "system", "content": system_content}]
-        user_messages = [m for m in self.get_messages(user_id, session_id) if m["role"] in ["user", "assistant"]]
+        
+        # Add conversation history
+        user_messages = [m for m in existing_messages if m["role"] in ["user", "assistant"]]
         recent_messages = user_messages[-self.max_context_messages:]
         for msg in recent_messages:
             api_messages.append({
                 "role": msg["role"],
                 "content": msg["content"]
             })
+        
         return api_messages
     
-    async def generate_rwg_response(self, user_id: str, query: str, session_id: str = None, guidance: List[str] = None) -> AsyncGenerator[Tuple[str, bool], None]:
+    async def generate_rwg_response(self, user_id: str, session_id: str = None, guidance: List[str] = None) -> AsyncGenerator[Tuple[str, bool], None]:
         """
-        generate streaming response for related work generation (uses full text from all selected papers)
-        guidance: optional list of guidance strings to include in the prompt
+        generate streaming response for related work generation with conversation support
+        - Full paper texts are only included in the FIRST conversation round
+        - Graph context and guidance are included in ALL rounds
+        - Subsequent rounds use conversation history without full paper texts
+        - User input is now handled through guidance parameter
         """
         if session_id is None:
             session_id = "default"
@@ -281,8 +318,11 @@ class ReviewService:
         if guidance is None:
             guidance = []
         
-        # Generate the complete prompt in the backend
-        # Get file count for the session
+        # Check if this is the first conversation round (no previous messages)
+        existing_messages = self.get_messages(user_id, session_id)
+        is_first_round = len(existing_messages) == 0
+        
+        # Generate the complete prompt
         session_files = self.get_session_files(user_id, session_id)
         shared_files = []
         try:
@@ -295,82 +335,95 @@ class ReviewService:
         
         total_files = len(session_files) + len(shared_files)
         
-        # Create base message
-        base_message = f"Generate a comprehensive related work section based on the {total_files} available papers. Focus on identifying key contributions, methodologies, and relationships between these works."
+        # Create appropriate message based on round
+        if is_first_round:
+            # First round: Include full paper analysis request
+            base_message = f"Generate a comprehensive related work section based on the {total_files} available papers. Focus on identifying key contributions, methodologies, and relationships between these works."
+        else:
+            # Subsequent rounds: Use guidance as the user request
+            if guidance and len(guidance) > 0:
+                base_message = guidance[0]  # Use first guidance as main request
+                guidance = guidance[1:]  # Remove it from guidance list
+            else:
+                base_message = "Please continue or refine the related work section based on the current context."
         
-        # Add user query if provided
-        if query and query.strip():
-            base_message = f"{base_message}\n\nAdditional request: {query.strip()}"
-        
-        # Format the complete query with guidance and graph context
         formatted_query = base_message
-        if guidance and len(guidance) > 0:
-            guidance_text = "\n\nPlease consider the following guidance:\n" + "\n".join(f"- {g}" for g in guidance)
-            formatted_query = base_message + guidance_text
         
-        # Add graph context after guidance
+        # Always add remaining guidance if provided
+        if guidance and len(guidance) > 0:
+            guidance_text = "\n\nPlease also consider the following guidance:\n" + "\n".join(f"- {g}" for g in guidance)
+            formatted_query = formatted_query + guidance_text
+        
+        # Always add graph context (relationships between papers)
         graph_context = self.get_graph_context(user_id, session_id)
         if graph_context:
             formatted_query = formatted_query + graph_context
             
+        # Add user message to conversation history
         self.add_message(user_id, session_id, "user", formatted_query)
         
         try:
-            all_full_texts = []
-            
-            # Get full text from session-specific uploaded files
-            session_full_texts = await self.get_session_full_texts(user_id, session_id)
-            if session_full_texts:
-                all_full_texts.extend(session_full_texts)
-            
-            # Get full text from shared chat system files if available
-            shared_full_texts = await self.get_shared_full_texts(user_id)
-            if shared_full_texts:
-                all_full_texts.extend(shared_full_texts)
-            
-            # format messages for related work generation
+            # Format messages for API call
             api_messages = await self.format_rwg_messages(user_id, session_id)
             
-            # add full texts to the latest user message
-            if all_full_texts:
-                # Create context with full papers
-                papers_context = []
-                for i,paper in enumerate(all_full_texts):
-                    paper_section = f"=== {paper['filename']} (paper id: {i+1}) ===\n{paper['full_text']}"
-                    papers_context.append(paper_section)
+            # Only include full paper texts in the FIRST round
+            if is_first_round:
+                all_full_texts = []
                 
-                context_text = "\n\n".join(papers_context)
-                last_message_idx = len(api_messages) - 1
+                # Get full text from session-specific uploaded files
+                session_full_texts = await self.get_session_full_texts(user_id, session_id)
+                if session_full_texts:
+                    all_full_texts.extend(session_full_texts)
                 
-                # create enhanced query with full text context for RWG
-                enhanced_query = f"""
-                {formatted_query}
+                # Get full text from shared chat system files if available
+                shared_full_texts = await self.get_shared_full_texts(user_id)
+                if shared_full_texts:
+                    all_full_texts.extend(shared_full_texts)
                 
-                Based on the complete content of the following papers, help generate a comprehensive related work section:
-                ---
-                {context_text}
-                ---
-                Please synthesize this information into a coherent related work section with proper flow and citations. 
-                Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc.
-                After finishing the related work section, you should also provide a reference list for the papers you mentioned. Notice that you should only mention the papers I gave to you, i.e., the papers you cited in the related work section. The format of the reference list should be:
-                References: \n
-                [1] <paper_title> \n
-                [2] <paper_title> \n
-                ...
-                [n] <paper_title>
-                """
+                # Add full texts to the latest user message only for first round
+                if all_full_texts:
+                    # Create context with full papers
+                    papers_context = []
+                    for i, paper in enumerate(all_full_texts):
+                        paper_section = f"=== {paper['filename']} (paper id: {i+1}) ===\n{paper['full_text']}"
+                        papers_context.append(paper_section)
+                    
+                    context_text = "\n\n".join(papers_context)
+                    last_message_idx = len(api_messages) - 1
+                    
+                    # Create enhanced query with full text context for first round only
+                    enhanced_query = f"""
+                    {formatted_query}
+                    
+                    Based on the complete content of the following papers, help generate a comprehensive related work section:
+                    ---
+                    {context_text}
+                    ---
+                    Please synthesize this information into a coherent related work section with proper flow and citations. 
+                    Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc.
+                    After finishing the related work section, you should also provide a reference list for the papers you mentioned. Notice that you should only mention the papers I gave to you, i.e., the papers you cited in the related work section. The format of the reference list should be:
+                    References: 
+                    [1] <paper_title> 
+                    [2] <paper_title> 
+                    ...
+                    [n] <paper_title>
+                    """
+                    
+                    api_messages[last_message_idx]["content"] = enhanced_query
+                    logger.info(f"First round: Enhanced RWG query with {len(all_full_texts)} full papers for user {user_id}, session {session_id}")
+            else:
+                # Subsequent rounds: just use conversation history with graph context and guidance
+                logger.info(f"Subsequent round: Using conversation history with graph context for user {user_id}, session {session_id}")
                 
-                api_messages[last_message_idx]["content"] = enhanced_query
-                logger.info(f"Enhanced RWG query with {len(all_full_texts)} full papers for user {user_id}, session {session_id}")
         except Exception as e:
-            logger.error(f"Error preparing full text context for RWG {user_id}: {str(e)}")
-            # if failed, fallback to regular message format
+            logger.error(f"Error preparing context for RWG {user_id}: {str(e)}")
+            # If failed, fallback to regular message format
             api_messages = await self.format_rwg_messages(user_id, session_id)
         
-        # generate response from LLM
+        # Generate response from LLM
         assistant_response = ""
         try:
-            # stream response from LLM for related work generation
+            # Stream response from LLM for related work generation
             stream_response = await llm_service.get_conversation_completion(
                 messages=api_messages
             )
@@ -381,19 +434,19 @@ class ReviewService:
                 yield error_msg, True
                 return
             
-            # process each chunk of the stream response
+            # Process each chunk of the stream response
             async for chunk in stream_response:
                 if chunk.text:
                     content = chunk.text
                     assistant_response += content
-                    # immediately send each token
+                    # Immediately send each token
                     yield content, False
             
-            # add to RWG history after completion
+            # Add to RWG history after completion
             if assistant_response:
                 self.add_message(user_id, session_id, "assistant", assistant_response)
                 
-            # send end flag
+            # Send end flag
             yield "", True
                 
         except Exception as e:

@@ -18,7 +18,6 @@ router = APIRouter()
 
 class StreamRwsRequest(BaseModel):
     session_id: str
-    message: str = ""  # Optional - backend will generate base prompt
     selected_files: List[str] = []
     guidance: List[str] = []
 
@@ -241,7 +240,6 @@ async def stream_rws(
         )
     
     session_id = body.session_id
-    message = body.message
     selected_files = body.selected_files
     guidance = body.guidance
 
@@ -262,7 +260,7 @@ async def stream_rws(
     
     async def stream_rws_response():
         try:
-            async for content_chunk, is_done in review_service.generate_rwg_response(user_id, message, session_id, guidance):
+            async for content_chunk, is_done in review_service.generate_rwg_response(user_id, session_id, guidance):
                 response_chunk = ReviewResponseChunk(content=content_chunk, done=is_done)
                 json_chunk = response_chunk.to_json() + "\n"
                 yield json_chunk
