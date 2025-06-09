@@ -1,5 +1,5 @@
 <template>
-  <div class="review-page">
+  <div class="review-page" :style="reviewPageStyle">
     <div v-if="initialLoading" class="loading">Loading...</div>
     <div v-else class="full-layout">
 
@@ -13,41 +13,35 @@
       />
 
       <div class="two-panel-layout" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
-      <!-- Left Panel: File Upload & Papers Relation Graph -->
-      <div class="left-panel">
-        <div class="panel-header">
-          <h3>Papers & Relations</h3>
-        </div>
-        
-        <!-- File Upload Area -->
-        <div class="file-upload-section">
-          <div class="upload-buttons-container">
-            <!-- Upload Own Files Button -->
-            <div 
-              class="upload-button upload-own-files"
-              :class="{ 'drag-over': isDragOver }"
-              @drop="handleFileDrop"
-              @dragover.prevent="isDragOver = true"
-              @dragleave="isDragOver = false"
-              @dragenter.prevent
-              @click="triggerFileInput"
-            >
-              <div class="upload-icon">📄</div>
-              <div class="upload-text">Upload Own Files</div>
-            </div>
-            
-            <!-- Add from Filelist Button -->
-            <div class="upload-button add-from-list" @click="openFileSelectionDialog">
-              <div class="upload-icon">📁</div>
-              <div class="upload-text">Add from Filelist</div>
-            </div>
+              <!-- Left Panel: File Upload & Papers Relation Graph -->
+        <div class="left-panel">
+          <div class="panel-header">
+            <h3>Papers & Relations</h3>
           </div>
           
-          <!-- Show uploaded files count when files are present -->
-          <div v-if="uploadedFiles.length > 0" class="uploaded-files-info">
-            <span class="files-count">{{ uploadedFiles.length }} files uploaded</span>
-            <div class="supported-formats">Supports: PDF, DOC, DOCX, TXT</div>
-          </div>
+          <!-- File Upload Area -->
+          <div class="file-upload-section">
+            <div class="upload-buttons-container">
+              <!-- Upload Own Files Button -->
+              <div 
+                class="upload-button upload-own-files"
+                :class="{ 'drag-over': isDragOver }"
+                @drop="handleFileDrop"
+                @dragover.prevent="isDragOver = true"
+                @dragleave="isDragOver = false"
+                @dragenter.prevent
+                @click="triggerFileInput"
+              >
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Upload Own Files</div>
+              </div>
+              
+              <!-- Add from Filelist Button -->
+              <div class="upload-button add-from-list" @click="openFileSelectionDialog">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Add from Filelist</div>
+              </div>
+            </div>
           
           <!-- Hidden File Input -->
           <input 
@@ -229,40 +223,38 @@
           <h3>Related Work Generation</h3>
         </div>
         
-        <!-- Guidance Section -->
-        <div class="guidance-section">
-          <div class="guidance-messages" ref="guidanceContainer">
-            <div v-for="guidance in guidanceList" :key="guidance.id" class="guidance-item">
-              <div class="guidance-content">{{ guidance.content }}</div>
-              <button @click="removeGuidance(guidance.id)" class="remove-guidance">×</button>
-            </div>
-            <div v-if="guidanceList.length === 0" class="guidance-placeholder">
-              <p>Add guidance to help generate better related work sections</p>
-            </div>
-          </div>
-        </div>
+
         
         <!-- Generated Result -->
         <div class="result-section">
           <div class="result-header">
             <h4>Generated Related Work</h4>
             <button 
-              v-if="generatedContent"
-              @click="copyToClipboard"
+              v-if="rwsMessages.length > 0"
+              @click="copyLastAssistantMessage"
               class="copy-btn"
             >
               📋 Copy
             </button>
           </div>
           <div class="result-content" ref="resultContainer">
-            <div v-if="!generatedContent && !isGenerating" class="result-placeholder">
+            <div v-if="rwsMessages.length === 0 && !isGenerating" class="result-placeholder">
               <p>Click "Generate" to create related work content</p>
             </div>
-            <div v-else-if="isGenerating" class="generating-indicator">
-              <div class="spinner"></div>
-              <p>Generating related work...</p>
+            <div v-else class="rws-messages">
+              <div v-for="message in rwsMessages" :key="message.id"
+                   :class="[
+                     'rws-message', 
+                     message.role === 'user' ? 'user-message' : 'assistant-message',
+                     message.role === 'assistant' && isGenerating && message.id === currentGeneratingMessageId ? 'generating' : ''
+                   ]">
+                <div class="message-content" v-html="formatMessage(message.content)"></div>
+              </div>
+              <div v-if="isGenerating && rwsMessages.length === 0" class="generating-indicator">
+                <div class="spinner"></div>
+                <p>Generating related work...</p>
+              </div>
             </div>
-            <div v-else class="generated-text" v-html="formatMessage(generatedContent)"></div>
           </div>
         </div>
         
@@ -272,18 +264,11 @@
             <textarea 
               ref="guidanceInputRef" 
               v-model="guidanceInputText"
-              @keydown.enter.exact.prevent="addGuidance"
+              @keydown.enter.exact.prevent="generateRelatedWork"
               placeholder="Extra guidance for related work generation..."
               class="guidance-input"
               rows="2"
             ></textarea>
-            <button 
-              @click="addGuidance"
-              :disabled="!guidanceInputText.trim()"
-              class="add-guidance-btn"
-            >
-              + Add
-            </button>
           </div>
           
           <button 
@@ -440,6 +425,8 @@ const guidanceInputText = ref('');
 // Generation state
 const generatedContent = ref('');
 const isGenerating = ref(false);
+const rwsMessages = ref([]);
+const currentGeneratingMessageId = ref(null);
 
 // Graph state
 const graphWidth = ref(400);
@@ -465,6 +452,22 @@ const messages = ref([]);
 const isSidebarCollapsed = ref(false);
 let resizeObserver = null;
 
+// Header height calculation
+const headerHeight = ref(60); // Default fallback
+
+// Dynamic height calculation for review page
+const reviewPageStyle = computed(() => ({
+  height: `calc(100vh - ${headerHeight.value}px)`
+}));
+
+// Function to get actual header height
+const getHeaderHeight = () => {
+  const header = document.querySelector('.app-header');
+  if (header) {
+    headerHeight.value = header.offsetHeight;
+  }
+};
+
 // Computed properties
 const rwsSessions = computed(() => rwsSessionStore.sessions || []);
 
@@ -482,12 +485,12 @@ watch(() => rwsSidebarRef.value?.isCollapsed, (collapsed) => {
   });
 }, { immediate: true });
 
-// Watch guidance changes and save to session storage
-watch(() => guidanceList.value, (newGuidance) => {
+// Watch guidance text changes and save to session storage
+watch(() => guidanceInputText.value, (newGuidance) => {
   if (currentSessionId.value) {
     saveSessionState();
   }
-}, { deep: true });
+});
 
 // Watch paper graph changes and save to session storage
 watch(() => paperConnections.value, (newConnections) => {
@@ -518,6 +521,12 @@ onBeforeUnmount(() => {
   if (resizeObserver) {
     resizeObserver.disconnect();
   }
+  
+  // Restore body overflow when leaving review
+  document.body.style.overflowY = '';
+  document.documentElement.style.overflowY = '';
+  // Remove resize listener
+  window.removeEventListener('resize', getHeaderHeight);
 });
 
 // When component is activated (e.g., switching back from chat), ensure graph is rendered and session is restored
@@ -588,40 +597,16 @@ async function removeFile(paperId) {
   }
 }
   
-  // Guidance functions
-function addGuidance() {
-  if (!guidanceInputText.value.trim()) return;
-  
-  const guidance = {
-    id: Date.now().toString(),
-    content: guidanceInputText.value.trim()
-  };
-  
-  guidanceList.value.push(guidance);
-  guidanceInputText.value = '';
-  
-  // Save session state immediately
-  if (currentSessionId.value) {
-    saveSessionState();
-  }
-}
 
-function removeGuidance(id) {
-  guidanceList.value = guidanceList.value.filter(g => g.id !== id);
-  
-  // Save session state immediately
-  if (currentSessionId.value) {
-    saveSessionState();
-  }
-}
 
 // Session state persistence functions
 function saveSessionState() {
   if (!currentSessionId.value) return;
   
   const sessionState = {
-    guidanceList: guidanceList.value,
+    guidanceText: guidanceInputText.value,
     generatedContent: generatedContent.value,
+    rwsMessages: rwsMessages.value,
     lastUpdated: Date.now()
   };
   
@@ -636,14 +621,19 @@ function loadSessionState() {
     if (stateData) {
       const sessionState = JSON.parse(stateData);
       
-      // Restore guidance list
-      if (sessionState.guidanceList && Array.isArray(sessionState.guidanceList)) {
-        guidanceList.value = sessionState.guidanceList;
+      // Restore guidance text
+      if (sessionState.guidanceText) {
+        guidanceInputText.value = sessionState.guidanceText;
       }
       
       // Restore generated content if it exists
       if (sessionState.generatedContent) {
         generatedContent.value = sessionState.generatedContent;
+      }
+      
+      // Restore RWS messages if they exist
+      if (sessionState.rwsMessages && Array.isArray(sessionState.rwsMessages)) {
+        rwsMessages.value = sessionState.rwsMessages;
       }
     }
   } catch (error) {
@@ -667,7 +657,8 @@ async function switchSession(sessionId) {
   // Clear current state to prevent bleed-through
   messages.value = [];
   generatedContent.value = '';
-  guidanceList.value = [];
+  guidanceInputText.value = '';
+  rwsMessages.value = [];
   uploadedFiles.value = [];
   paperConnections.value = [];
   paperGraph.value = { nodes: [], edges: [] };
@@ -692,7 +683,8 @@ async function createNewSession() {
     localStorage.setItem('currentRwsSessionId', newSession.id);
     messages.value = [];
     generatedContent.value = '';
-    guidanceList.value = [];
+    guidanceInputText.value = '';
+    rwsMessages.value = [];
     uploadedFiles.value = [];
     paperConnections.value = [];
     paperGraph.value = { nodes: [], edges: [] };
@@ -714,7 +706,8 @@ async function loadRwsSession(sessionId = null) {
     // Clear all current state first to ensure clean session loading
     messages.value = [];
     generatedContent.value = '';
-    guidanceList.value = [];
+    guidanceInputText.value = '';
+    rwsMessages.value = [];
     uploadedFiles.value = [];
     paperConnections.value = [];
     paperGraph.value = { nodes: [], edges: [] };
@@ -760,7 +753,8 @@ async function loadRwsSession(sessionId = null) {
     console.error('Failed to load RWS session:', error);
     messages.value = [];
     generatedContent.value = '';
-    guidanceList.value = [];
+    guidanceInputText.value = '';
+    rwsMessages.value = [];
     uploadedFiles.value = [];
   }
 }
@@ -773,7 +767,8 @@ async function deleteThisSession(sessionId) {
   if (sessionId === currentSessionId.value) {
     messages.value = [];
     generatedContent.value = '';
-    guidanceList.value = [];
+    guidanceInputText.value = '';
+    rwsMessages.value = [];
     uploadedFiles.value = [];
     paperConnections.value = [];
     paperGraph.value = { nodes: [], edges: [] };
@@ -821,7 +816,7 @@ function updateGraphVisualization() {
   
   const containerRect = graphContainer.value.getBoundingClientRect();
   graphWidth.value = Math.max(400, containerRect.width);
-  graphHeight.value = 280;  // Slightly taller for better spacing
+  graphHeight.value = 200;  // Compact height for smaller UI
   
   // Improved positioning algorithm
   const numFiles = uploadedFiles.value.length;
@@ -871,7 +866,7 @@ function updateGraphVisualization() {
     });
     
     // Adjust height for grid layout
-    graphHeight.value = Math.max(280, rows * 80 + 100);
+    graphHeight.value = Math.max(200, rows * 60 + 80);
   }
   
   // Update connections with proper edge calculations
@@ -1009,21 +1004,38 @@ async function generateRelatedWork() {
   // Create session if none exists
   if (!currentSessionId.value) {
     // Create session with guidance-based title if available
-    const guidanceText = guidanceList.value.length > 0 
-      ? guidanceList.value.map(g => g.content).join(' ') 
-      : '';
-    const title = extractTitleFromInput(guidanceText || 'Related Work Generation');
+    const title = extractTitleFromInput(guidanceInputText.value || 'Related Work Generation');
     const newSession = await rwsSessionStore.createSession({ title });
     currentSessionId.value = newSession.id;
     localStorage.setItem('currentRwsSessionId', newSession.id);
   }
   
   isGenerating.value = true;
-  generatedContent.value = '';
+  
+  // Add user message with guidance if provided
+  if (guidanceInputText.value.trim()) {
+    const userMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: guidanceInputText.value.trim(),
+      created_at: new Date().toISOString()
+    };
+    rwsMessages.value.push(userMessage);
+  }
+  
+  // Add empty assistant message for streaming
+  const assistantMessage = {
+    id: (Date.now() + 1).toString(),
+    role: 'assistant',
+    content: '',
+    created_at: new Date().toISOString()
+  };
+  rwsMessages.value.push(assistantMessage);
+  currentGeneratingMessageId.value = assistantMessage.id;
   
   try {
-    // Extract guidance as separate array
-    const guidance = guidanceList.value.map(g => g.content);
+    // Extract guidance from input text
+    const guidance = guidanceInputText.value.trim() ? [guidanceInputText.value.trim()] : [];
     
     // Get selected files
     const selectedFiles = uploadedFiles.value.map(file => file.paper_id);
@@ -1065,7 +1077,7 @@ async function generateRelatedWork() {
           try {
             const jsonData = JSON.parse(line);
             if (jsonData.content) {
-              generatedContent.value += jsonData.content;
+              assistantMessage.content += jsonData.content;
             }
           } catch (e) {
             remainingLines.push(line);
@@ -1075,7 +1087,7 @@ async function generateRelatedWork() {
         accumulatedData = remainingLines.join('\n');
         
         if (accumulatedData) {
-          generatedContent.value += accumulatedData;
+          assistantMessage.content += accumulatedData;
           accumulatedData = '';
         }
       } catch (e) {
@@ -1089,9 +1101,14 @@ async function generateRelatedWork() {
     }
   } catch (error) {
     console.error('Failed to generate related work:', error);
-    generatedContent.value = "Failed to generate related work. Please try again.";
+    if (assistantMessage) {
+      assistantMessage.content = "Failed to generate related work. Please try again.";
+    }
   } finally {
     isGenerating.value = false;
+    currentGeneratingMessageId.value = null;
+    // Clear the guidance input after generation
+    guidanceInputText.value = '';
     // Save session state after generation is complete
     if (currentSessionId.value) {
       saveSessionState();
@@ -1116,9 +1133,34 @@ async function copyToClipboard() {
   }
 }
 
+async function copyLastAssistantMessage() {
+  try {
+    const lastAssistantMessage = rwsMessages.value
+      .filter(m => m.role === 'assistant')
+      .pop();
+    
+    if (lastAssistantMessage && lastAssistantMessage.content) {
+      await navigator.clipboard.writeText(lastAssistantMessage.content);
+      console.log('Content copied to clipboard');
+    }
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error);
+  }
+}
+
 // Initialization
 onMounted(async () => {
   try {
+    // Hide body overflow to prevent outer scrollbar
+    document.body.style.overflowY = 'hidden';
+    document.documentElement.style.overflowY = 'hidden';
+    
+    // Get actual header height
+    getHeaderHeight();
+    
+    // Listen for window resize to update header height
+    window.addEventListener('resize', getHeaderHeight);
+    
     initialLoading.value = true;
     
     // Initialize RWS sessions
@@ -1135,7 +1177,8 @@ onMounted(async () => {
       paperGraph.value = { nodes: [], edges: [] };
       messages.value = [];
       generatedContent.value = '';
-      guidanceList.value = [];
+      guidanceInputText.value = '';
+      rwsMessages.value = [];
     }
     
     initialLoading.value = false;
@@ -1388,25 +1431,32 @@ function formatDate(timestamp) {
 <style scoped>
 .review-page {
   width: 100%;
-  height: calc(100vh - 60px);
+  /* height: calc(100vh - 120px); */ /* Remove fixed height calculation */
   position: relative;
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
+  overflow: hidden;
 }
 
 .loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 1.2rem;
-  color: #666;
+  text-align: center;
+  padding: 2rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
 .full-layout {
   display: flex;
   height: 100%;
+  width: 100%;
+  overflow: visible;
+  margin: 0;
+  padding: 12px;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
 }
 
 .two-panel-layout {
@@ -1414,7 +1464,6 @@ function formatDate(timestamp) {
   flex: 1;
   height: 100%;
   gap: 1rem;
-  padding: 1rem;
   transition: all 0.3s ease;
 }
 
@@ -1425,7 +1474,7 @@ function formatDate(timestamp) {
 
 /* Left Panel Styles */
 .left-panel {
-  flex: 0 0 35%;
+  flex: 0 0 50%;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -1436,11 +1485,11 @@ function formatDate(timestamp) {
 }
 
 .two-panel-layout.sidebar-collapsed .left-panel {
-  flex: 0 0 30%;
+  flex: 0 0 50%;
 }
 
 .panel-header {
-  padding: 1.5rem;
+  padding: 1rem;
   border-bottom: 1px solid #e0e0e0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -1448,12 +1497,12 @@ function formatDate(timestamp) {
 
 .panel-header h3 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 600;
 }
 
 .file-upload-section {
-  padding: 1rem;
+  padding: 0.75rem;
 }
 
 .upload-buttons-container {
@@ -1466,7 +1515,7 @@ function formatDate(timestamp) {
   flex: 1;
   border: 2px dashed #ddd;
   border-radius: 8px;
-  padding: 1.5rem 1rem;
+  padding: 1rem 0.75rem;
   text-align: center;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -1474,7 +1523,7 @@ function formatDate(timestamp) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .upload-button:hover {
@@ -1506,8 +1555,8 @@ function formatDate(timestamp) {
 }
 
 .upload-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  margin-bottom: 0.25rem;
 }
 
 .upload-text {
@@ -1516,25 +1565,11 @@ function formatDate(timestamp) {
   color: #333;
 }
 
-.uploaded-files-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  background: #f1f8e9;
-  border-radius: 6px;
-  border: 1px solid #c8e6c9;
-}
 
-.files-count {
-  color: #4caf50;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
 
 .graph-section {
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1591,7 +1626,7 @@ function formatDate(timestamp) {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: white;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
@@ -1617,7 +1652,7 @@ function formatDate(timestamp) {
 }
 
 .relation-graph {
-  flex: 0 0 280px;
+  flex: 0 0 200px;
   background: #f9f9f9;
   border-radius: 8px;
 }
@@ -1648,7 +1683,7 @@ function formatDate(timestamp) {
 
 .paper-list {
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem;
   overflow-y: auto;
 }
 
@@ -1696,7 +1731,7 @@ function formatDate(timestamp) {
 
 /* Right Panel Styles */
 .right-panel {
-  flex: 0 0 65%;
+  flex: 0 0 50%;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -1707,54 +1742,10 @@ function formatDate(timestamp) {
 }
 
 .two-panel-layout.sidebar-collapsed .right-panel {
-  flex: 0 0 70%;
+  flex: 0 0 50%;
 }
 
-.guidance-section {
-  padding: 0.75rem;
-  border-bottom: 1px solid #e0e0e0;
-  max-height: 120px;
-}
 
-.guidance-messages {
-  max-height: 80px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.guidance-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background: #e3f2fd;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.guidance-content {
-  flex: 1;
-}
-
-.remove-guidance {
-  background: #666;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  font-size: 0.7rem;
-}
-
-.guidance-placeholder {
-  color: #999;
-  text-align: center;
-  font-style: italic;
-  padding: 1rem;
-}
 
 .result-section {
   flex: 1;
@@ -1767,7 +1758,7 @@ function formatDate(timestamp) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1rem 0.5rem 1rem;
+  padding: 0.75rem 0.75rem 0.25rem 0.75rem;
 }
 
 .result-header h4 {
@@ -1788,10 +1779,10 @@ function formatDate(timestamp) {
 
 .result-content {
   flex: 1;
-  padding: 0 1rem 1rem 1rem;
+  padding: 0 0.75rem 0.75rem 0.75rem;
   overflow-y: auto;
   border: 1px solid #e0e0e0;
-  margin: 0 1rem;
+  margin: 0 0.75rem;
   border-radius: 8px;
   background: #fafafa;
 }
@@ -1837,8 +1828,73 @@ function formatDate(timestamp) {
   margin: 1rem 0;
 }
 
+.rws-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rws-message {
+  max-width: 85%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  position: relative;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.rws-message.user-message {
+  align-self: flex-end;
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border-bottom-right-radius: 2px;
+}
+
+.rws-message.assistant-message {
+  align-self: flex-start;
+  background-color: #fff;
+  color: #333;
+  border-bottom-left-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.rws-message .message-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  font-size: 0.95rem;
+}
+
+.rws-message .message-content p {
+  margin: 0 0 0.75rem;
+}
+
+.rws-message .message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.rws-message.generating {
+  opacity: 0.8;
+}
+
+.rws-message.generating::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #3f51b5;
+  animation: pulse 1.5s infinite;
+  margin-left: 0.5rem;
+}
+
 .input-section {
-  padding: 1rem;
+  padding: 0.75rem;
   border-top: 1px solid #e0e0e0;
   background: #f9f9f9;
 }
@@ -1846,7 +1902,7 @@ function formatDate(timestamp) {
 .input-container {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .guidance-input {
@@ -1865,31 +1921,17 @@ function formatDate(timestamp) {
   border-color: #3f51b5;
 }
 
-.add-guidance-btn {
-  background: #2196f3;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
 
-.add-guidance-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
 
 .generate-btn {
   width: 100%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  padding: 1rem;
+  padding: 0.75rem;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   transition: all 0.3s ease;
 }
@@ -2238,6 +2280,6 @@ function formatDate(timestamp) {
 <style>
 body {
   --app-max-width: none !important;
-  overflow-x: hidden;
+  /* overflow-x: hidden; */ /* Remove as we now control via JavaScript */
 }
 </style>
