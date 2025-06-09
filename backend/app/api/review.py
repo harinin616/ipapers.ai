@@ -128,6 +128,26 @@ async def add_files_to_session(
     return {"success": True, "added_count": len(paper_ids)}
 
 
+@router.delete("/sessions/{session_id}/files/{paper_id}")
+async def remove_session_file(
+    request: Request,
+    session_id: str = Path(...),
+    paper_id: str = Path(...)
+):
+    """
+    Remove a file from a specific RWS session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    success = review_service.remove_file_from_session(user_id, session_id, paper_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="File not found in session")
+    
+    return {"success": True}
+
+
 # ============ SESSION MANAGEMENT ENDPOINTS ============
 
 @router.get("/sessions")
@@ -354,72 +374,4 @@ async def remove_graph_edge(request: Request, data: dict = Body(...)):
     return {"success": True}
 
 
-# ============ LEGACY ENDPOINTS (for backward compatibility) ============
 
-@router.get("/rwg_messages")
-async def get_rwg_messages(
-    request: Request,
-):
-    """
-    Get user's related work generation history messages (legacy endpoint)
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-    messages = []
-    messages = review_service.get_rwg_messages(user_id)
-    return messages
-
-
-@router.post("/chat_rwg")
-async def chat_rwg(
-    request: Request,
-    message: str = Body(embed=True),
-    selected_files: List[str] = Body(embed=True)
-):
-    """
-    Get stream response for related work generation (legacy endpoint - uses default session)
-    """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-
-    if user_id not in chat_service.active_chats:
-        chat_service.active_chats[user_id] = {
-            "messages": [],
-            "files": []
-        }
-    if selected_files and chat_service.active_chats[user_id]["files"]:
-        for file in chat_service.active_chats[user_id]["files"]:
-            if file["paper_id"] in selected_files:
-                file["selected"] = True
-            else:
-                file["selected"] = False
-    
-    async def stream_rwg_response():
-        try:
-            # Use default session for legacy compatibility
-            async for content_chunk, is_done in review_service.generate_rwg_response(user_id, message, "default"):
-                response_chunk = ReviewResponseChunk(content=content_chunk, done=is_done)
-                json_chunk = response_chunk.to_json() + "\n"
-                yield json_chunk
-        except Exception as e:
-            logger.error(f"Error in stream_rwg_response: {str(e)}")
-            error_chunk = ReviewResponseChunk(content="Error processing RWG request", done=True)
-            yield error_chunk.to_json() + "\n"
-    
-    return StreamingResponse(
-        stream_rwg_response(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no" 
-        }
-    )

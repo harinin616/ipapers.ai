@@ -234,29 +234,6 @@ class ReviewService:
             logger.error(f"Error generating graph context for user {user_id}, session {session_id}: {str(e)}")
             return ""
     
-    # ============ LEGACY METHODS (for backward compatibility) ============
-    
-    def add_rwg_message(self, user_id: str, role: str, content: str):
-        """Legacy method - add message to default session"""
-        # For backward compatibility, use a default session
-        if user_id not in self.active_rws:
-            self.active_rws[user_id] = {"sessions": {}}
-        
-        # Create default session if it doesn't exist
-        default_session_id = "default"
-        if default_session_id not in self.active_rws[user_id]["sessions"]:
-            self.active_rws[user_id]["sessions"][default_session_id] = {
-                "messages": [],
-                "title": "Default RWS Session",
-                "lastMessageAt": time.time()
-            }
-        
-        self.add_message(user_id, default_session_id, role, content)
-    
-    def get_rwg_messages(self, user_id: str, limit: int = None) -> List[Dict[str, Any]]:
-        """Legacy method - get messages from default session"""
-        default_session_id = "default"
-        return self.get_messages(user_id, default_session_id, limit)
 
     async def format_rwg_messages(self, user_id: str, session_id: str = None) -> List[Dict[str, str]]:
         """
@@ -494,6 +471,31 @@ class ReviewService:
             
         except Exception as e:
             logger.error(f"Error adding files to session: {str(e)}")
+            return False
+    
+    def remove_file_from_session(self, user_id: str, session_id: str, paper_id: str) -> bool:
+        """
+        Remove a file from a specific session
+        """
+        try:
+            if (user_id not in self.active_rws or 
+                session_id not in self.active_rws[user_id]["sessions"]):
+                return False
+            
+            session_data = self.active_rws[user_id]["sessions"][session_id]
+            uploaded_files = session_data.get("uploaded_files", [])
+            
+            # Find and remove the file
+            for i, file_data in enumerate(uploaded_files):
+                if file_data.get("paper_id") == paper_id:
+                    uploaded_files.pop(i)
+                    logger.info(f"Removed file {paper_id} from session {session_id} for user {user_id}")
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error removing file {paper_id} from session {session_id}: {str(e)}")
             return False
     
     async def query_session_chunks(self, user_id: str, session_id: str, query: str) -> List[str]:

@@ -27,7 +27,6 @@ export interface IApiService {
   
   // RWS (Review) functionality
   chat_rwg(message: string): Promise<Response>;
-  get_rwg_messages(): Promise<any[]>;
   
   // RWS Session management methods
   get_rws_sessions(): Promise<{ id: string; title: string }[]>;
@@ -220,7 +219,7 @@ class ApiService implements IApiService {
 
       const selectedFiles = fileSelectionStore.getSelectedFiles();
 
-      const response = await fetch(`/api/chat/chat_rwg`, {
+      const response = await fetch(`/api/review/chat_rwg`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({ message: message, selected_files: selectedFiles })
@@ -326,18 +325,6 @@ class ApiService implements IApiService {
       body: JSON.stringify(payload)
     });
     return response.json();
-  }
-
-  // ============ RWS (REVIEW) FUNCTIONALITY ============
-  
-  async get_rwg_messages(): Promise<any[]> {
-    try {
-      const response = await this.api.get(`/api/chat/rwg_messages`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get RWG messages:', error);
-      throw error;
-    }
   }
 
   // ============ RWS SESSION MANAGEMENT ============
