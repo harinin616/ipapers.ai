@@ -41,6 +41,9 @@
       <div class="panel-header">
         <h3>File List</h3>
           <div style="display: flex; gap: 10px; align-items: center;">
+           <button class="share-btn" @click="shareList" title="Share file list">
+            Share
+          </button>
             <router-link to="/chat" class="chat-button-inside-sidebar">
               Chat
           </router-link>
@@ -86,6 +89,14 @@
         <div v-if="pdfFiles.length === 0" class="text-center p-4 text-gray-500">
           No files available.
         </div>
+      </div>
+    </div>
+     <div v-if="showConfirm" class="confirm-overlay">
+      <div class="confirm-box">
+        <p>当前已加载 {{ pdfFiles.length }} 个文件，检测到分享列表包含 {{ pendingShared.length }} 个文件，如何处理？</p>
+        <button @click="applyShared('replace')">替换</button>
+        <button @click="applyShared('merge')">合并</button>
+        <button @click="cancelShared">取消</button>
       </div>
     </div>
   </div>
@@ -212,8 +223,46 @@ export default defineComponent({
     })
     
     onMounted(() => {
-      loadFiles()
+      await loadFiles()
+      const shareId = route.params.share_id as string
+      if (shareId) {
+        const { data } = await api.getShare(shareId)
+        // 假设 data.files 为 paper_id 数组
+        pendingShared.value = data.files.map((id: string) => ({ paper_id: id, filename: id, file_path:'', paper_URL:'', added_at: '' }))
+        if (pdfFiles.value.length) {
+          showConfirm.value = true
+        } else {
+          pdfFiles.value = pendingShared.value
+        }
+      }
     })
+
+    const shareList = async () => {
+      if (!pdfFiles.value.length) return alert('No files to share')
+      const ids = pdfFiles.value.map(f => f.paper_id)
+      const { data } = await api.shareFiles({ files: ids })
+      const link = `${window.location.origin}/share/${data.share_id}`
+      await navigator.clipboard.writeText(link)
+      alert(`Link copied:\n${link}`)
+    }
+    const applyShared = (mode: 'replace' | 'merge') => {
+      if (mode === 'replace') {
+        pdfFiles.value = pendingShared.value
+      } else {
+        const existing = new Set(pdfFiles.value.map(f => f.paper_id))
+        const toAdd = pendingShared.value.filter(f => !existing.has(f.paper_id))
+        pdfFiles.value = pdfFiles.value.concat(toAdd)
+      }
+      showConfirm.value = false
+      pendingShared.value = []
+      emit('files-updated', pdfFiles.value)
+      emit('update-file-count', pdfFiles.value.length)
+    }
+
+    const cancelShared = () => {
+      showConfirm.value = false
+      pendingShared.value = []
+    }
     
     onBeforeUnmount(() => {
       // No cleanup needed anymore
@@ -221,6 +270,10 @@ export default defineComponent({
     
     return {
       pdfFiles,
+      pendingShared, showConfirm, 
+  
+      shareList, applyShared, cancelShared,
+
       currentPdfUrl,
       selectedFileId,
       isPdfLoading,
@@ -574,5 +627,20 @@ export default defineComponent({
 .chat-button-inside-sidebar:hover {
   background-color: #303f9f;
 }
+.confirm-overlay {
+  position: fixed; top: 0; left: 0; right:0; bottom:0;
+  background: rgba(0,0,0,0.3);
+  display: flex; align-items:center; justify-content:center;
+}
+.confirm-box {
+  background: #fff; padding: 1.5rem; border-radius:8px; width:300px;
+  text-align: center;
+}
+.confirm-box button { margin: 0 .5rem; }
+.share-btn {
+  background: none; border: none; color: #3f51b5; cursor: pointer;
+  padding: 5px 10px; border-radius:4px; transition: background 0.2s;
+}
+.share-btn:hover { background: rgba(63,81,181,0.1); }
 
 </style> 
