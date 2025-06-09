@@ -84,17 +84,22 @@ class ReviewService:
         if user_id in self.active_rws and session_id in self.active_rws[user_id]["sessions"]:
             del self.active_rws[user_id]["sessions"][session_id]
     
-    def add_message(self, user_id: str, session_id: str, role: str, content: str):
+    def add_message(self, user_id: str, session_id: str, role: str, content: str, display_content: str = None):
         """Add message to a specific session"""
         if user_id not in self.active_rws or session_id not in self.active_rws[user_id]["sessions"]:
             logger.error(f"RWS session not found: {user_id} {session_id}")
             return
         now = time.time()
-        self.active_rws[user_id]["sessions"][session_id]["messages"].append({
+        message = {
             "role": role,
             "content": content,
             "timestamp": now
-        })
+        }
+        # If display_content is provided, store it separately for UI display
+        if display_content is not None:
+            message["display_content"] = display_content
+            
+        self.active_rws[user_id]["sessions"][session_id]["messages"].append(message)
         self.active_rws[user_id]["sessions"][session_id]["lastMessageAt"] = now
 
     def get_messages(self, user_id: str, session_id: str, limit: int = None):
@@ -455,17 +460,6 @@ Focus on meaningful relationships that would help understand the research landsc
             if file_data.get("selected", True):  # Default to selected for uploaded files
                 file_names.append(file_data.get("filename", "Unknown file"))
         
-        # Add shared files from chat service
-        try:
-            from app.services.chat_service import chat_service
-            chat_data = chat_service.active_chats.get(user_id)
-            if chat_data and chat_data.get("files"):
-                shared_files = [f for f in chat_data["files"] if f.get("selected", True)]
-                for file_data in shared_files:
-                    file_names.append(file_data.get("filename", "Unknown file"))
-        except:
-            pass
-        
         # Create appropriate system prompt based on conversation round
         if is_first_round:
             # First round: Full analysis capabilities
@@ -523,16 +517,13 @@ Focus on meaningful relationships that would help understand the research landsc
         
         # Generate the complete prompt
         session_files = self.get_session_files(user_id, session_id)
-        shared_files = []
-        try:
-            from app.services.chat_service import chat_service
-            chat_data = chat_service.active_chats.get(user_id)
-            if chat_data and chat_data.get("files"):
-                shared_files = [f for f in chat_data["files"] if f.get("selected", True)]
-        except:
-            pass
         
-        total_files = len(session_files) + len(shared_files)
+        total_files = len(session_files)
+        
+        # Store original guidance for display purposes
+        original_guidance = None
+        if guidance and len(guidance) > 0:
+            original_guidance = guidance[0]  # Keep the original guidance for display
         
         # Create appropriate message based on round
         if is_first_round:
@@ -559,7 +550,9 @@ Focus on meaningful relationships that would help understand the research landsc
             formatted_query = formatted_query + graph_context
             
         # Add user message to conversation history
-        self.add_message(user_id, session_id, "user", formatted_query)
+        # For display: show only the original guidance if it exists, otherwise show the base message
+        display_content = original_guidance if original_guidance else (base_message if not is_first_round else None)
+        self.add_message(user_id, session_id, "user", formatted_query, display_content)
         
         try:
             # Format messages for API call

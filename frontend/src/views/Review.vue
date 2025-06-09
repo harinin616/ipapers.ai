@@ -491,20 +491,8 @@ watch(() => guidanceInputText.value, (newGuidance) => {
   }
 });
 
-// Watch paper graph changes and save to session storage
-watch(() => paperConnections.value, (newConnections) => {
-  if (currentSessionId.value) {
-    saveSessionState();
-  }
-}, { deep: true });
-
-// Watch generated content changes and save to session storage
-watch(() => generatedContent.value, (newContent) => {
-  if (currentSessionId.value && !isGenerating.value) {
-    // Only save if not currently generating to avoid excessive saves
-    saveSessionState();
-  }
-});
+// Note: Removed watches for paperConnections and generatedContent
+// as they are now managed by the backend and don't need localStorage persistence
 
 
 
@@ -602,10 +590,10 @@ async function removeFile(paperId) {
 function saveSessionState() {
   if (!currentSessionId.value) return;
   
+  // Only save guidance text if it's not empty (user is actively typing)
+  // Don't save empty guidance as it means it was already used or cleared
   const sessionState = {
-    guidanceText: guidanceInputText.value,
-    generatedContent: generatedContent.value,
-    rwsMessages: rwsMessages.value,
+    guidanceText: guidanceInputText.value.trim() || '', // Save only if there's actual content
     lastUpdated: Date.now()
   };
   
@@ -634,6 +622,30 @@ function loadSessionState() {
       if (sessionState.rwsMessages && Array.isArray(sessionState.rwsMessages)) {
         rwsMessages.value = sessionState.rwsMessages;
       }
+    }
+  } catch (error) {
+    console.error('Failed to load session state:', error);
+  }
+}
+
+function loadSessionStateWithoutMessages() {
+  if (!currentSessionId.value) return;
+  
+  try {
+    const stateData = localStorage.getItem(`rws_session_state_${currentSessionId.value}`);
+    if (stateData) {
+      const sessionState = JSON.parse(stateData);
+      
+      // Only restore guidance text if it's not empty (indicates unfinished user input)
+      // Empty guidance means it was already used or cleared after generation
+      if (sessionState.guidanceText && sessionState.guidanceText.trim()) {
+        guidanceInputText.value = sessionState.guidanceText.trim();
+      } else {
+        guidanceInputText.value = '';
+      }
+      
+      // Note: We don't restore rwsMessages or generatedContent here
+      // as they come from the backend messages
     }
   } catch (error) {
     console.error('Failed to load session state:', error);
@@ -711,9 +723,28 @@ async function loadRwsSession(sessionId = null) {
     paperConnections.value = [];
     paperGraph.value = { nodes: [], edges: [] };
     
-    // Load messages
+    // Load messages from backend
     const response = await api.get_rws_messages({ session_id: sessionId });
     messages.value = response || [];
+    
+    // Convert backend messages to frontend format for rwsMessages
+    if (messages.value.length > 0) {
+      rwsMessages.value = messages.value
+        .filter((msg) => {
+          // Filter out user messages that don't have display_content (auto-generated prompts)
+          if (msg.role === 'user' && !msg.display_content) {
+            return false;
+          }
+          return true;
+        })
+        .map((msg, index) => ({
+          id: `${sessionId}_${index}_${msg.timestamp || Date.now()}`,
+          role: msg.role,
+          // Use display_content for user messages if available, otherwise use content
+          content: msg.role === 'user' && msg.display_content ? msg.display_content : msg.content,
+          created_at: msg.timestamp ? new Date(msg.timestamp * 1000).toISOString() : new Date().toISOString()
+        }));
+    }
     
     // Load session files
     try {
@@ -724,8 +755,9 @@ async function loadRwsSession(sessionId = null) {
         y: 50 + Math.floor(index / 3) * 80
       }));
       
-      // Update graph nodes and visualization
+      // Update graph nodes and load paper graph
       await updateGraphNodes();
+      await loadPaperGraph();
       await nextTick();
       updateGraphVisualization();
     } catch (fileError) {
@@ -733,16 +765,11 @@ async function loadRwsSession(sessionId = null) {
       uploadedFiles.value = [];
     }
     
-    // Load session state first (this includes generated content and guidance)
-    loadSessionState();
+    // Load session state (guidance text) but not rwsMessages since we loaded from backend
+    loadSessionStateWithoutMessages();
     
-    // If no saved content, fallback to loading from messages
-    if (!generatedContent.value) {
-      const lastAssistantMessage = messages.value.filter(m => m.role === 'assistant').pop();
-      if (lastAssistantMessage) {
-        generatedContent.value = lastAssistantMessage.content;
-      }
-    }
+    // If no messages from backend or localStorage, keep rwsMessages empty
+    // The backend messages take precedence over localStorage for conversation history
     
     // Note: Guidance is now handled separately in the backend, 
     // so we no longer need to extract it from user messages
@@ -1035,6 +1062,9 @@ async function generateRelatedWork() {
     localStorage.setItem('currentRwsSessionId', newSession.id);
   }
   
+  // Save current guidance before we clear it (in case generation fails)
+  const currentGuidance = guidanceInputText.value.trim();
+  
   isGenerating.value = true;
   
   try {
@@ -1045,11 +1075,11 @@ async function generateRelatedWork() {
     }
     
     // Add user message with guidance if provided
-    if (guidanceInputText.value.trim()) {
+    if (currentGuidance) {
       const userMessage = {
         id: Date.now().toString(),
         role: 'user',
-        content: guidanceInputText.value.trim(),
+        content: currentGuidance,
         created_at: new Date().toISOString()
       };
       rwsMessages.value.push(userMessage);
@@ -1066,7 +1096,10 @@ async function generateRelatedWork() {
     currentGeneratingMessageId.value = assistantMessage.id;
     
     // Extract guidance from input text
-    const guidance = guidanceInputText.value.trim() ? [guidanceInputText.value.trim()] : [];
+    const guidance = currentGuidance ? [currentGuidance] : [];
+    
+    // Clear the guidance input immediately after extraction to prevent it from being saved again
+    guidanceInputText.value = '';
     
     // Get selected files
     const selectedFiles = uploadedFiles.value.map(file => file.paper_id);
@@ -1135,15 +1168,15 @@ async function generateRelatedWork() {
     if (assistantMessage) {
       assistantMessage.content = "Failed to generate related work. Please try again.";
     }
+    // If generation failed, restore the guidance text so user can try again
+    if (currentGuidance) {
+      guidanceInputText.value = currentGuidance;
+    }
   } finally {
     isGenerating.value = false;
     currentGeneratingMessageId.value = null;
-    // Clear the guidance input after generation
-    guidanceInputText.value = '';
-    // Save session state after generation is complete
-    if (currentSessionId.value) {
-      saveSessionState();
-    }
+    // Note: guidance input is either cleared (on success) or restored (on error)
+    // No need to save session state here
   }
 }
 
