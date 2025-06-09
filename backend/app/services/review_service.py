@@ -274,14 +274,45 @@ class ReviewService:
             })
         return api_messages
     
-    async def generate_rwg_response(self, user_id: str, query: str, session_id: str = None) -> AsyncGenerator[Tuple[str, bool], None]:
+    async def generate_rwg_response(self, user_id: str, query: str, session_id: str = None, guidance: List[str] = None) -> AsyncGenerator[Tuple[str, bool], None]:
         """
         generate streaming response for related work generation (uses full text from all selected papers)
+        guidance: optional list of guidance strings to include in the prompt
         """
         if session_id is None:
             session_id = "default"
+        
+        if guidance is None:
+            guidance = []
+        
+        # Generate the complete prompt in the backend
+        # Get file count for the session
+        session_files = self.get_session_files(user_id, session_id)
+        shared_files = []
+        try:
+            from app.services.chat_service import chat_service
+            chat_data = chat_service.active_chats.get(user_id)
+            if chat_data and chat_data.get("files"):
+                shared_files = [f for f in chat_data["files"] if f.get("selected", True)]
+        except:
+            pass
+        
+        total_files = len(session_files) + len(shared_files)
+        
+        # Create base message
+        base_message = f"Generate a comprehensive related work section based on the {total_files} available papers. Focus on identifying key contributions, methodologies, and relationships between these works."
+        
+        # Add user query if provided
+        if query and query.strip():
+            base_message = f"{base_message}\n\nAdditional request: {query.strip()}"
+        
+        # Format the complete query with guidance
+        formatted_query = base_message
+        if guidance and len(guidance) > 0:
+            guidance_text = "\n\nPlease consider the following guidance:\n" + "\n".join(f"- {g}" for g in guidance)
+            formatted_query = base_message + guidance_text
             
-        self.add_message(user_id, session_id, "user", query)
+        self.add_message(user_id, session_id, "user", formatted_query)
         
         try:
             all_full_texts = []
@@ -316,7 +347,7 @@ class ReviewService:
                 
                 # create enhanced query with full text context for RWG
                 enhanced_query = f"""
-                {query}
+                {formatted_query}
                 
                 Based on the complete content of the following papers, help generate a comprehensive related work section:
                 ---

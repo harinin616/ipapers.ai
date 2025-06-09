@@ -34,7 +34,7 @@ export interface IApiService {
   delete_rws_session(payload: { session_id: string }): Promise<any>;
   get_rws_messages(payload: { session_id: string }): Promise<any[]>;
   update_rws_session_title(payload: { session_id: string; title: string }): Promise<any>;
-  stream_rws(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
+  stream_rws(payload: { session_id: string; message?: string; selected_files: string[]; guidance?: string[] }): Promise<Response>;
   
   // RWS File upload
   upload_rws_file(session_id: string, file: File): Promise<any>;
@@ -379,7 +379,7 @@ class ApiService implements IApiService {
     }
   }
 
-  async stream_rws(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response> {
+  async stream_rws(payload: { session_id: string; message?: string; selected_files: string[]; guidance?: string[] }): Promise<Response> {
     try {
       const userId = localStorage.getItem('X-User-ID');
       const headers: HeadersInit = {

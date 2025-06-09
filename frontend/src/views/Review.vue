@@ -752,22 +752,8 @@ async function loadRwsSession(sessionId = null) {
       }
     }
     
-    // If no saved guidance, try to reconstruct from messages (fallback)
-    if (guidanceList.value.length === 0) {
-      const lastUserMessage = messages.value.filter(m => m.role === 'user').pop();
-      if (lastUserMessage) {
-        // Extract guidance from the user message
-        const guidancePattern = /Please consider the following guidance:\n((?:- .+\n?)+)/;
-        const match = lastUserMessage.content.match(guidancePattern);
-        if (match) {
-          const guidanceItems = match[1].split('\n').filter(line => line.trim().startsWith('-'));
-          guidanceList.value = guidanceItems.map((item, index) => ({
-            id: Date.now() + index,
-            content: item.replace(/^- /, '').trim()
-          }));
-        }
-      }
-    }
+    // Note: Guidance is now handled separately in the backend, 
+    // so we no longer need to extract it from user messages
     
     await nextTick();
   } catch (error) {
@@ -1022,6 +1008,7 @@ async function generateRelatedWork() {
   
   // Create session if none exists
   if (!currentSessionId.value) {
+    // Create session with guidance-based title if available
     const guidanceText = guidanceList.value.length > 0 
       ? guidanceList.value.map(g => g.content).join(' ') 
       : '';
@@ -1035,21 +1022,17 @@ async function generateRelatedWork() {
   generatedContent.value = '';
   
   try {
-    // Prepare the guidance message
-    const guidanceText = guidanceList.value.length > 0 
-      ? `Please consider the following guidance:\n${guidanceList.value.map(g => `- ${g.content}`).join('\n')}\n\n`
-      : '';
-    
-    const message = `${guidanceText}Generate a comprehensive related work section based on the ${uploadedFiles.value.length} uploaded papers. Focus on identifying key contributions, methodologies, and relationships between these works.`;
+    // Extract guidance as separate array
+    const guidance = guidanceList.value.map(g => g.content);
     
     // Get selected files
     const selectedFiles = uploadedFiles.value.map(file => file.paper_id);
     
-    // Use the new RWS API with session support
+    // Let the backend handle all prompt generation - frontend only passes guidance
     const response = await api.stream_rws({
       session_id: currentSessionId.value,
-      message: message,
-      selected_files: selectedFiles
+      selected_files: selectedFiles,
+      guidance: guidance
     });
     
     if (!response.ok) {
