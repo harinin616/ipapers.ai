@@ -320,15 +320,11 @@ class ReviewService:
             
             # Get full text from session-specific uploaded files
             session_full_texts = await self.get_session_full_texts(user_id, session_id)
-            print('-'*20,'session_full_texts')
-            print(session_full_texts)
             if session_full_texts:
                 all_full_texts.extend(session_full_texts)
             
             # Get full text from shared chat system files if available
             shared_full_texts = await self.get_shared_full_texts(user_id)
-            print('-'*20,'shared_full_texts')
-            print(shared_full_texts)
             if shared_full_texts:
                 all_full_texts.extend(shared_full_texts)
             
@@ -339,8 +335,8 @@ class ReviewService:
             if all_full_texts:
                 # Create context with full papers
                 papers_context = []
-                for paper in all_full_texts:
-                    paper_section = f"=== {paper['filename']} (ID: {paper['paper_id']}) ===\n{paper['full_text']}"
+                for i,paper in enumerate(all_full_texts):
+                    paper_section = f"=== {paper['filename']} (paper id: {i+1}) ===\n{paper['full_text']}"
                     papers_context.append(paper_section)
                 
                 context_text = "\n\n".join(papers_context)
@@ -354,7 +350,14 @@ class ReviewService:
                 ---
                 {context_text}
                 ---
-                Please synthesize this information into a coherent related work section with proper flow and citations. Use the complete content to provide detailed analysis of methodologies, contributions, and relationships between different research efforts.
+                Please synthesize this information into a coherent related work section with proper flow and citations. 
+                Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc.
+                After finishing the related work section, you should also provide a reference list for the papers you mentioned. Notice that you should only mention the papers I gave to you, i.e., the papers you cited in the related work section. The format of the reference list should be:
+                References: \n
+                [1] <paper_title> \n
+                [2] <paper_title> \n
+                ...
+                [n] <paper_title>
                 """
                 
                 api_messages[last_message_idx]["content"] = enhanced_query
@@ -368,8 +371,6 @@ class ReviewService:
         assistant_response = ""
         try:
             # stream response from LLM for related work generation
-            print('-'*20,'api_messages')
-            print(api_messages)
             stream_response = await llm_service.get_conversation_completion(
                 messages=api_messages
             )
