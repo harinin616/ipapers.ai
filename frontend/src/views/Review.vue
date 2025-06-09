@@ -301,12 +301,8 @@
           <select id="relationship-type" v-model="currentEdge.relationship_type">
             <option value="relates_to">relates to</option>
             <option value="builds_on">builds on</option>
-            <option value="extends">extends</option>
             <option value="compares_to">compares to</option>
             <option value="contradicts">contradicts</option>
-            <option value="supports">supports</option>
-            <option value="improves">improves</option>
-            <option value="uses_method_from">uses method from</option>
           </select>
         </div>
         <div class="dialog-field">
