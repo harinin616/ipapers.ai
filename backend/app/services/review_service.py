@@ -250,9 +250,6 @@ class ReviewService:
             if file_data.get("selected", True):  # Default to selected for uploaded files
                 file_names.append(file_data.get("filename", "Unknown file"))
         
-        # Get graph context for this session
-        graph_context = self.get_graph_context(user_id, session_id)
-        
         system_content = (
             "You are a professional academic writing assistant specialized in generating related work sections. "
             "Your role is to help users create comprehensive related work sections by analyzing complete papers, "
@@ -261,7 +258,6 @@ class ReviewService:
             f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
             "You have access to the complete content of these papers to provide detailed and accurate analysis. "
             "Please synthesize information from these papers to generate related work content with proper citations and flow."
-            f"{graph_context}"
         )
         
         api_messages = [{"role": "system", "content": system_content}]
@@ -306,11 +302,16 @@ class ReviewService:
         if query and query.strip():
             base_message = f"{base_message}\n\nAdditional request: {query.strip()}"
         
-        # Format the complete query with guidance
+        # Format the complete query with guidance and graph context
         formatted_query = base_message
         if guidance and len(guidance) > 0:
             guidance_text = "\n\nPlease consider the following guidance:\n" + "\n".join(f"- {g}" for g in guidance)
             formatted_query = base_message + guidance_text
+        
+        # Add graph context after guidance
+        graph_context = self.get_graph_context(user_id, session_id)
+        if graph_context:
+            formatted_query = formatted_query + graph_context
             
         self.add_message(user_id, session_id, "user", formatted_query)
         
