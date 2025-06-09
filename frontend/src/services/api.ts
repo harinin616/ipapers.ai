@@ -19,6 +19,7 @@ export interface IApiService {
   click_paper(paper_id: string): Promise<boolean>;
   shareFiles(payload: { files: string[] }): Promise<{ share_id: string }>;
   getShare(shareId: string): Promise<{ files: string[] }>;
+  clear_user_files(): Promise<void>;
 
   
   // Session management methods
@@ -50,6 +51,7 @@ export interface IApiService {
   update_graph_nodes(papers: any[], session_id: string): Promise<any>;
   add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string; session_id: string }): Promise<any>;
   remove_graph_edge(payload: { from: string; to: string; session_id: string }): Promise<any>;
+
 }
 /**
  * API Service implementation
@@ -505,6 +507,14 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to add files to RWS session:', error);
+      throw error;
+    }
+  }
+   async clear_user_files(): Promise<void> {
+    try {
+      await this.api.post('/api/chat/files/clear');
+    } catch (error) {
+      console.error('Failed to clear user files:', error);
       throw error;
     }
   }

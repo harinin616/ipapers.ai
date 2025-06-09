@@ -231,6 +231,27 @@ async def attach_paper(
     await chat_service.attach_paper(user_id, paper_id)
     return True
 
+@router.post("/files/clear")
+async def clear_user_files(request: Request):
+    """
+    Clear all files attached to the current user
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+
+    # 如果尚未初始化，就先建结构
+    if user_id not in chat_service.active_chats:
+        chat_service.active_chats[user_id] = {
+            "files": [],
+            "sessions": {}
+        }
+
+    # 清空内存中的文件列表
+    chat_service.active_chats[user_id]["files"].clear()
+
+    return {"success": True}
+
 @router.post("/process_embeddings")
 async def process_paper_embeddings(
     request: Request,
