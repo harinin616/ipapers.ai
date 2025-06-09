@@ -956,10 +956,10 @@ function applyForceDirectedLayout() {
   
   // Force simulation parameters
   const iterations = 300;
-  const repulsionStrength = 8000;
+  const repulsionStrength = 12000;
   const attractionStrength = 0.01;
   const dampening = 0.9;
-  const minDistance = 120; // Minimum distance between nodes
+  const minDistance = 180; // Minimum distance between nodes
   const centerForce = 0.02;
   
   for (let iteration = 0; iteration < iterations; iteration++) {

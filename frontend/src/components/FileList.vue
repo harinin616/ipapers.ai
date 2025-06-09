@@ -242,7 +242,7 @@ export default defineComponent({
         if (pdfFiles.value.length) {
           showConfirm.value = true
         } else {
-          pdfFiles.value = pendingShared.value
+          await applyShared('merge')
         }
       }
     })
@@ -256,14 +256,21 @@ export default defineComponent({
       await navigator.clipboard.writeText(link)
       alert(`Link copied:\n${link}`)
     }
-    const applyShared = (mode: 'replace' | 'merge') => {
+    const applyShared = async (mode: 'replace' | 'merge') => {
       if (mode === 'replace') {
-        pdfFiles.value = pendingShared.value
-      } else {
-        const existing = new Set(pdfFiles.value.map(f => f.paper_id))
-        const toAdd = pendingShared.value.filter(f => !existing.has(f.paper_id))
-        pdfFiles.value = pdfFiles.value.concat(toAdd)
+        await api.clear_user_files();
+      } 
+      const existing = new Set(pdfFiles.value.map(f => f.paper_id));
+      const toAttach = mode === 'replace'
+      ? pendingShared.value
+      : pendingShared.value.filter(f => !existing.has(f.paper_id))
+
+      for (const file of toAttach) {
+        await api.attach_paper(file.paper_id);
       }
+
+      await loadFiles();
+
       showConfirm.value = false
       pendingShared.value = []
       emit('files-updated', pdfFiles.value)
