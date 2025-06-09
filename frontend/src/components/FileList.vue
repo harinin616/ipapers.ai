@@ -93,10 +93,10 @@
     </div>
      <div v-if="showConfirm" class="confirm-overlay">
       <div class="confirm-box">
-        <p>当前已加载 {{ pdfFiles.length }} 个文件，检测到分享列表包含 {{ pendingShared.length }} 个文件，如何处理？</p>
-        <button @click="applyShared('replace')">替换</button>
-        <button @click="applyShared('merge')">合并</button>
-        <button @click="cancelShared">取消</button>
+        <p>You currently have {{ pdfFiles.length }} files loaded, and the shared list contains {{ pendingShared.length }} files. How would you like to proceed?</p>
+        <button @click="applyShared('replace')">Replace</button>
+        <button @click="applyShared('merge')">Merge</button>
+        <button @click="cancelShared">Cancel</button>
       </div>
     </div>
   </div>
@@ -104,6 +104,7 @@
 
 <script lang="ts">
 import { defineComponent, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRoute , useRouter } from 'vue-router'
 import api from '../services/api'
 import { fileSelectionStore } from '../stores/fileSelectionStore'
 
@@ -148,6 +149,10 @@ export default defineComponent({
     const isPdfLoading = ref(false)
     const currentFileName = ref('Document')
     const fileListRoot = ref<HTMLElement | null>(null)
+    const route = useRoute()
+    const router = useRouter()
+    const pendingShared = ref<ChatFile[]>([])
+    const showConfirm = ref(false)
     
     const loadFiles = async () => {
       try {
@@ -222,13 +227,18 @@ export default defineComponent({
       // Watch logic simplified since we no longer need width updates
     })
     
-    onMounted(() => {
+    onMounted(async () =>  {
       await loadFiles()
       const shareId = route.params.share_id as string
       if (shareId) {
-        const { data } = await api.getShare(shareId)
-        // 假设 data.files 为 paper_id 数组
-        pendingShared.value = data.files.map((id: string) => ({ paper_id: id, filename: id, file_path:'', paper_URL:'', added_at: '' }))
+        const { files } = await api.getShare(shareId)
+        pendingShared.value = files.map(id => ({
+          paper_id: id,
+          filename: id,
+          file_path: '',
+          paper_URL: '',
+          added_at: '' 
+        }))
         if (pdfFiles.value.length) {
           showConfirm.value = true
         } else {
@@ -240,8 +250,9 @@ export default defineComponent({
     const shareList = async () => {
       if (!pdfFiles.value.length) return alert('No files to share')
       const ids = pdfFiles.value.map(f => f.paper_id)
-      const { data } = await api.shareFiles({ files: ids })
-      const link = `${window.location.origin}/share/${data.share_id}`
+      
+      const { share_id } = await api.shareFiles({ files: ids })
+      const link = `${window.location.origin}/share/${share_id}`
       await navigator.clipboard.writeText(link)
       alert(`Link copied:\n${link}`)
     }
@@ -257,11 +268,16 @@ export default defineComponent({
       pendingShared.value = []
       emit('files-updated', pdfFiles.value)
       emit('update-file-count', pdfFiles.value.length)
+       
+  
+  // ← 在这里清掉 share_id 路由
+      router.replace({ name: 'home' })
     }
 
     const cancelShared = () => {
       showConfirm.value = false
       pendingShared.value = []
+      router.replace({ name: 'home' })
     }
     
     onBeforeUnmount(() => {
@@ -272,7 +288,7 @@ export default defineComponent({
       pdfFiles,
       pendingShared, showConfirm, 
   
-      shareList, applyShared, cancelShared,
+      route,shareList, applyShared, cancelShared,
 
       currentPdfUrl,
       selectedFileId,
