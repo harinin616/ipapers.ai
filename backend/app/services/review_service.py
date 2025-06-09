@@ -288,14 +288,14 @@ class ReviewService:
             
             # Get full text from session-specific uploaded files
             session_full_texts = await self.get_session_full_texts(user_id, session_id)
-            print('-'*20)
+            print('-'*20,'session_full_texts')
             print(session_full_texts)
             if session_full_texts:
                 all_full_texts.extend(session_full_texts)
             
             # Get full text from shared chat system files if available
             shared_full_texts = await self.get_shared_full_texts(user_id)
-            print('-'*20)
+            print('-'*20,'shared_full_texts')
             print(shared_full_texts)
             if shared_full_texts:
                 all_full_texts.extend(shared_full_texts)
@@ -336,6 +336,8 @@ class ReviewService:
         assistant_response = ""
         try:
             # stream response from LLM for related work generation
+            print('-'*20,'api_messages')
+            print(api_messages)
             stream_response = await llm_service.get_conversation_completion(
                 messages=api_messages
             )
