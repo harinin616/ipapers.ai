@@ -41,12 +41,12 @@
       <div class="panel-header">
         <h3>File List</h3>
           <div style="display: flex; gap: 10px; align-items: center;">
+           <button class="share-btn" @click="shareList" title="Share file list">
+            Share
+          </button>
             <router-link to="/chat" class="chat-button-inside-sidebar">
               Chat
           </router-link>
-          <button class="share-btn" @click="shareList" title="Share file list">
-            Share
-          </button>
         <button class="close-btn" @click="toggleFilesList">×</button>
       </div>
        </div>
