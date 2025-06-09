@@ -4,6 +4,7 @@ import time
 import uuid
 import json
 import aiofiles
+import aiofiles.os
 from typing import List, Dict, Any, AsyncGenerator, Tuple
 from pathlib import Path
 from fastapi import UploadFile
@@ -254,10 +255,11 @@ class ReviewService:
         
         system_content = (
             "You are a professional academic writing assistant specialized in generating related work sections. "
-            "Your role is to help users create comprehensive related work sections by analyzing existing papers, "
+            "Your role is to help users create comprehensive related work sections by analyzing complete papers, "
             "identifying key contributions, methodologies, and relationships between different research efforts. "
             "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
             f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
+            "You have access to the complete content of these papers to provide detailed and accurate analysis. "
             "Please synthesize information from these papers to generate related work content with proper citations and flow."
             f"{graph_context}"
         )
@@ -274,7 +276,7 @@ class ReviewService:
     
     async def generate_rwg_response(self, user_id: str, query: str, session_id: str = None) -> AsyncGenerator[Tuple[str, bool], None]:
         """
-        generate streaming response for related work generation (uses session-specific uploaded files)
+        generate streaming response for related work generation (uses full text from all selected papers)
         """
         if session_id is None:
             session_id = "default"
@@ -282,44 +284,51 @@ class ReviewService:
         self.add_message(user_id, session_id, "user", query)
         
         try:
-            relevant_chunks = []
+            all_full_texts = []
             
-            # First try to get chunks from session-specific uploaded files
-            session_chunks = await self.query_session_chunks(user_id, session_id, query)
-            if session_chunks:
-                relevant_chunks.extend(session_chunks)
+            # Get full text from session-specific uploaded files
+            session_full_texts = await self.get_session_full_texts(user_id, session_id)
+            print('-'*20)
+            print(session_full_texts)
+            if session_full_texts:
+                all_full_texts.extend(session_full_texts)
             
-            # Also get chunks from shared chat system files if available
-            from app.services.chat_service import chat_service
-            chat_data = chat_service.active_chats.get(user_id)
-            if chat_data and chat_data["files"]:
-                # get relevant chunks from pdf for related work generation using shared system
-                shared_chunks = await pdf_service.query_similar_chunks(user_id, query)
-                if shared_chunks:
-                    relevant_chunks.extend(shared_chunks)
+            # Get full text from shared chat system files if available
+            shared_full_texts = await self.get_shared_full_texts(user_id)
+            print('-'*20)
+            print(shared_full_texts)
+            if shared_full_texts:
+                all_full_texts.extend(shared_full_texts)
             
             # format messages for related work generation
             api_messages = await self.format_rwg_messages(user_id, session_id)
             
-            # add relevant chunks to the latest user message
-            if relevant_chunks:
-                context_text = "\n\n".join(relevant_chunks[:30])  # Limit to top 30 chunks
+            # add full texts to the latest user message
+            if all_full_texts:
+                # Create context with full papers
+                papers_context = []
+                for paper in all_full_texts:
+                    paper_section = f"=== {paper['filename']} (ID: {paper['paper_id']}) ===\n{paper['full_text']}"
+                    papers_context.append(paper_section)
+                
+                context_text = "\n\n".join(papers_context)
                 last_message_idx = len(api_messages) - 1
                 
-                # create enhanced query with context for RWG
+                # create enhanced query with full text context for RWG
                 enhanced_query = f"""
                 {query}
                 
-                Based on the following content from the papers, help generate related work content:
+                Based on the complete content of the following papers, help generate a comprehensive related work section:
                 ---
                 {context_text}
                 ---
-                Please synthesize this information into a coherent related work section with proper flow and citations.
+                Please synthesize this information into a coherent related work section with proper flow and citations. Use the complete content to provide detailed analysis of methodologies, contributions, and relationships between different research efforts.
                 """
                 
                 api_messages[last_message_idx]["content"] = enhanced_query
+                logger.info(f"Enhanced RWG query with {len(all_full_texts)} full papers for user {user_id}, session {session_id}")
         except Exception as e:
-            logger.error(f"Error performing RAG for RWG {user_id}: {str(e)}")
+            logger.error(f"Error preparing full text context for RWG {user_id}: {str(e)}")
             # if failed, fallback to regular message format
             api_messages = await self.format_rwg_messages(user_id, session_id)
         
@@ -512,6 +521,96 @@ class ReviewService:
             
         except Exception as e:
             logger.error(f"Error querying session chunks: {str(e)}")
+            return []
+
+    async def get_session_full_texts(self, user_id: str, session_id: str) -> List[Dict[str, str]]:
+        """
+        Get full text from uploaded files in a specific session
+        """
+        try:
+            session_files = self.get_session_files(user_id, session_id)
+            if not session_files:
+                return []
+            
+            full_texts = []
+            for file_info in session_files:
+                if not file_info.get("selected", True):
+                    continue
+                
+                paper_id = file_info["paper_id"]
+                filename = file_info.get("filename", f"{paper_id}.pdf")
+                
+                # Load full text from embedding file
+                local_path = pdf_service.embedding_dir / "uploads" / user_id / session_id / f"{paper_id}.json"
+                
+                if not await aiofiles.os.path.exists(local_path):
+                    logger.warning(f"Session embedding file not found: {local_path}")
+                    continue
+                
+                async with aiofiles.open(local_path, 'r', encoding='utf-8') as f:
+                    content = await f.read()
+                    data = json.loads(content)
+                
+                full_text = data.get("full_text", "")
+                if full_text:
+                    full_texts.append({
+                        "filename": filename,
+                        "paper_id": paper_id,
+                        "full_text": full_text
+                    })
+            
+            logger.info(f"Retrieved {len(full_texts)} full texts from session {session_id}")
+            return full_texts
+            
+        except Exception as e:
+            logger.error(f"Error getting session full texts: {str(e)}")
+            return []
+
+    async def get_shared_full_texts(self, user_id: str) -> List[Dict[str, str]]:
+        """
+        Get full text from shared chat system files
+        """
+        try:
+            from app.services.chat_service import chat_service
+            chat_data = chat_service.active_chats.get(user_id)
+            if not chat_data or not chat_data.get("files"):
+                return []
+            
+            full_texts = []
+            for file_info in chat_data["files"]:
+                if not file_info.get("selected", True):
+                    continue
+                
+                paper_id = file_info["paper_id"]
+                filename = file_info.get("filename", f"{paper_id}.pdf")
+                
+                # Load full text from global embedding file
+                year_month = paper_id[:4]
+                year = year_month[:2]
+                month = year_month[2:4]
+                local_path = pdf_service.embedding_dir / year / month / f"{paper_id}.json"
+                
+                if not await aiofiles.os.path.exists(local_path):
+                    logger.warning(f"Global embedding file not found: {local_path}")
+                    continue
+                
+                async with aiofiles.open(local_path, 'r', encoding='utf-8') as f:
+                    content = await f.read()
+                    data = json.loads(content)
+                
+                full_text = data.get("full_text", "")
+                if full_text:
+                    full_texts.append({
+                        "filename": filename,
+                        "paper_id": paper_id,
+                        "full_text": full_text
+                    })
+            
+            logger.info(f"Retrieved {len(full_texts)} full texts from shared files")
+            return full_texts
+            
+        except Exception as e:
+            logger.error(f"Error getting shared full texts: {str(e)}")
             return []
 
 review_service = ReviewService() 
