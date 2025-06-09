@@ -5,6 +5,8 @@ import logging
 import json
 from app.services.chat_service import chat_service
 from pydantic import BaseModel
+from app.services.db_service import db_service
+from datetime import datetime
 
 class StreamChatRequest(BaseModel):
     session_id: str
@@ -67,8 +69,12 @@ async def chat(
             status_code=401,
             detail="User ID not found"
         )
+    
     session_id = body.session_id
     message = body.message
+
+    await db_service.add_message(session_id, message, "user", datetime.now())
+
    # selected_files = body.selected_files
     if user_id not in chat_service.active_chats:
         chat_service.active_chats[user_id] = {
@@ -274,6 +280,16 @@ async def create_session(request: Request, data: dict = Body(...)):
         raise HTTPException(status_code=401, detail="User ID not found")
     title = data.get("title", "Untitled Session")
     session_id = chat_service.create_session(user_id, title)
+    
+    # Try to convert user_id to integer for database operation
+    try:
+        int_user_id = int(user_id)
+        await db_service.add_session(session_id, int_user_id, datetime.now(), title)
+    except (ValueError, TypeError):
+        # If conversion fails, skip database operation
+        logger.info("user not logged in")
+        pass
+    
     return {"id": session_id, "title": title}
 
 
@@ -287,6 +303,7 @@ async def delete_session(request: Request, data: dict = Body(...)):
     if not user_id or not session_id:
         raise HTTPException(status_code=400, detail="Missing user_id or session_id")
     chat_service.delete_session(user_id, session_id)
+    await db_service.delete_session(session_id)
     return {"success": True}
 
 @router.post("/update_session_title")
@@ -302,7 +319,11 @@ async def update_session_title(
     title = data.get("title")
     if not user_id or not session_id or not title:
         raise HTTPException(status_code=400, detail="Missing user_id, session_id or title")
+    
     success = chat_service.update_session_title(user_id, session_id, title)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
+    
+    await db_service.update_session_title(session_id, title)
+    
     return {"success": True}

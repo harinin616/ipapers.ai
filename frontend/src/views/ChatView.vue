@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-page">
+  <div class="chat-page" :style="chatPageStyle">
     <div v-if="initialLoading" class="loading">Loading...</div>
     <div v-else class="full-layout">
 
@@ -13,7 +13,14 @@
 
       <!-- Chat Area -->
       <div class="chat-view">
-        <div class="chat-section">
+        <!-- Chat content loading state -->
+        <div v-if="chatLoading" class="chat-content-loading">
+          <div class="chat-loader"></div>
+          <div>Loading chat...</div>
+        </div>
+        
+        <!-- Normal chat content -->
+        <div v-else class="chat-section">
           <div class="chat-header">
             <div class="header-main">
               <h2>AI Chat</h2>
@@ -85,6 +92,7 @@ const messages = ref([]);
 const userInput = ref('');
 const isLoading = ref(false);  // Message loading status
 const initialLoading = ref(true);  // Initial loading status
+const chatLoading = ref(false);  // Chat content loading status for session switching
 const isTyping = ref(false);
 const currentTypingMessageId = ref(null); // Current typing message ID
 const messagesContainer = ref(null);
@@ -93,15 +101,35 @@ const inputField = ref(null);
 // check if paper is processing
 const isPaperProcessing = ref(false);
 
+// Header height calculation
+const headerHeight = ref(60); // Default fallback
 
+// Dynamic height calculation for chat page
+const chatPageStyle = computed(() => ({
+  height: `calc(100vh - ${headerHeight.value}px)`
+}));
+
+// Function to get actual header height
+const getHeaderHeight = () => {
+  const header = document.querySelector('.app-header');
+  if (header) {
+    headerHeight.value = header.offsetHeight;
+  }
+};
 
 // watch paper processing state
 watch(() => chatSessionStore.state.processingPaper, (isProcessing) => {
   isPaperProcessing.value = isProcessing;
 }, { immediate: true });
 
+// Clean up on unmount
 onBeforeUnmount(() => {
   chatSessionStore.resetProcessingState();
+  // Restore body overflow when leaving chat
+  document.body.style.overflowY = '';
+  document.documentElement.style.overflowY = '';
+  // Remove resize listener
+  window.removeEventListener('resize', getHeaderHeight);
 });
 
 // input placeholder
@@ -118,9 +146,9 @@ async function switchSession(sessionId) {
   if (sessionId === currentSessionId.value) return;
   currentSessionId.value = sessionId;
   localStorage.setItem('currentSessionId', sessionId); 
-  initialLoading.value = true;
+  chatLoading.value = true;
   await loadChatSession(sessionId);
-  initialLoading.value = false;
+  chatLoading.value = false;
 }
 
 // just clear the current session, create new session when sending message
@@ -165,6 +193,16 @@ async function deleteThisSession(sessionId) {
 // Initialization
 onMounted(async () => {
   try {
+    // Hide body overflow to prevent outer scrollbar
+    document.body.style.overflowY = 'hidden';
+    document.documentElement.style.overflowY = 'hidden';
+    
+    // Get actual header height
+    getHeaderHeight();
+    
+    // Listen for window resize to update header height
+    window.addEventListener('resize', getHeaderHeight);
+    
     await chatSessionStore.fetchAllSessions();
     const savedSessionId = localStorage.getItem('currentSessionId');
     if (savedSessionId && chatSessionStore.sessions.some(s => s.id === savedSessionId)) {
@@ -232,7 +270,6 @@ async function sendMessage() {
     await api.update_session_title({ session_id: currentSessionId.value, title: newTitle });
     session.title = newTitle;
   }
-  console.log('messagecontent', messageContent);
   // Add user message to UI
   const userMessage = {
     id: Date.now().toString(),
@@ -423,7 +460,7 @@ watch(
 <style scoped>
 .chat-page {
   width: 100%;
-  height: calc(100vh - 60px);
+  /* height: calc(100vh - 60px); */ /* Remove fixed height calculation */
   position: relative;
   display: flex;
   flex-direction: column;
@@ -632,6 +669,17 @@ watch(
   padding: 0.5rem;
 }
 
+.chat-content-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: #666;
+  font-size: 0.95rem;
+}
+
 .chat-loader {
   width: 20px;
   height: 20px;
@@ -697,6 +745,6 @@ button:disabled {
 <style>
 body {
   --app-max-width: none !important;
-  overflow-x: hidden;
+  /* overflow-x: hidden; */ /* Remove as we now control via JavaScript */
 }
 </style> 
