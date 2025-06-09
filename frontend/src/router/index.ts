@@ -49,6 +49,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/share/:share_id',
+    name: 'home-share',
+    component: HomeView,              // ← 改为 HomeView
+    props: route => ({                // ← 可选：把 share_id 当 prop 传下去
+      share_id: route.params.share_id
+    }),
+    meta: { title: 'Home - iPaper', requiresAuth: false }
+  },
+  {
     // Catch all route (404)
     path: '/:pathMatch(.*)*',
     name: 'not-found',

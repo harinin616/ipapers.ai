@@ -17,6 +17,9 @@ export interface IApiService {
   stream_chat(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
   get_paper(paper_id: string): Promise<boolean>;
   click_paper(paper_id: string): Promise<boolean>;
+  shareFiles(payload: { files: string[] }): Promise<{ share_id: string }>;
+  getShare(shareId: string): Promise<{ files: string[] }>;
+
   
   // Session management methods
   get_sessions(): Promise<{ id: string; title: string }[]>;
@@ -326,7 +329,18 @@ class ApiService implements IApiService {
     });
     return response.json();
   }
+  async shareFiles(payload: { files: string[] }): Promise<{ share_id: string }> {
+    const resp = await this.api.post('/api/share', payload);
+    return resp.data;
+  }
 
+  /** ② 根据 shareId 拉取文件列表 */
+  async getShare(shareId: string): Promise<{ files: string[] }> {
+    const resp = await this.api.get(`/api/share/${shareId}`);
+    return resp.data;
+  }
+
+  
   // ============ RWS SESSION MANAGEMENT ============
   
   async get_rws_sessions(): Promise<{ id: string; title: string }[]> {
