@@ -384,6 +384,8 @@
         </div>
       </div>
     </div>
+
+
     </div>
   </div>
 </template>
@@ -433,6 +435,7 @@ const isAddingEdge = ref(false);
 const selectedFromPaper = ref(null);
 const edgeEditDialog = ref(false);
 const currentEdge = ref({ from: '', to: '', relationship_type: 'relates_to', description: '' });
+const isCompletingGraph = ref(false);
 
 // File selection dialog state
 const fileSelectionDialog = ref(false);
@@ -966,6 +969,32 @@ async function removeEdge(fromPaper, toPaper) {
   }
 }
 
+async function completeGraphWithLLM() {
+  if (!currentSessionId.value || uploadedFiles.value.length < 2 || isCompletingGraph.value) {
+    return false;
+  }
+  
+  isCompletingGraph.value = true;
+  
+  try {
+    const result = await api.complete_graph(currentSessionId.value);
+    
+    if (result.success) {
+      // Reload the graph to show new relationships
+      await loadPaperGraph();
+      return true;
+    } else {
+      console.error('Failed to complete graph:', result.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error completing graph:', error);
+    return false;
+  } finally {
+    isCompletingGraph.value = false;
+  }
+}
+
 function getArrowPath(x1, y1, x2, y2) {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -1008,28 +1037,34 @@ async function generateRelatedWork() {
   
   isGenerating.value = true;
   
-  // Add user message with guidance if provided
-  if (guidanceInputText.value.trim()) {
-    const userMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: guidanceInputText.value.trim(),
+  try {
+    // Automatically complete the graph first if we have multiple papers
+    if (uploadedFiles.value.length >= 2) {
+      console.log('Auto-completing graph before generation...');
+      await completeGraphWithLLM();
+    }
+    
+    // Add user message with guidance if provided
+    if (guidanceInputText.value.trim()) {
+      const userMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: guidanceInputText.value.trim(),
+        created_at: new Date().toISOString()
+      };
+      rwsMessages.value.push(userMessage);
+    }
+    
+    // Add empty assistant message for streaming
+    const assistantMessage = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: '',
       created_at: new Date().toISOString()
     };
-    rwsMessages.value.push(userMessage);
-  }
-  
-  // Add empty assistant message for streaming
-  const assistantMessage = {
-    id: (Date.now() + 1).toString(),
-    role: 'assistant',
-    content: '',
-    created_at: new Date().toISOString()
-  };
-  rwsMessages.value.push(assistantMessage);
-  currentGeneratingMessageId.value = assistantMessage.id;
-  
-  try {
+    rwsMessages.value.push(assistantMessage);
+    currentGeneratingMessageId.value = assistantMessage.id;
+    
     // Extract guidance from input text
     const guidance = guidanceInputText.value.trim() ? [guidanceInputText.value.trim()] : [];
     
@@ -1422,6 +1457,8 @@ function formatDate(timestamp) {
   const date = new Date(timestamp * 1000); // Convert from seconds to milliseconds
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 }
+
+
 </script>
 
 <style scoped>
@@ -1616,6 +1653,8 @@ function formatDate(timestamp) {
 .cancel-edge-btn:hover {
   background: #da190b;
 }
+
+
 
 .graph-container {
   flex: 1;
@@ -2271,6 +2310,8 @@ function formatDate(timestamp) {
   transform: none;
   box-shadow: none;
 }
+
+
 </style>
 
 <style>

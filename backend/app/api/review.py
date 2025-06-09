@@ -374,4 +374,28 @@ async def remove_graph_edge(request: Request, data: dict = Body(...)):
     return {"success": True}
 
 
+@router.post("/graph/complete")
+async def complete_graph_with_llm(request: Request, data: dict = Body(...)):
+    """
+    Complete the paper relation graph using LLM analysis
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    session_id = data.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    try:
+        result = await review_service.complete_graph_with_llm(user_id, session_id)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to complete graph"))
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error completing graph with LLM: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 

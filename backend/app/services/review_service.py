@@ -234,8 +234,207 @@ class ReviewService:
         except Exception as e:
             logger.error(f"Error generating graph context for user {user_id}, session {session_id}: {str(e)}")
             return ""
-    
 
+    async def complete_graph_with_llm(self, user_id: str, session_id: str) -> dict:
+        """Use LLM to analyze papers and suggest missing relationships to complete the graph"""
+        try:
+            from .llm_service import llm_service
+            from .pdf_service import pdf_service
+            
+            # Get current graph and session files
+            graph = self.get_paper_graph(user_id, session_id)
+            session_files = self.get_session_files(user_id, session_id)
+            
+            if len(session_files) < 2:
+                return {"success": False, "error": "Need at least 2 papers to complete graph"}
+            
+            # Get full texts for all papers instead of just chunks
+            paper_full_texts = {}
+            
+            # Get full text from session-specific uploaded files
+            session_full_texts = await self.get_session_full_texts(user_id, session_id)
+            for paper_data in session_full_texts:
+                paper_id = paper_data["paper_id"]
+                filename = paper_data["filename"]
+                full_text = paper_data["full_text"]
+                
+                # Truncate if extremely long (keep reasonable limit for LLM)
+                if len(full_text) > 8000:  # Keep more text than before, but still manageable
+                    full_text = full_text[:8000] + "... [truncated]"
+                
+                paper_full_texts[paper_id] = {
+                    "filename": filename,
+                    "full_text": full_text
+                }
+            
+            # Get full text from shared chat system files if available
+            shared_full_texts = await self.get_shared_full_texts(user_id)
+            for paper_data in shared_full_texts:
+                paper_id = paper_data["paper_id"]
+                filename = paper_data["filename"]
+                full_text = paper_data["full_text"]
+                
+                # Only add if not already in session files (avoid duplicates)
+                if paper_id not in paper_full_texts:
+                    # Truncate if extremely long
+                    if len(full_text) > 8000:
+                        full_text = full_text[:8000] + "... [truncated]"
+                    
+                    paper_full_texts[paper_id] = {
+                        "filename": filename,
+                        "full_text": full_text
+                    }
+            
+            # Ensure we have at least 2 papers with full text
+            if len(paper_full_texts) < 2:
+                return {"success": False, "error": "Need at least 2 papers with full text to complete graph"}
+            
+            # Build existing relationships set for comparison
+            existing_relationships = set()
+            for edge in graph["edges"]:
+                existing_relationships.add((edge["from"], edge["to"]))
+                # Also add reverse to avoid suggesting opposite direction unnecessarily
+                existing_relationships.add((edge["to"], edge["from"]))
+            
+            # Create prompt for LLM to analyze relationships using full texts
+            paper_list = []
+            for paper_id, info in paper_full_texts.items():
+                paper_section = f"Paper ID: {paper_id}\nTitle/Filename: {info['filename']}\nFull Text:\n{info['full_text']}"
+                paper_list.append(paper_section)
+            
+            existing_edges_desc = []
+            if graph["edges"]:
+                for edge in graph["edges"]:
+                    from_name = paper_full_texts.get(edge["from"], {}).get("filename", edge["from"])
+                    to_name = paper_full_texts.get(edge["to"], {}).get("filename", edge["to"])
+                    existing_edges_desc.append(f"{edge['from']} -> {edge['to']} ({from_name} {edge['relationship_type']} {to_name})")
+            
+            prompt = f"""
+You are an expert academic researcher analyzing relationships between research papers. 
+
+I have {len(paper_full_texts)} papers with their complete content:
+
+{chr(10).join(['='*50 + chr(10) + paper + chr(10) + '='*50 for paper in paper_list])}
+
+Current existing relationships:
+{chr(10).join(existing_edges_desc) if existing_edges_desc else "None"}
+
+Please analyze the COMPLETE CONTENT of these papers and suggest additional relationships that would complete the graph. Consider the following relationship types:
+- relates_to: General topical relationship or shared research area
+- builds_on: One paper builds upon, extends, or improves another's work/methodology  
+- compares_to: Papers that compare methodologies, results, or approaches
+- contradicts: Papers with conflicting findings, approaches, or conclusions
+
+For each suggested relationship, provide:
+1. From paper ID
+2. To paper ID  
+3. Relationship type
+4. Brief description of why this relationship exists based on the paper content
+
+Please respond in the following JSON format:
+{{
+  "suggested_relationships": [
+    {{
+      "from": "paper_id_1",
+      "to": "paper_id_2", 
+      "relationship_type": "builds_on",
+      "description": "Brief explanation of the relationship based on paper content"
+    }}
+  ]
+}}
+
+Focus on meaningful relationships that would help understand the research landscape. Use the complete paper content to make accurate assessments of how papers relate to each other. Avoid redundant or trivial connections.
+"""
+
+            # Call LLM
+            messages = [{"role": "user", "content": prompt}]
+            response = await llm_service.get_conversation_completion(messages, stream=False)
+            
+            if not response:
+                return {"success": False, "error": "Failed to get LLM response"}
+            
+            # Extract response text
+            response_text = ""
+            if hasattr(response, 'text'):
+                response_text = response.text
+            elif hasattr(response, 'content'):
+                response_text = response.content
+            else:
+                # Handle streaming response by collecting all chunks
+                full_text = ""
+                async for chunk in response:
+                    if hasattr(chunk, 'text') and chunk.text:
+                        full_text += chunk.text
+                response_text = full_text
+            
+            if not response_text:
+                return {"success": False, "error": "Empty response from LLM"}
+            
+            # Parse JSON response
+            try:
+                import json
+                import re
+                
+                # Extract JSON from response (it might have extra text)
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    llm_result = json.loads(json_str)
+                else:
+                    logger.error(f"Could not extract JSON from LLM response: {response_text}")
+                    return {"success": False, "error": "Invalid LLM response format"}
+                
+                suggested_relationships = llm_result.get("suggested_relationships", [])
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse LLM JSON response: {str(e)}")
+                logger.error(f"Response text: {response_text}")
+                return {"success": False, "error": "Failed to parse LLM response"}
+            
+            # Add suggested relationships to graph
+            added_relationships = []
+            valid_paper_ids = set(paper_full_texts.keys())
+            
+            for rel in suggested_relationships:
+                from_paper = rel.get("from")
+                to_paper = rel.get("to")
+                rel_type = rel.get("relationship_type")
+                description = rel.get("description", "")
+                
+                # Validate the suggestion
+                if (from_paper in valid_paper_ids and 
+                    to_paper in valid_paper_ids and 
+                    from_paper != to_paper and
+                    (from_paper, to_paper) not in existing_relationships):
+                    
+                    # Add the edge
+                    success = self.add_graph_edge(user_id, from_paper, to_paper, rel_type, description, session_id)
+                    if success:
+                        added_relationships.append({
+                            "from": from_paper,
+                            "to": to_paper,
+                            "from_name": paper_full_texts[from_paper]["filename"],
+                            "to_name": paper_full_texts[to_paper]["filename"],
+                            "relationship_type": rel_type,
+                            "description": description
+                        })
+                        # Update existing relationships to avoid duplicates in this session
+                        existing_relationships.add((from_paper, to_paper))
+                        existing_relationships.add((to_paper, from_paper))
+            
+            logger.info(f"Graph completion analysis: analyzed {len(paper_full_texts)} papers, suggested {len(suggested_relationships)} relationships, added {len(added_relationships)} new edges")
+            
+            return {
+                "success": True,
+                "added_count": len(added_relationships),
+                "added_relationships": added_relationships,
+                "total_suggested": len(suggested_relationships)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error completing graph with LLM for user {user_id}, session {session_id}: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
     async def format_rwg_messages(self, user_id: str, session_id: str = None) -> List[Dict[str, str]]:
         """
         Format related work generation messages for API call with conversation support

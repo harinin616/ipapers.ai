@@ -50,6 +50,7 @@ export interface IApiService {
   update_graph_nodes(papers: any[], session_id: string): Promise<any>;
   add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string; session_id: string }): Promise<any>;
   remove_graph_edge(payload: { from: string; to: string; session_id: string }): Promise<any>;
+  complete_graph(session_id: string): Promise<any>;
 }
 /**
  * API Service implementation
@@ -454,6 +455,16 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to remove graph edge:', error);
+      throw error;
+    }
+  }
+
+  async complete_graph(session_id: string): Promise<any> {
+    try {
+      const response = await this.api.post('/api/review/graph/complete', { session_id });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to complete graph:', error);
       throw error;
     }
   }
