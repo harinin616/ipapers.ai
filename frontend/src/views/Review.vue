@@ -83,7 +83,25 @@
             <h4>Papers Relation Graph</h4>
             <div class="graph-controls" v-if="uploadedFiles.length > 1">
               <button 
-                v-if="!isAddingEdge" 
+                v-if="!isChoosingTarget"
+                @click="startChoosingTarget" 
+                class="choose-target-btn"
+                :class="{ 'has-target': targetPaper }"
+                title="Choose target paper (missing related work section)"
+              >
+                <span v-if="targetPaper">🎯 Target: {{ getShortFilename(targetPaper) }}</span>
+                <span v-else>🎯 Choose Target</span>
+              </button>
+              <button 
+                v-else 
+                @click="cancelChoosingTarget" 
+                class="cancel-target-btn"
+                title="Cancel choosing target"
+              >
+                Cancel Target
+              </button>
+              <button 
+                v-if="!isAddingEdge && !isChoosingTarget" 
                 @click="startAddingEdge" 
                 class="add-edge-btn"
                 title="Add relationship between papers"
@@ -91,7 +109,7 @@
                 + Add Edge
               </button>
               <button 
-                v-else 
+                v-else-if="isAddingEdge"
                 @click="cancelAddingEdge" 
                 class="cancel-edge-btn"
                 title="Cancel adding edge"
@@ -99,7 +117,7 @@
                 Cancel
               </button>
               <button 
-                v-if="uploadedFiles.length > 2"
+                v-if="uploadedFiles.length > 2 && !isAddingEdge && !isChoosingTarget"
                 @click="regenerateLayout" 
                 class="regenerate-btn"
                 title="Regenerate graph layout"
@@ -146,6 +164,18 @@
                     <stop offset="0%" stop-color="#ffb74d" stop-opacity="0.6" />
                     <stop offset="70%" stop-color="#ff9800" stop-opacity="0.3" />
                     <stop offset="100%" stop-color="#f57c00" stop-opacity="0.1" />
+                  </radialGradient>
+                  
+                  <linearGradient id="targetGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#e91e63" />
+                    <stop offset="50%" stop-color="#c2185b" />
+                    <stop offset="100%" stop-color="#ad1457" />
+                  </linearGradient>
+                  
+                  <radialGradient id="targetGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#e91e63" stop-opacity="0.6" />
+                    <stop offset="70%" stop-color="#c2185b" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#ad1457" stop-opacity="0.1" />
                   </radialGradient>
                   
                   <!-- Gradients for edges -->
@@ -240,23 +270,25 @@
                     :key="file.paper_id"
                     :transform="`translate(${file.x}, ${file.y})`"
                     class="paper-node"
-                    @click="selectPaperForEdge(file.paper_id)"
+                    @click="selectPaper(file.paper_id)"
                     :class="{ 
                       'adding-edge': isAddingEdge,
-                      'selected': selectedFromPaper === file.paper_id 
+                      'choosing-target': isChoosingTarget,
+                      'selected': selectedFromPaper === file.paper_id,
+                      'target-paper': targetPaper === file.paper_id
                     }"
                   >
                     <!-- Outer glow -->
                     <circle 
                       :r="28" 
-                      :fill="selectedFromPaper === file.paper_id ? 'url(#selectedGlow)' : 'url(#nodeGlow)'" 
+                      :fill="getNodeGlow(file.paper_id)" 
                       opacity="0.3"
                       class="node-glow"
                     />
                     <!-- Main node -->
                     <circle 
                       :r="24" 
-                      :fill="selectedFromPaper === file.paper_id ? 'url(#selectedGradient)' : 'url(#nodeGradient)'" 
+                      :fill="getNodeFill(file.paper_id)" 
                       stroke="rgba(255,255,255,0.8)"
                       stroke-width="3"
                       class="node-main"
@@ -531,6 +563,10 @@ const edgeEditDialog = ref(false);
 const currentEdge = ref({ from: '', to: '', relationship_type: 'relates_to', description: '' });
 const isCompletingGraph = ref(false);
 
+// Target paper state
+const isChoosingTarget = ref(false);
+const targetPaper = ref(null);
+
 // File selection dialog state
 const fileSelectionDialog = ref(false);
 const globalFileList = ref([]);
@@ -688,6 +724,7 @@ function saveSessionState() {
   // Don't save empty guidance as it means it was already used or cleared
   const sessionState = {
     guidanceText: guidanceInputText.value.trim() || '', // Save only if there's actual content
+    targetPaper: targetPaper.value,
     lastUpdated: Date.now()
   };
   
@@ -705,6 +742,11 @@ function loadSessionState() {
       // Restore guidance text
       if (sessionState.guidanceText) {
         guidanceInputText.value = sessionState.guidanceText;
+      }
+      
+      // Restore target paper
+      if (sessionState.targetPaper) {
+        targetPaper.value = sessionState.targetPaper;
       }
       
       // Restore generated content if it exists
@@ -738,6 +780,11 @@ function loadSessionStateWithoutMessages() {
         guidanceInputText.value = '';
       }
       
+      // Restore target paper
+      if (sessionState.targetPaper) {
+        targetPaper.value = sessionState.targetPaper;
+      }
+      
       // Note: We don't restore rwsMessages or generatedContent here
       // as they come from the backend messages
     }
@@ -767,6 +814,7 @@ async function switchSession(sessionId) {
   uploadedFiles.value = [];
   paperConnections.value = [];
   paperGraph.value = { nodes: [], edges: [] };
+  targetPaper.value = null;
   
   currentSessionId.value = sessionId;
   localStorage.setItem('currentRwsSessionId', sessionId); 
@@ -793,6 +841,7 @@ async function createNewSession() {
     uploadedFiles.value = [];
     paperConnections.value = [];
     paperGraph.value = { nodes: [], edges: [] };
+    targetPaper.value = null;
   } catch (error) {
     console.error('Failed to create new RWS session:', error);
   }
@@ -816,6 +865,7 @@ async function loadRwsSession(sessionId = null) {
     uploadedFiles.value = [];
     paperConnections.value = [];
     paperGraph.value = { nodes: [], edges: [] };
+    targetPaper.value = null;
     
     // Load messages from backend
     const response = await api.get_rws_messages({ session_id: sessionId });
@@ -861,6 +911,15 @@ async function loadRwsSession(sessionId = null) {
     
     // Load session state (guidance text) but not rwsMessages since we loaded from backend
     loadSessionStateWithoutMessages();
+    
+    // Load target paper from backend
+    try {
+      const targetResponse = await api.get_target_paper(sessionId);
+      targetPaper.value = targetResponse.target_paper_id;
+    } catch (targetError) {
+      console.error('Failed to load target paper:', targetError);
+      targetPaper.value = null;
+    }
     
     // If no messages from backend or localStorage, keep rwsMessages empty
     // The backend messages take precedence over localStorage for conversation history
@@ -1163,6 +1222,46 @@ function startAddingEdge() {
   selectedFromPaper.value = null;
 }
 
+// Target paper functions
+function startChoosingTarget() {
+  isChoosingTarget.value = true;
+}
+
+function cancelChoosingTarget() {
+  isChoosingTarget.value = false;
+}
+
+async function selectTargetPaper(paperId) {
+  if (!isChoosingTarget.value) return;
+  
+  try {
+    // Set the target paper locally
+    targetPaper.value = paperId;
+    isChoosingTarget.value = false;
+    
+    // Update target paper in the backend if we have a session
+    if (currentSessionId.value) {
+      await api.set_target_paper(currentSessionId.value, paperId);
+    }
+    
+    // Save to session state
+    saveSessionState();
+  } catch (error) {
+    console.error('Failed to set target paper:', error);
+    // Reset on error
+    targetPaper.value = null;
+    isChoosingTarget.value = false;
+  }
+}
+
+function selectPaper(paperId) {
+  if (isChoosingTarget.value) {
+    selectTargetPaper(paperId);
+  } else if (isAddingEdge.value) {
+    selectPaperForEdge(paperId);
+  }
+}
+
 function selectPaperForEdge(paperId) {
   if (!isAddingEdge.value) return;
   
@@ -1183,6 +1282,35 @@ function selectPaperForEdge(paperId) {
 function cancelAddingEdge() {
   isAddingEdge.value = false;
   selectedFromPaper.value = null;
+}
+
+// Helper functions for node styling
+function getNodeFill(paperId) {
+  if (targetPaper.value === paperId) {
+    return 'url(#targetGradient)';
+  } else if (selectedFromPaper.value === paperId) {
+    return 'url(#selectedGradient)';
+  } else {
+    return 'url(#nodeGradient)';
+  }
+}
+
+function getNodeGlow(paperId) {
+  if (targetPaper.value === paperId) {
+    return 'url(#targetGlow)';
+  } else if (selectedFromPaper.value === paperId) {
+    return 'url(#selectedGlow)';
+  } else {
+    return 'url(#nodeGlow)';
+  }
+}
+
+function getShortFilename(paperId) {
+  const file = uploadedFiles.value.find(f => f.paper_id === paperId);
+  if (!file) return 'Unknown';
+  const filename = file.filename || 'Unknown';
+  // Return first 15 characters with ... if longer
+  return filename.length > 15 ? filename.substring(0, 15) + '...' : filename;
 }
 
 async function saveEdge() {
@@ -1920,6 +2048,55 @@ function formatDate(timestamp) {
   transform: translateY(-1px);
 }
 
+/* Target paper button styles */
+.choose-target-btn {
+  background: #e91e63;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choose-target-btn:hover {
+  background: #c2185b;
+  transform: translateY(-1px);
+}
+
+.choose-target-btn.has-target {
+  background: #ad1457;
+  box-shadow: 0 2px 8px rgba(173,20,87,0.3);
+}
+
+.choose-target-btn.has-target:hover {
+  background: #880e4f;
+}
+
+.cancel-target-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.cancel-target-btn:hover {
+  background: #da190b;
+  transform: translateY(-1px);
+}
+
 
 
 .graph-container {
@@ -2040,6 +2217,44 @@ function formatDate(timestamp) {
 .paper-node.selected .node-glow {
   opacity: 0.7 !important;
   transform: scale(1.15);
+}
+
+/* Target paper node styling */
+.paper-node.choosing-target {
+  cursor: crosshair;
+}
+
+.paper-node.choosing-target .node-main {
+  stroke: #e91e63;
+  stroke-width: 4;
+  stroke-dasharray: 8,4;
+  animation: dash 2s linear infinite;
+}
+
+.paper-node.choosing-target .node-glow {
+  opacity: 0.8 !important;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.paper-node.target-paper .node-main {
+  stroke: #e91e63;
+  stroke-width: 5;
+  filter: drop-shadow(0 4px 12px rgba(233,30,99,0.4));
+  animation: targetPulse 2s ease-in-out infinite;
+}
+
+.paper-node.target-paper .node-glow {
+  opacity: 0.7 !important;
+  transform: scale(1.15);
+}
+
+@keyframes targetPulse {
+  0%, 100% {
+    filter: drop-shadow(0 4px 12px rgba(233,30,99,0.4));
+  }
+  50% {
+    filter: drop-shadow(0 6px 16px rgba(233,30,99,0.6));
+  }
 }
 
 @keyframes dash {

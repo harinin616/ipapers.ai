@@ -52,6 +52,11 @@ export interface IApiService {
   add_graph_edge(payload: { from: string; to: string; relationship_type?: string; description?: string; session_id: string }): Promise<any>;
   remove_graph_edge(payload: { from: string; to: string; session_id: string }): Promise<any>;
   complete_graph(session_id: string): Promise<any>;
+  
+  // Target paper management methods
+  set_target_paper(session_id: string, paper_id: string): Promise<any>;
+  get_target_paper(session_id: string): Promise<{ target_paper_id: string | null }>;
+  clear_target_paper(session_id: string): Promise<any>;
 }
 /**
  * API Service implementation
@@ -525,6 +530,38 @@ class ApiService implements IApiService {
       await this.api.post('/api/chat/files/clear');
     } catch (error) {
       console.error('Failed to clear user files:', error);
+      throw error;
+    }
+  }
+
+  // ============ TARGET PAPER MANAGEMENT ============
+  
+  async set_target_paper(session_id: string, paper_id: string): Promise<any> {
+    try {
+      const response = await this.api.post('/api/review/target_paper', { session_id, paper_id });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to set target paper:', error);
+      throw error;
+    }
+  }
+
+  async get_target_paper(session_id: string): Promise<{ target_paper_id: string | null }> {
+    try {
+      const response = await this.api.get('/api/review/target_paper', { params: { session_id } });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get target paper:', error);
+      throw error;
+    }
+  }
+
+  async clear_target_paper(session_id: string): Promise<any> {
+    try {
+      const response = await this.api.delete('/api/review/target_paper', { data: { session_id } });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to clear target paper:', error);
       throw error;
     }
   }

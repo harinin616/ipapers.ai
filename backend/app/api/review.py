@@ -388,4 +388,65 @@ async def complete_graph_with_llm(request: Request, data: dict = Body(...)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+# ============ TARGET PAPER MANAGEMENT ENDPOINTS ============
+
+@router.post("/target_paper")
+async def set_target_paper(request: Request, data: dict = Body(...)):
+    """
+    Set the target paper (paper missing related work section) for a session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    session_id = data.get("session_id")
+    paper_id = data.get("paper_id")
+    
+    if not session_id or not paper_id:
+        raise HTTPException(status_code=400, detail="Missing session_id or paper_id")
+    
+    success = review_service.set_target_paper(user_id, session_id, paper_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to set target paper")
+    
+    return {"success": True}
+
+
+@router.get("/target_paper")
+async def get_target_paper(request: Request, session_id: str = Query(...)):
+    """
+    Get the current target paper for a session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    target_paper_id = review_service.get_target_paper(user_id, session_id)
+    return {"target_paper_id": target_paper_id}
+
+
+@router.delete("/target_paper")
+async def clear_target_paper(request: Request, data: dict = Body(...)):
+    """
+    Clear the target paper for a session
+    """
+    user_id = request.headers.get('X-User-ID')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found")
+    
+    session_id = data.get("session_id")
+    
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+    
+    success = review_service.clear_target_paper(user_id, session_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to clear target paper")
+    
+    return {"success": True}
+
+
 

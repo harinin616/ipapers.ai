@@ -483,13 +483,27 @@ Focus on meaningful relationships that would help understand the research landsc
             if file_data.get("selected", True):  # Default to selected for uploaded files
                 file_names.append(file_data.get("filename", "Unknown file"))
 
+        # Get target paper for the session
+        target_paper_id = self.get_target_paper(user_id, session_id)
+        target_paper_info = ""
+        if target_paper_id:
+            # Find target paper details
+            for file_data in session_files:
+                if file_data.get("paper_id") == target_paper_id:
+                    target_filename = file_data.get("filename", "Unknown file")
+                    target_paper_info = f" The target paper is '{target_filename}' (the paper missing a related work section)."
+                    break
+        
         system_content = (
             "You are a professional academic writing assistant specialized in generating related work sections. "
             "You will be given: "
             "1. the summaries of the papers. "
             "2. the relationships between the papers. "
             "3. the guidance for the related work section. "
-            "Your role is to help users create a concise related work section by analyzing the summaries of the papers, "
+            f"{target_paper_info} "
+            "Your role is to help users create a concise related work section by analyzing the summaries of the papers. "
+            "When a target paper is specified, focus on generating a related work section specifically for that paper, "
+            "discussing how the other papers relate to the target paper's research. "
             "Directly output the related work section, do not include any other text. "
         )
         
@@ -582,6 +596,26 @@ Focus on meaningful relationships that would help understand the research landsc
                     context_text = "\n\n".join(papers_context)
                     last_message_idx = len(api_messages) - 1
                     
+                    # Get target paper information for the enhanced query
+                    target_paper_id = self.get_target_paper(user_id, session_id)
+                    target_instruction = ""
+                    if target_paper_id:
+                        # Find target paper in the summaries
+                        target_paper_index = None
+                        for i, paper in enumerate(session_summaries):
+                            if paper['paper_id'] == target_paper_id:
+                                target_paper_index = i + 1  # 1-based index for citation
+                                target_filename = paper['filename']
+                                break
+                        
+                        if target_paper_index:
+                            target_instruction = f"""
+                            
+                            IMPORTANT: The target paper is paper {target_paper_index} ({target_filename}) - this is the paper that is missing a related work section. 
+                            Generate a related work section specifically for this target paper, focusing on how the other papers relate to the target paper's research.
+                            When citing the target paper itself, refer to it as "our work" or "this paper" instead of using a citation number.
+                            """
+                    
                     # Create enhanced query with summary context for first round only
                     enhanced_query = f"""
                     {formatted_query}
@@ -589,7 +623,7 @@ Focus on meaningful relationships that would help understand the research landsc
                     Based on the summaries of the following papers, help generate a comprehensive related work section:
                     ---
                     {context_text}
-                    ---
+                    ---{target_instruction}
                     Please synthesize this information into a coherent related work section with proper flow and citations. 
                     Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc. Do not cite them too many times. Write at most two sentences for each paper. Please directly output the related work section, do not include any other text.
                     """
@@ -973,6 +1007,84 @@ Focus on meaningful relationships that would help understand the research landsc
             
         except Exception as e:
             logger.error(f"Error in summarize_session_files for user {user_id}, session {session_id}: {str(e)}")
+            return False
+
+    # ============ TARGET PAPER MANAGEMENT ============
+    
+    def set_target_paper(self, user_id: str, session_id: str, paper_id: str) -> bool:
+        """
+        Set the target paper (paper missing related work section) for a session
+        """
+        try:
+            # Ensure session exists
+            if user_id not in self.active_rws:
+                self.active_rws[user_id] = {"sessions": {}}
+            if session_id not in self.active_rws[user_id]["sessions"]:
+                self.active_rws[user_id]["sessions"][session_id] = {
+                    "messages": [],
+                    "title": "Untitled RWS Session",
+                    "lastMessageAt": time.time(),
+                    "uploaded_files": []
+                }
+            
+            session_data = self.active_rws[user_id]["sessions"][session_id]
+            
+            # Validate that the paper exists in the session
+            session_files = session_data.get("uploaded_files", [])
+            paper_exists = any(file_data.get("paper_id") == paper_id for file_data in session_files)
+            
+            if not paper_exists:
+                logger.warning(f"Paper {paper_id} not found in session {session_id} for user {user_id}")
+                return False
+            
+            # Set the target paper
+            session_data["target_paper"] = paper_id
+            session_data["target_paper_set_at"] = time.time()
+            
+            logger.info(f"Set target paper {paper_id} for session {session_id} of user {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error setting target paper {paper_id} for session {session_id}: {str(e)}")
+            return False
+    
+    def get_target_paper(self, user_id: str, session_id: str) -> str | None:
+        """
+        Get the current target paper for a session
+        """
+        try:
+            if (user_id not in self.active_rws or 
+                session_id not in self.active_rws[user_id]["sessions"]):
+                return None
+            
+            session_data = self.active_rws[user_id]["sessions"][session_id]
+            return session_data.get("target_paper")
+            
+        except Exception as e:
+            logger.error(f"Error getting target paper for session {session_id}: {str(e)}")
+            return None
+    
+    def clear_target_paper(self, user_id: str, session_id: str) -> bool:
+        """
+        Clear the target paper for a session
+        """
+        try:
+            if (user_id not in self.active_rws or 
+                session_id not in self.active_rws[user_id]["sessions"]):
+                return False
+            
+            session_data = self.active_rws[user_id]["sessions"][session_id]
+            
+            if "target_paper" in session_data:
+                del session_data["target_paper"]
+            if "target_paper_set_at" in session_data:
+                del session_data["target_paper_set_at"]
+            
+            logger.info(f"Cleared target paper for session {session_id} of user {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error clearing target paper for session {session_id}: {str(e)}")
             return False
 
 review_service = ReviewService()
