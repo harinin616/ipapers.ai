@@ -28,13 +28,15 @@
         <div class="loader"></div>
         <div>Loading PDF...</div>
       </div>
-      <embed 
-        :src="currentPdfUrl" 
-        type="application/pdf"
-        class="pdf-iframe" 
-        @load="isPdfLoading = false"
-        :style="{ opacity: isPdfLoading ? 0 : 1 }"
-      >
+<iframe
+  v-if="securePdfUrl && showPdf"
+  :src="securePdfUrl"
+  class="pdf-iframe"
+  @load="isPdfLoading = false"
+  :style="{ opacity: isPdfLoading ? 0 : 1 }"
+  frameborder="0"
+>
+</iframe>
     </div>
     
     <div v-if="!showPdf || !currentPdfUrl" class="pdf-files-panel">
@@ -103,7 +105,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { defineComponent, ref, watch,computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute , useRouter } from 'vue-router'
 import api from '../services/api'
 import { fileSelectionStore } from '../stores/fileSelectionStore'
@@ -145,6 +147,13 @@ export default defineComponent({
   setup(props, { emit }) {
     const pdfFiles = ref<ChatFile[]>([])
     const currentPdfUrl = ref<string | null>(null)
+    const securePdfUrl = computed(() => {
+      console.log('[Debug] securePdfUrl 计算：', currentPdfUrl.value)
+      if (!currentPdfUrl.value) return ''
+      return currentPdfUrl.value.startsWith('http://')
+        ? currentPdfUrl.value.replace(/^http:\/\//, 'https://')
+        : currentPdfUrl.value
+    })
     const selectedFileId = ref<string | null>(null)
     const isPdfLoading = ref(false)
     const currentFileName = ref('Document')
@@ -172,6 +181,7 @@ export default defineComponent({
       currentFileName.value = file.filename
       currentPdfUrl.value = file.paper_URL
       
+      emit('update:showPdf', true)
       emit('file-selected', file)
       
       if (window.innerWidth <= 768) {

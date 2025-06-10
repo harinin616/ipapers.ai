@@ -1,3 +1,3 @@
 npm run build
 
- sudo cp -r dist/* /var/www/dist/
+sudo cp -r dist/* /var/www/dist/
