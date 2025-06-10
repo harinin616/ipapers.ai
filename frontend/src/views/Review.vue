@@ -120,48 +120,111 @@
                 <defs>
                   <marker id="arrowhead" markerWidth="8" markerHeight="6" 
                           refX="8" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#4caf50" />
+                    <polygon points="0 0, 8 3, 0 6" fill="url(#edgeGradient)" />
                   </marker>
+                  
+                  <!-- Gradients for nodes -->
+                  <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#42a5f5" />
+                    <stop offset="50%" stop-color="#1e88e5" />
+                    <stop offset="100%" stop-color="#1565c0" />
+                  </linearGradient>
+                  
+                  <linearGradient id="selectedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ffb74d" />
+                    <stop offset="50%" stop-color="#ff9800" />
+                    <stop offset="100%" stop-color="#f57c00" />
+                  </linearGradient>
+                  
+                  <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#42a5f5" stop-opacity="0.6" />
+                    <stop offset="70%" stop-color="#1e88e5" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#1565c0" stop-opacity="0.1" />
+                  </radialGradient>
+                  
+                  <radialGradient id="selectedGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#ffb74d" stop-opacity="0.6" />
+                    <stop offset="70%" stop-color="#ff9800" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#f57c00" stop-opacity="0.1" />
+                  </radialGradient>
+                  
+                  <!-- Gradients for edges -->
+                  <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#4caf50" />
+                    <stop offset="50%" stop-color="#66bb6a" />
+                    <stop offset="100%" stop-color="#4caf50" />
+                  </linearGradient>
+                  
+                  <!-- Gradient for delete button -->
+                  <linearGradient id="deleteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f44336" />
+                    <stop offset="50%" stop-color="#e53935" />
+                    <stop offset="100%" stop-color="#d32f2f" />
+                  </linearGradient>
                 </defs>
                 <!-- Draw directed connections between papers -->
                 <g class="connections">
                   <g v-for="connection in paperConnections" :key="`${connection.from}-${connection.to}`">
+                    <!-- Glow effect -->
                     <path 
                       :d="connection.path"
-                      stroke="#4caf50" 
-                      stroke-width="2"
+                      stroke="url(#edgeGradient)" 
+                      stroke-width="6"
                       fill="none"
-                      opacity="0.8"
+                      opacity="0.3"
                       marker-end="url(#arrowhead)"
+                      class="edge-glow"
+                    />
+                    <!-- Main edge -->
+                    <path 
+                      :d="connection.path"
+                      stroke="url(#edgeGradient)" 
+                      stroke-width="3"
+                      fill="none"
+                      opacity="0.9"
+                      marker-end="url(#arrowhead)"
+                      class="edge-main"
+                    />
+                    <!-- Edge label background -->
+                    <rect 
+                      :x="connection.labelX - 35" 
+                      :y="connection.labelY - 12"
+                      width="70"
+                      height="20"
+                      rx="12"
+                      ry="12"
+                      fill="rgba(255,255,255,0.95)"
+                      stroke="url(#edgeGradient)"
+                      stroke-width="1.5"
+                      class="edge-label-bg"
                     />
                     <!-- Edge label -->
                     <text 
                       :x="connection.labelX" 
-                      :y="connection.labelY"
+                      :y="connection.labelY + 2"
                       text-anchor="middle" 
                       font-size="10" 
-                      fill="#333"
+                      fill="#2d3748"
                       class="edge-label"
-                      font-weight="500"
+                      font-weight="600"
                     >
                       {{ connection.relationship_type }}
                     </text>
-                    <!-- Remove edge button -->
+                    <!-- Remove edge button with improved styling -->
                     <circle 
-                      :cx="connection.labelX + 25" 
+                      :cx="connection.labelX + 45" 
                       :cy="connection.labelY"
-                      r="8"
-                      fill="#f44336"
-                      opacity="0.9"
+                      r="10"
+                      fill="url(#deleteGradient)"
                       class="remove-edge-btn"
                       @click="removeEdge(connection.from, connection.to)"
                       style="cursor: pointer;"
                     />
                     <text 
-                      :x="connection.labelX + 25" 
+                      :x="connection.labelX + 45" 
                       :y="connection.labelY + 3"
                       text-anchor="middle" 
-                      font-size="10" 
+                      font-size="12" 
                       fill="white"
                       style="pointer-events: none;"
                       font-weight="bold"
@@ -183,19 +246,42 @@
                       'selected': selectedFromPaper === file.paper_id 
                     }"
                   >
+                    <!-- Outer glow -->
                     <circle 
-                      :r="20" 
-                      :fill="selectedFromPaper === file.paper_id ? '#ff9800' : '#2196f3'" 
-                      opacity="0.9"
-                      stroke="#fff"
-                      stroke-width="2"
+                      :r="28" 
+                      :fill="selectedFromPaper === file.paper_id ? 'url(#selectedGlow)' : 'url(#nodeGlow)'" 
+                      opacity="0.3"
+                      class="node-glow"
+                    />
+                    <!-- Main node -->
+                    <circle 
+                      :r="24" 
+                      :fill="selectedFromPaper === file.paper_id ? 'url(#selectedGradient)' : 'url(#nodeGradient)'" 
+                      stroke="rgba(255,255,255,0.8)"
+                      stroke-width="3"
+                      class="node-main"
+                    />
+                    <!-- Inner highlight -->
+                    <circle 
+                      :r="18" 
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      stroke-width="1"
+                      class="node-highlight"
+                    />
+                    <!-- Number background -->
+                    <circle 
+                      :r="12" 
+                      fill="rgba(255,255,255,0.9)"
+                      class="number-bg"
                     />
                     <text 
                       text-anchor="middle" 
                       dy="4" 
-                      fill="white" 
+                      :fill="selectedFromPaper === file.paper_id ? '#ff6f00' : '#1565c0'" 
                       font-size="12"
-                      font-weight="bold"
+                      font-weight="700"
+                      class="node-number"
                     >
                       {{ index + 1 }}
                     </text>
@@ -1878,82 +1964,168 @@ function formatDate(timestamp) {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.paper-node:hover circle {
-  stroke-width: 3;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+/* Enhanced node styling */
+.paper-node {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  cursor: pointer;
 }
 
-.paper-node circle {
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
-  transition: all 0.3s ease;
+.paper-node:hover .node-glow {
+  opacity: 0.6 !important;
+  transform: scale(1.1);
 }
 
-.paper-node text {
+.paper-node:hover .node-main {
+  stroke-width: 4;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  transform: scale(1.05);
+}
+
+.paper-node:hover .node-highlight {
+  stroke-width: 2;
+  stroke: rgba(255,255,255,0.7);
+}
+
+.paper-node:hover .number-bg {
+  fill: rgba(255,255,255,1);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.paper-node .node-glow {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.paper-node .node-main {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.1));
+}
+
+.paper-node .node-highlight {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.paper-node .number-bg {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.05));
+}
+
+.paper-node .node-number {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-weight: 500;
-  filter: drop-shadow(0 1px 1px rgba(255,255,255,0.8));
+  transition: all 0.3s ease;
 }
 
 .paper-node.adding-edge {
   cursor: crosshair;
 }
 
-.paper-node.adding-edge circle {
-  stroke: #2196f3;
-  stroke-width: 3;
-  stroke-dasharray: 5,5;
-  animation: dash 1.5s linear infinite;
+.paper-node.adding-edge .node-main {
+  stroke: #42a5f5;
+  stroke-width: 4;
+  stroke-dasharray: 8,4;
+  animation: dash 2s linear infinite;
 }
 
-.paper-node.selected circle {
+.paper-node.adding-edge .node-glow {
+  opacity: 0.8 !important;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.paper-node.selected .node-main {
   stroke: #ff9800;
-  stroke-width: 4;
-  filter: drop-shadow(0 3px 6px rgba(255,152,0,0.3));
+  stroke-width: 5;
+  filter: drop-shadow(0 4px 12px rgba(255,152,0,0.4));
+  animation: selectedPulse 2s ease-in-out infinite;
+}
+
+.paper-node.selected .node-glow {
+  opacity: 0.7 !important;
+  transform: scale(1.15);
 }
 
 @keyframes dash {
   to {
-    stroke-dashoffset: -10;
+    stroke-dashoffset: -12;
   }
 }
 
-.connections path {
-  transition: all 0.3s ease;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
 }
 
-.connections path:hover {
-  stroke-width: 3 !important;
+@keyframes selectedPulse {
+  0%, 100% {
+    filter: drop-shadow(0 4px 12px rgba(255,152,0,0.4));
+  }
+  50% {
+    filter: drop-shadow(0 6px 16px rgba(255,152,0,0.6));
+  }
+}
+
+/* Enhanced edge styling */
+.connections g {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.connections g:hover .edge-glow {
+  opacity: 0.5 !important;
+  stroke-width: 8 !important;
+}
+
+.connections g:hover .edge-main {
+  stroke-width: 4 !important;
   opacity: 1 !important;
-  filter: drop-shadow(0 2px 4px rgba(76,175,80,0.3));
+  filter: drop-shadow(0 2px 8px rgba(76,175,80,0.3));
 }
 
-.edge-label {
-  font-weight: 600;
-  font-size: 11px;
-  background: rgba(255,255,255,0.95);
-  padding: 3px 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(76,175,80,0.2);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.05));
-  transition: all 0.2s ease;
-}
-
-.edge-label:hover {
-  background: rgba(255,255,255,1);
+.connections g:hover .edge-label-bg {
+  stroke-width: 2;
+  fill: rgba(255,255,255,1);
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.1));
   transform: scale(1.05);
 }
 
+.connections g:hover .edge-label {
+  font-weight: 700;
+  transform: scale(1.05);
+}
+
+.edge-glow {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.edge-main {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.1));
+}
+
+.edge-label-bg {
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.08));
+}
+
+.edge-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
 .remove-edge-btn {
-  transition: all 0.2s ease;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  opacity: 0.8;
 }
 
 .remove-edge-btn:hover {
-  opacity: 1 !important;
-  transform: scale(1.1);
-  filter: drop-shadow(0 2px 4px rgba(244,67,54,0.3));
+  opacity: 1;
+  filter: drop-shadow(0 4px 12px rgba(244,67,54,0.5));
+  stroke: rgba(255,255,255,0.9);
+  stroke-width: 1;
 }
 
 .paper-list {
