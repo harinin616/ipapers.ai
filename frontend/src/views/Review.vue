@@ -1229,18 +1229,14 @@ async function generateRelatedWork() {
     currentGeneratingMessageId.value = assistantMessage.id;
     
     // Extract guidance from input text
-    const guidance = currentGuidance ? [currentGuidance] : [];
+    const guidance = currentGuidance || null;
     
     // Clear the guidance input immediately after extraction to prevent it from being saved again
     guidanceInputText.value = '';
     
-    // Get selected files
-    const selectedFiles = uploadedFiles.value.map(file => file.paper_id);
-    
     // Let the backend handle all prompt generation - frontend only passes guidance
     const response = await api.stream_rws({
       session_id: currentSessionId.value,
-      selected_files: selectedFiles,
       guidance: guidance
     });
     

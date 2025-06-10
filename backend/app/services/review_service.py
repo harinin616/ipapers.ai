@@ -3,18 +3,48 @@ import logging
 import time
 import uuid
 import json
+import shutil
 import aiofiles
 import aiofiles.os
 from typing import List, Dict, Any, AsyncGenerator, Tuple
 from pathlib import Path
 from fastapi import UploadFile
 import asyncio
+from pydantic import BaseModel, Field
+from enum import Enum
 
 from app.services.llm_service import llm_service
 from app.services.pdf_service import pdf_service
 from app.services.db_service import db_service
 
 logger = logging.getLogger(__name__)
+
+
+class RelationshipType(str, Enum):
+    """Enumeration of valid relationship types between papers"""
+    RELATES_TO = "relates_to"
+    BUILDS_ON = "builds_on"
+    COMPARES_TO = "compares_to"
+    CONTRADICTS = "contradicts"
+
+
+class SuggestedRelationship(BaseModel):
+    """Model for a single suggested relationship between papers"""
+    from_paper: int = Field(..., alias="from", description="Source paper ID (1-based index)", ge=1)
+    to_paper: int = Field(..., alias="to", description="Target paper ID (1-based index)", ge=1)
+    relationship_type: RelationshipType = Field(..., description="Type of relationship between papers")
+    description: str = Field(..., min_length=10, max_length=500, description="Brief explanation of the relationship")
+    
+    class Config:
+        populate_by_name = True
+
+
+class GraphCompletionResponse(BaseModel):
+    """Model for the complete LLM response for graph completion"""
+    suggested_relationships: List[SuggestedRelationship] = Field(
+        default=[], 
+        description="List of suggested relationships between papers"
+    )
 
 class ReviewService:
     """
@@ -253,46 +283,28 @@ class ReviewService:
             if len(session_files) < 2:
                 return {"success": False, "error": "Need at least 2 papers to complete graph"}
             
-            # Get full texts for all papers instead of just chunks
-            paper_full_texts = {}
+            # Generate summaries for all session files if not already done
+            await self.summarize_session_files(user_id, session_id)
             
-            # Get full text from session-specific uploaded files
-            session_full_texts = await self.get_session_full_texts(user_id, session_id)
-            for paper_data in session_full_texts:
-                paper_id = paper_data["paper_id"]
-                filename = paper_data["filename"]
-                full_text = paper_data["full_text"]
-                
-                # Truncate if extremely long (keep reasonable limit for LLM)
-                if len(full_text) > 8000:  # Keep more text than before, but still manageable
-                    full_text = full_text[:8000] + "... [truncated]"
-                
-                paper_full_texts[paper_id] = {
-                    "filename": filename,
-                    "full_text": full_text
-                }
-            
-            # Get full text from shared chat system files if available
-            shared_full_texts = await self.get_shared_full_texts(user_id)
-            for paper_data in shared_full_texts:
-                paper_id = paper_data["paper_id"]
-                filename = paper_data["filename"]
-                full_text = paper_data["full_text"]
-                
-                # Only add if not already in session files (avoid duplicates)
-                if paper_id not in paper_full_texts:
-                    # Truncate if extremely long
-                    if len(full_text) > 8000:
-                        full_text = full_text[:8000] + "... [truncated]"
+            # Use summaries instead of full texts for graph completion
+            paper_summaries = {}
+            for file_info in session_files:
+                if file_info.get("selected", True):  # Only include selected files
+                    paper_id = file_info["paper_id"]
+                    filename = file_info.get("filename", f"{paper_id}.pdf")
+                    summary = file_info.get("summary")
                     
-                    paper_full_texts[paper_id] = {
-                        "filename": filename,
-                        "full_text": full_text
-                    }
+                    if summary:
+                        paper_summaries[paper_id] = {
+                            "filename": filename,
+                            "summary": summary
+                        }
+                    else:
+                        logger.warning(f"No summary available for paper {paper_id}")
             
-            # Ensure we have at least 2 papers with full text
-            if len(paper_full_texts) < 2:
-                return {"success": False, "error": "Need at least 2 papers with full text to complete graph"}
+            # Ensure we have at least 2 papers with summaries
+            if len(paper_summaries) < 2:
+                return {"success": False, "error": "Need at least 2 papers with summaries to complete graph"}
             
             # Build existing relationships set for comparison
             existing_relationships = set()
@@ -301,54 +313,54 @@ class ReviewService:
                 # Also add reverse to avoid suggesting opposite direction unnecessarily
                 existing_relationships.add((edge["to"], edge["from"]))
             
-            # Create prompt for LLM to analyze relationships using full texts
+            # Create prompt for LLM to analyze relationships using summaries
             paper_list = []
-            for paper_id, info in paper_full_texts.items():
-                paper_section = f"Paper ID: {paper_id}\nTitle/Filename: {info['filename']}\nFull Text:\n{info['full_text']}"
+            for i, (paper_id, info) in enumerate(paper_summaries.items()):
+                paper_section = f"Paper ID: {i+1}\nTitle/Filename: {info['filename']}\nSummary:\n{info['summary']}"
                 paper_list.append(paper_section)
             
             existing_edges_desc = []
             if graph["edges"]:
                 for edge in graph["edges"]:
-                    from_name = paper_full_texts.get(edge["from"], {}).get("filename", edge["from"])
-                    to_name = paper_full_texts.get(edge["to"], {}).get("filename", edge["to"])
+                    from_name = paper_summaries.get(edge["from"], {}).get("filename", edge["from"])
+                    to_name = paper_summaries.get(edge["to"], {}).get("filename", edge["to"])
                     existing_edges_desc.append(f"{edge['from']} -> {edge['to']} ({from_name} {edge['relationship_type']} {to_name})")
             
             prompt = f"""
 You are an expert academic researcher analyzing relationships between research papers. 
 
-I have {len(paper_full_texts)} papers with their complete content:
+I have {len(paper_summaries)} papers with their summaries:
 
 {chr(10).join(['='*50 + chr(10) + paper + chr(10) + '='*50 for paper in paper_list])}
 
 Current existing relationships:
 {chr(10).join(existing_edges_desc) if existing_edges_desc else "None"}
 
-Please analyze the COMPLETE CONTENT of these papers and suggest additional relationships that would complete the graph. The graph build be used to generate a related work section. Therefore, consider "builds_on", "compares_to" and "contradicts" relationships more than "relates_to". Consider the following relationship types:
+Please analyze the summaries of these papers and suggest additional relationships that would complete the graph. The graph will be used to generate a related work section. Therefore, consider "builds_on", "compares_to" and "contradicts" relationships more than "relates_to". Consider the following relationship types:
 - relates_to: General topical relationship or shared research area
 - builds_on: One paper builds upon, extends, or improves another's work/methodology  
 - compares_to: Papers that compare methodologies, results, or approaches
 - contradicts: Papers with conflicting findings, approaches, or conclusions
 
 For each suggested relationship, provide:
-1. From paper ID
-2. To paper ID  
+1. From paper ID (use the 1-based index from the paper list above)
+2. To paper ID (use the 1-based index from the paper list above)
 3. Relationship type
-4. Brief description of why this relationship exists based on the paper content
+4. Brief description of why this relationship exists based on the paper summaries
 
 Please respond in the following JSON format:
 {{
   "suggested_relationships": [
     {{
-      "from": "paper_id_1",
-      "to": "paper_id_2", 
+      "from": 1,
+      "to": 2, 
       "relationship_type": "builds_on",
-      "description": "Brief explanation of the relationship based on paper content"
+      "description": "Brief explanation of the relationship based on paper summaries"
     }}
   ]
 }}
 
-Focus on meaningful relationships that would help understand the research landscape. Use the complete paper content to make accurate assessments of how papers relate to each other. Avoid redundant or trivial connections.
+Focus on meaningful relationships that would help understand the research landscape. Use the paper summaries to make accurate assessments of how papers relate to each other. Avoid redundant or trivial connections.
 """
 
             # Call LLM
@@ -375,59 +387,71 @@ Focus on meaningful relationships that would help understand the research landsc
             if not response_text:
                 return {"success": False, "error": "Empty response from LLM"}
             
-            # Parse JSON response
+            # Parse and validate JSON response using Pydantic
             try:
-                import json
                 import re
                 
                 # Extract JSON from response (it might have extra text)
                 json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
                 if json_match:
                     json_str = json_match.group(0)
-                    llm_result = json.loads(json_str)
+                    # Parse and validate using Pydantic model
+                    llm_result = GraphCompletionResponse.parse_raw(json_str)
+                    suggested_relationships = llm_result.suggested_relationships
                 else:
                     logger.error(f"Could not extract JSON from LLM response: {response_text}")
                     return {"success": False, "error": "Invalid LLM response format"}
                 
-                suggested_relationships = llm_result.get("suggested_relationships", [])
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse LLM JSON response: {str(e)}")
+            except Exception as e:
+                logger.error(f"Failed to parse and validate LLM JSON response: {str(e)}")
                 logger.error(f"Response text: {response_text}")
-                return {"success": False, "error": "Failed to parse LLM response"}
+                return {"success": False, "error": f"Failed to parse LLM response: {str(e)}"}
             
-            # Add suggested relationships to graph
+            # Convert 1-based indices to actual paper IDs and add suggested relationships to graph
             added_relationships = []
-            valid_paper_ids = set(paper_full_texts.keys())
+            paper_id_list = list(paper_summaries.keys())  # Get ordered list of paper IDs
             
             for rel in suggested_relationships:
-                from_paper = rel.get("from")
-                to_paper = rel.get("to")
-                rel_type = rel.get("relationship_type")
-                description = rel.get("description", "")
-                
-                # Validate the suggestion
-                if (from_paper in valid_paper_ids and 
-                    to_paper in valid_paper_ids and 
-                    from_paper != to_paper and
-                    (from_paper, to_paper) not in existing_relationships):
+                try:
+                    # Convert 1-based indices to paper IDs
+                    from_paper_idx = rel.from_paper - 1  # Convert to 0-based
+                    to_paper_idx = rel.to_paper - 1      # Convert to 0-based
                     
-                    # Add the edge
-                    success = self.add_graph_edge(user_id, from_paper, to_paper, rel_type, description, session_id)
-                    if success:
-                        added_relationships.append({
-                            "from": from_paper,
-                            "to": to_paper,
-                            "from_name": paper_full_texts[from_paper]["filename"],
-                            "to_name": paper_full_texts[to_paper]["filename"],
-                            "relationship_type": rel_type,
-                            "description": description
-                        })
-                        # Update existing relationships to avoid duplicates in this session
-                        existing_relationships.add((from_paper, to_paper))
-                        existing_relationships.add((to_paper, from_paper))
+                    if (0 <= from_paper_idx < len(paper_id_list) and 
+                        0 <= to_paper_idx < len(paper_id_list) and 
+                        from_paper_idx != to_paper_idx):
+                        
+                        from_paper = paper_id_list[from_paper_idx]
+                        to_paper = paper_id_list[to_paper_idx]
+                        rel_type = rel.relationship_type.value
+                        description = rel.description
+                        
+                        # Check if this relationship already exists
+                        if (from_paper, to_paper) not in existing_relationships:
+                            # Add the edge
+                            success = self.add_graph_edge(user_id, from_paper, to_paper, rel_type, description, session_id)
+                            if success:
+                                added_relationships.append({
+                                    "from": from_paper,
+                                    "to": to_paper,
+                                    "from_name": paper_summaries[from_paper]["filename"],
+                                    "to_name": paper_summaries[to_paper]["filename"],
+                                    "relationship_type": rel_type,
+                                    "description": description
+                                })
+                                # Update existing relationships to avoid duplicates in this session
+                                existing_relationships.add((from_paper, to_paper))
+                                existing_relationships.add((to_paper, from_paper))
+                        else:
+                            logger.info(f"Relationship {from_paper} -> {to_paper} already exists, skipping")
+                    else:
+                        logger.warning(f"Invalid paper indices: from={rel.from_paper}, to={rel.to_paper}, total_papers={len(paper_id_list)}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing relationship {rel}: {str(e)}")
+                    continue
             
-            logger.info(f"Graph completion analysis: analyzed {len(paper_full_texts)} papers, suggested {len(suggested_relationships)} relationships, added {len(added_relationships)} new edges")
+            logger.info(f"Graph completion analysis: analyzed {len(paper_summaries)} papers, suggested {len(suggested_relationships)} relationships, added {len(added_relationships)} new edges")
             
             return {
                 "success": True,
@@ -451,7 +475,6 @@ Focus on meaningful relationships that would help understand the research landsc
         
         # Check if this is the first round
         existing_messages = self.get_messages(user_id, session_id)
-        is_first_round = len(existing_messages) <= 1  # Only the user message just added
         
         # Get file names from session-specific uploaded files
         file_names = []
@@ -459,30 +482,16 @@ Focus on meaningful relationships that would help understand the research landsc
         for file_data in session_files:
             if file_data.get("selected", True):  # Default to selected for uploaded files
                 file_names.append(file_data.get("filename", "Unknown file"))
-        
-        # Create appropriate system prompt based on conversation round
-        if is_first_round:
-            # First round: Full analysis capabilities
-            system_content = (
-                "You are a professional academic writing assistant specialized in generating related work sections. "
-                "Your role is to help users create comprehensive related work sections by analyzing complete papers, "
-                "identifying key contributions, methodologies, and relationships between different research efforts. "
-                "Focus on creating well-structured, coherent narratives that position current work within the broader research landscape. "
-                f"There are {len(file_names)} papers available for analysis: {', '.join(file_names)}. "
-                "You have access to the complete content of these papers to provide detailed and accurate analysis. "
-                "Please synthesize information from these papers to generate related work content with proper citations and flow."
-            )
-        else:
-            # Subsequent rounds: Conversational refinement
-            system_content = (
-                "You are a professional academic writing assistant helping to refine and improve a related work section. "
-                "You have previously analyzed complete papers and generated an initial related work section. "
-                "Now you should respond to the user's follow-up requests, questions, or refinement suggestions. "
-                f"The analysis is based on {len(file_names)} papers: {', '.join(file_names)}. "
-                "You can refer to the papers by their IDs as established in your previous response. "
-                "Focus on making improvements, clarifications, or additions as requested while maintaining academic quality and proper citation format. "
-                "Consider any paper relationships and guidance provided by the user."
-            )
+
+        system_content = (
+            "You are a professional academic writing assistant specialized in generating related work sections. "
+            "You will be given: "
+            "1. the summaries of the papers. "
+            "2. the relationships between the papers. "
+            "3. the guidance for the related work section. "
+            "Your role is to help users create a concise related work section by analyzing the summaries of the papers, "
+            "Directly output the related work section, do not include any other text. "
+        )
         
         api_messages = [{"role": "system", "content": system_content}]
         
@@ -497,7 +506,7 @@ Focus on meaningful relationships that would help understand the research landsc
         
         return api_messages
     
-    async def generate_rwg_response(self, user_id: str, session_id: str = None, guidance: List[str] = None) -> AsyncGenerator[Tuple[str, bool], None]:
+    async def generate_rwg_response(self, user_id: str, session_id: str = None, guidance: str = None) -> AsyncGenerator[Tuple[str, bool], None]:
         """
         generate streaming response for related work generation with conversation support
         - Full paper texts are only included in the FIRST conversation round
@@ -508,9 +517,6 @@ Focus on meaningful relationships that would help understand the research landsc
         if session_id is None:
             session_id = "default"
         
-        if guidance is None:
-            guidance = []
-        
         # Check if this is the first conversation round (no previous messages)
         existing_messages = self.get_messages(user_id, session_id)
         is_first_round = len(existing_messages) == 0
@@ -520,41 +526,24 @@ Focus on meaningful relationships that would help understand the research landsc
         
         total_files = len(session_files)
         
-        # Store original guidance for display purposes
-        original_guidance = None
-        if guidance and len(guidance) > 0:
-            original_guidance = guidance[0]  # Keep the original guidance for display
-        
         # Create appropriate message based on round
         if is_first_round:
             # First round: Include full paper analysis request
-            base_message = f"Generate a comprehensive related work section based on the {total_files} available papers. Focus on identifying key contributions, methodologies, and relationships between these works."
+            base_message = f"Generate a comprehensive related work section based on the {total_files} available papers."
+            if guidance:
+                base_message += f" Please also refer to the following guidance: {guidance}"
         else:
             # Subsequent rounds: Use guidance as the user request
-            if guidance and len(guidance) > 0:
-                base_message = guidance[0]  # Use first guidance as main request
-                guidance = guidance[1:]  # Remove it from guidance list
-            else:
-                base_message = "Please continue or refine the related work section based on the current context."
+            base_message = "Please continue or refine the related work section based on the current context."
+            if guidance:
+                base_message += f" Please also refer to the following guidance: {guidance}"
         
         formatted_query = base_message
-        
-        # Always add remaining guidance if provided
-        if guidance and len(guidance) > 0:
-            guidance_text = "\n\nPlease also consider the following guidance:\n" + "\n".join(f"- {g}" for g in guidance)
-            formatted_query = formatted_query + guidance_text
         
         # Always add graph context (relationships between papers)
         graph_context = self.get_graph_context(user_id, session_id)
         if graph_context:
             formatted_query = formatted_query + graph_context
-            
-        print("formatted_query: ", formatted_query)
-            
-        # Add user message to conversation history
-        # For display: show only the original guidance if it exists, otherwise show the base message
-        display_content = original_guidance if original_guidance else (base_message if not is_first_round else None)
-        self.add_message(user_id, session_id, "user", formatted_query, display_content)
         
         try:
             # Format messages for API call
@@ -562,34 +551,42 @@ Focus on meaningful relationships that would help understand the research landsc
             
             # Only include full paper texts in the FIRST round
             if is_first_round:
-                all_full_texts = []
+                # Generate summaries for all session files if not already done
+                await self.summarize_session_files(user_id, session_id)
                 
-                # Get full text from session-specific uploaded files
-                session_full_texts = await self.get_session_full_texts(user_id, session_id)
-                if session_full_texts:
-                    all_full_texts.extend(session_full_texts)
+                # Get summaries from session files
+                session_summaries = []
+                for file_info in session_files:
+                    if file_info.get("selected", True):  # Only include selected files
+                        paper_id = file_info["paper_id"]
+                        filename = file_info.get("filename", f"{paper_id}.pdf")
+                        summary = file_info.get("summary")
+                        
+                        if summary:
+                            session_summaries.append({
+                                "filename": filename,
+                                "paper_id": paper_id,
+                                "summary": summary
+                            })
+                        else:
+                            logger.warning(f"No summary available for paper {paper_id}")
                 
-                # Get full text from shared chat system files if available
-                shared_full_texts = await self.get_shared_full_texts(user_id)
-                if shared_full_texts:
-                    all_full_texts.extend(shared_full_texts)
-                
-                # Add full texts to the latest user message only for first round
-                if all_full_texts:
-                    # Create context with full papers
+                # Add summaries to the latest user message only for first round
+                if session_summaries:
+                    # Create context with paper summaries
                     papers_context = []
-                    for i, paper in enumerate(all_full_texts):
-                        paper_section = f"=== {paper['filename']} (paper id: {i+1}) ===\n{paper['full_text']}"
+                    for i, paper in enumerate(session_summaries):
+                        paper_section = f"=== {paper['filename']} (paper id: {i+1}) ===\n{paper['summary']}"
                         papers_context.append(paper_section)
                     
                     context_text = "\n\n".join(papers_context)
                     last_message_idx = len(api_messages) - 1
                     
-                    # Create enhanced query with full text context for first round only
+                    # Create enhanced query with summary context for first round only
                     enhanced_query = f"""
                     {formatted_query}
                     
-                    Based on the complete content of the following papers, help generate a comprehensive related work section:
+                    Based on the summaries of the following papers, help generate a comprehensive related work section:
                     ---
                     {context_text}
                     ---
@@ -598,15 +595,25 @@ Focus on meaningful relationships that would help understand the research landsc
                     """
                     
                     api_messages[last_message_idx]["content"] = enhanced_query
-                    logger.info(f"First round: Enhanced RWG query with {len(all_full_texts)} full papers for user {user_id}, session {session_id}")
+                    # Update formatted_query to include summary context for storage
+                    formatted_query = enhanced_query
+                    logger.info(f"First round: Enhanced RWG query with {len(session_summaries)} session paper summaries for user {user_id}, session {session_id}")
             else:
                 # Subsequent rounds: just use conversation history with graph context and guidance
                 logger.info(f"Subsequent round: Using conversation history with graph context for user {user_id}, session {session_id}")
+            
+            # Add user message to conversation history AFTER full texts are prepared
+            # For display: show the guidance if it exists, otherwise show the base message for subsequent rounds
+            display_content = guidance if guidance else base_message
+            self.add_message(user_id, session_id, "user", formatted_query, display_content)
                 
         except Exception as e:
             logger.error(f"Error preparing context for RWG {user_id}: {str(e)}")
             # If failed, fallback to regular message format
             api_messages = await self.format_rwg_messages(user_id, session_id)
+            # Still add the basic message to conversation history
+            display_content = guidance if guidance else base_message
+            self.add_message(user_id, session_id, "user", formatted_query, display_content)
         
         # Generate response from LLM
         assistant_response = ""
@@ -736,9 +743,38 @@ Focus on meaningful relationships that would help understand the research landsc
             added_count = 0
             for file_data in chat_data["files"]:
                 if file_data["paper_id"] in paper_ids and file_data["paper_id"] not in existing_paper_ids:
+                    paper_id = file_data["paper_id"]
+                    
+                    # Copy embedding file from global to session-specific location
+                    try:
+                        # Source: global embedding file location
+                        year_month = paper_id[:4]
+                        year = year_month[:2]
+                        month = year_month[2:4]
+                        global_path = pdf_service.embedding_dir / year / month / f"{paper_id}.json"
+                        
+                        # Destination: session-specific location
+                        session_dir = pdf_service.embedding_dir / "uploads" / user_id / session_id
+                        session_path = session_dir / f"{paper_id}.json"
+                        
+                        # Create session directory if it doesn't exist
+                        session_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        # Copy the embedding file if global file exists
+                        if global_path.exists():
+                            shutil.copy2(global_path, session_path)
+                            logger.info(f"Copied embedding file from {global_path} to {session_path}")
+                        else:
+                            logger.warning(f"Global embedding file not found: {global_path}")
+                            continue  # Skip this file if embedding doesn't exist
+                        
+                    except Exception as e:
+                        logger.error(f"Error copying embedding file for paper {paper_id}: {str(e)}")
+                        continue  # Skip this file if copy fails
+                    
                     # Create session file entry based on global file
                     session_file = {
-                        "paper_id": file_data["paper_id"],
+                        "paper_id": paper_id,
                         "filename": file_data["filename"],
                         "file_size": file_data.get("file_size", 0),  # May not be available in global files
                         "upload_date": time.time(),  # Use current time as "added to session" time
@@ -842,51 +878,101 @@ Focus on meaningful relationships that would help understand the research landsc
             logger.error(f"Error getting session full texts: {str(e)}")
             return []
 
-    async def get_shared_full_texts(self, user_id: str) -> List[Dict[str, str]]:
+    async def summarize_session_files(self, user_id: str, session_id: str) -> bool:
         """
-        Get full text from shared chat system files
+        Generate and store summaries for all session files to be used by both graph completion and RWG
         """
         try:
-            from app.services.chat_service import chat_service
-            chat_data = chat_service.active_chats.get(user_id)
-            if not chat_data or not chat_data.get("files"):
-                return []
+            session_files = self.get_session_files(user_id, session_id)
+            if not session_files:
+                logger.warning(f"No session files found for user {user_id}, session {session_id}")
+                return False
             
-            full_texts = []
-            for file_info in chat_data["files"]:
-                if not file_info.get("selected", True):
-                    continue
-                
+            # Get full texts for summarization
+            session_full_texts = await self.get_session_full_texts(user_id, session_id)
+            if not session_full_texts:
+                logger.warning(f"No full texts available for user {user_id}, session {session_id}")
+                return False
+            
+            # Create mapping from paper_id to full_text
+            full_text_map = {paper["paper_id"]: paper for paper in session_full_texts}
+            
+            summary_count = 0
+            for file_info in session_files:
                 paper_id = file_info["paper_id"]
-                filename = file_info.get("filename", f"{paper_id}.pdf")
                 
-                # Load full text from global embedding file
-                year_month = paper_id[:4]
-                year = year_month[:2]
-                month = year_month[2:4]
-                local_path = pdf_service.embedding_dir / year / month / f"{paper_id}.json"
-                
-                if not await aiofiles.os.path.exists(local_path):
-                    logger.warning(f"Global embedding file not found: {local_path}")
+                # Skip if summary already exists
+                if file_info.get("summary"):
+                    logger.info(f"Summary already exists for paper {paper_id}")
                     continue
                 
-                async with aiofiles.open(local_path, 'r', encoding='utf-8') as f:
-                    content = await f.read()
-                    data = json.loads(content)
+                # Get full text for this paper
+                paper_data = full_text_map.get(paper_id)
+                if not paper_data:
+                    logger.warning(f"Full text not found for paper {paper_id}")
+                    continue
                 
-                full_text = data.get("full_text", "")
-                if full_text:
-                    full_texts.append({
-                        "filename": filename,
-                        "paper_id": paper_id,
-                        "full_text": full_text
-                    })
+                full_text = paper_data["full_text"]
+                filename = paper_data["filename"]
+                
+                # Generate summary using LLM
+                summary_prompt = f"""
+                Please provide a concise summary of the following research paper. Focus on:
+                1. The main research problem and objectives
+                2. Key methodology and approach
+                3. Main findings and contributions
+                4. Significance and implications
+                Paper: {filename}
+                ---
+                {full_text}
+                ---
+                """
+                
+                try:
+                    # Use LLM service to generate summary
+                    from .llm_service import llm_service
+                    
+                    api_messages = [
+                        {"role": "system", "content": "You are an expert at summarizing academic papers. Provide clear, concise summaries that capture the essential contributions and methods."},
+                        {"role": "user", "content": summary_prompt}
+                    ]
+                    
+                    summary_response = await llm_service.get_conversation_completion(messages=api_messages, stream=False)
+                    
+                    if summary_response:
+                        # Handle non-streaming response
+                        summary_text = ""
+                        if hasattr(summary_response, 'text'):
+                            summary_text = summary_response.text
+                        elif hasattr(summary_response, 'content'):
+                            summary_text = summary_response.content
+                        else:
+                            # Fallback to streaming handling (shouldn't happen with stream=False)
+                            logger.warning(f"Unexpected response format for paper {paper_id}, falling back to chunk processing")
+                            async for chunk in summary_response:
+                                if chunk.text:
+                                    summary_text += chunk.text
+                        
+                        if summary_text.strip():
+                            # Store summary in file_info
+                            file_info["summary"] = summary_text.strip()
+                            file_info["summary_generated_at"] = time.time()
+                            summary_count += 1
+                            logger.info(f"Generated summary for paper {paper_id}")
+                        else:
+                            logger.warning(f"Empty summary generated for paper {paper_id}")
+                    else:
+                        logger.warning(f"No response from LLM for paper {paper_id}")
+                        
+                except Exception as e:
+                    logger.error(f"Error generating summary for paper {paper_id}: {str(e)}")
+                    continue
             
-            logger.info(f"Retrieved {len(full_texts)} full texts from shared files")
-            return full_texts
+            logger.info(f"Generated {summary_count} new summaries for session {session_id}")
+            return summary_count > 0
             
         except Exception as e:
-            logger.error(f"Error getting shared full texts: {str(e)}")
-            return []
+            logger.error(f"Error in summarize_session_files for user {user_id}, session {session_id}: {str(e)}")
+            return False
 
-review_service = ReviewService() 
+review_service = ReviewService()

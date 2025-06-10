@@ -18,8 +18,7 @@ router = APIRouter()
 
 class StreamRwsRequest(BaseModel):
     session_id: str
-    selected_files: List[str] = []
-    guidance: List[str] = []
+    guidance: Optional[str] = None
 
 
 class ReviewResponseChunk:
@@ -240,7 +239,6 @@ async def stream_rws(
         )
     
     session_id = body.session_id
-    selected_files = body.selected_files
     guidance = body.guidance
 
     # Ensure chat service has user data structure
@@ -249,14 +247,6 @@ async def stream_rws(
             "files": [],
             "sessions": {}
         }
-    
-    # Update file selections if provided
-    if selected_files and chat_service.active_chats[user_id]["files"]:
-        for file in chat_service.active_chats[user_id]["files"]:
-            if file["paper_id"] in selected_files:
-                file["selected"] = True
-            else:
-                file["selected"] = False
     
     async def stream_rws_response():
         try:
