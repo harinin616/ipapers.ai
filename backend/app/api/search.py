@@ -43,7 +43,7 @@ async def search_papers(search_request: PaperSearchRequest):
         rerank = await llm_service.get_rerank(documents=documents,query=search_request.query)
 
         new_papers=[papers[idx] for idx in rerank]
-        
+        logger.info(f"Reranked papers: {[p.pdf_url for p in new_papers]}")
         paper_responses = [
             Paper(
                 paper_id=p.paper_id,
@@ -51,7 +51,7 @@ async def search_papers(search_request: PaperSearchRequest):
                 authors=p.authors,
                 abstract=p.abstract,
                 categories=p.categories,
-                pdf_url=p.pdf_url,
+                pdf_url=p.pdf_url.replace("http://", "https://"),
                 published_date=p.published_date,
                 updated_date=p.updated_date
             ) for p in new_papers

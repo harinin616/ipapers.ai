@@ -55,7 +55,7 @@ async def get_paper(paper_id: str):
         authors=paper.authors,
         abstract=paper.abstract,
         categories=paper.categories,
-        pdf_url=paper.pdf_url,
+        pdf_url=paper.pdf_url.replace("http://", "https://"),
         published_date=paper.published_date,
         updated_date=paper.updated_date
     )

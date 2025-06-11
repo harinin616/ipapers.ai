@@ -154,7 +154,7 @@ class DBService:
                         paper_id=paper.paper_id,
                         title=paper.title,
                         abstract=paper.abstract,
-                        pdf_url=paper.pdf_url,
+                        pdf_url=paper.pdf_url.replace("http://", "https://"),
                         published_date=paper.published_date,
                         updated_date=paper.updated_date,
                         click_count=0  # Initialize click count to 0 for new papers
@@ -229,7 +229,7 @@ class DBService:
                         authors=[author.name for author in db_paper.authors],
                         abstract=db_paper.abstract,
                         categories=[category.name for category in db_paper.categories],
-                        pdf_url=db_paper.pdf_url,
+                        pdf_url=db_paper.pdf_url.replace("http://", "https://"),
                         published_date=db_paper.published_date,
                         updated_date=db_paper.updated_date
                     )
@@ -270,7 +270,7 @@ class DBService:
                     authors=[author.name for author in db_paper.authors],
                     abstract=db_paper.abstract,
                     categories=[category.name for category in db_paper.categories],
-                    pdf_url=db_paper.pdf_url,
+                    pdf_url=db_paper.pdf_url.replace("http://", "https://"),
                     published_date=db_paper.published_date,
                     updated_date=db_paper.updated_date
                 ))
@@ -302,7 +302,7 @@ class DBService:
                     authors=[author.name for author in db_paper.authors],
                     abstract=db_paper.abstract,
                     categories=[category.name for category in db_paper.categories],
-                    pdf_url=db_paper.pdf_url,
+                    pdf_url=db_paper.pdf_url.replace("http://", "https://"),
                     published_date=db_paper.published_date,
                     updated_date=db_paper.updated_date
                 ))

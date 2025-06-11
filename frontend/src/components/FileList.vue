@@ -147,13 +147,25 @@ export default defineComponent({
   setup(props, { emit }) {
     const pdfFiles = ref<ChatFile[]>([])
     const currentPdfUrl = ref<string | null>(null)
-    const securePdfUrl = computed(() => {
-      console.log('[Debug] securePdfUrl 计算：', currentPdfUrl.value)
-      if (!currentPdfUrl.value) return ''
-      return currentPdfUrl.value.startsWith('http://')
-        ? currentPdfUrl.value.replace(/^http:\/\//, 'https://')
-        : currentPdfUrl.value
-    })
+ const securePdfUrl = computed(() => {
+  const url = currentPdfUrl.value
+  if (!url) return ''
+
+  // 1. http → https
+  let secure = url.startsWith('http://')
+    ? url.replace(/^http:\/\//, 'https://')
+    : url
+
+  // 2. arxiv.org/pdf 路径重写到 export.arxiv.org/pdf
+  if (secure.match(/^https:\/\/arxiv\.org\/pdf\//)) {
+    secure = secure.replace(
+      /^https:\/\/arxiv\.org\/pdf\//,
+      'https://export.arxiv.org/pdf/'
+    )
+  }
+
+  return secure
+})
     const selectedFileId = ref<string | null>(null)
     const isPdfLoading = ref(false)
     const currentFileName = ref('Document')
@@ -308,6 +320,7 @@ export default defineComponent({
       route,shareList, applyShared, cancelShared,
 
       currentPdfUrl,
+      securePdfUrl,
       selectedFileId,
       isPdfLoading,
       currentFileName,
