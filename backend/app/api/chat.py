@@ -125,6 +125,8 @@ async def get_user_files(
             detail="User ID not found"
         )
     
+    await chat_service.load_user_history(user_id)
+    
     if user_id not in chat_service.active_chats:
        chat_service.active_chats[user_id] = {
             "files": [],
@@ -144,7 +146,6 @@ async def get_user_files(
                 "added_at": file_data["added_at"],
                 "selected": file_data["selected"]
             })
-    
     return result
 
 
@@ -164,13 +165,12 @@ async def delete_file(
         )
     
     chat_data = chat_service.active_chats[user_id]
-    
+    await db_service.remove_file_from_user(int(user_id), paper_id)
     if chat_data["files"]:
         for file_data in chat_data["files"]:
             if file_data["paper_id"] == paper_id:
                 chat_data["files"].remove(file_data)
                 return True
-    
     return False
 
 @router.post("/update_file_selection")
@@ -288,7 +288,7 @@ async def get_sessions(request: Request):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
-    return chat_service.get_sessions(user_id)
+    return await chat_service.get_sessions(user_id)
 
 
 @router.post("/sessions")

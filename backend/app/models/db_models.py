@@ -70,6 +70,20 @@ class DBCategory(Base):
     def __repr__(self):
         return f"<Category {self.name}>"
 
+
+class DBUserFile(Base):
+    __tablename__ = 'user_files'
+    id        = Column(Integer, primary_key=True, autoincrement=True)
+    user_id   = Column(Integer, ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, index=True)
+    paper_id  = Column(String,  ForeignKey('papers.paper_id', ondelete='CASCADE'), nullable=False, index=True)
+    added_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # 反向关系
+    user  = relationship('DBUser',   back_populates='files')
+    paper = relationship('DBPaper')  # 如果你还想在 DBPaper 里加 back_populates，可自行添加
+
+    def __repr__(self):
+        return f'<UserFile user={self.user_id} paper={self.paper_id}>'
+
 class DBUser(Base):
     """User database model"""
     __tablename__ = "users"
@@ -78,6 +92,12 @@ class DBUser(Base):
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
     
+    files   = relationship(
+      'DBUserFile',
+      back_populates='user',
+      cascade='all, delete-orphan',
+      order_by='DBUserFile.added_at'
+    )
     sessions = relationship("DBSession", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):

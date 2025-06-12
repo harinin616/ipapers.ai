@@ -31,7 +31,60 @@ class ChatService:
         self.processing_files = set()
         
         logger.info(f"Chat Service initialized. Max context: {self.max_context_messages}")
-    
+
+
+    async def load_user_history(self, user_id: str) -> None:
+        """
+        Load user chat history (files, sessions, messages) into self.active_chats cache.
+        如果已经加载过则直接返回。
+        """
+  #      if user_id in self.active_chats:
+ #           logger.info(f"user {user_id} history already loaded")
+#            return
+
+        # 初始化结构
+        if not user_id.isdigit():
+            return
+        self.active_chats[user_id] = { "files": [], "sessions": {} }
+
+        # 1) 加载文件列表
+        try:
+            files = await db_service.get_files_by_user_id(int(user_id))
+            self.active_chats[user_id]["files"] = files
+        except Exception as e:
+            logger.error(f"Failed to load files for user {user_id}: {e}", exc_info=True)
+            # 即便失败，也继续尝试加载会话
+
+        # 2) 加载会话列表
+        try:
+            sessions = await db_service.get_sessions_by_user_id(int(user_id))
+        except Exception as e:
+            logger.error(f"Failed to load sessions for user {user_id}: {e}", exc_info=True)
+            sessions = []
+
+        # 3) 针对每个会话，加载它的消息
+        for sess in sessions:
+            sid = sess["session_id"]
+            entry: Dict[str, Any] = {
+                "session_id":      sid,
+                "title":           sess.get("title", "Untitled Session"),
+                "created_at":      sess.get("created_at"),
+                "last_message_at": sess.get("last_message_at"),
+                "messages":        []
+            }
+
+            try:
+                messages = await db_service.get_messages_by_session_id(sid)
+                entry["messages"] = messages
+            except Exception as e:
+                logger.error(f"Failed to load messages for session {sid}: {e}", exc_info=True)
+
+            self.active_chats[user_id]["sessions"][sid] = entry
+
+        logger.info(
+            f"Loaded {len(self.active_chats[user_id]['files'])} files and "
+            f"{len(self.active_chats[user_id]['sessions'])} sessions for user {user_id}"
+        )
 
     def create_session(self, user_id: str, title: str = "Untitled Session") -> str:
         if user_id not in self.active_chats:
@@ -44,7 +97,8 @@ class ChatService:
         }
         return session_id
     
-    def get_sessions(self, user_id: str):
+    async def get_sessions(self, user_id: str):
+        await self.load_user_history(user_id)
         if user_id not in self.active_chats:
             return []
         return [
@@ -109,7 +163,11 @@ class ChatService:
 
             if not success:
                 return False
-            
+            #如果user_id完全由数字构成的话
+            if user_id.isdigit():
+                user_id = int(user_id)
+                await db_service.add_file_to_user(user_id, paper_id)
+
             logger.info(f"Added paper {paper_id} to chat session {user_id}.")
             return True
                 
@@ -120,7 +178,7 @@ class ChatService:
     async def get_paper(self, user_id: str, paper_id: str) -> bool:
         """get paper pdf"""
         if user_id not in self.active_chats:
-            self.active_chats[user_id] = {"files": [], "sessions": {}}
+            return None
         try:
             file_path = await pdf_service.get_pdf(paper_id)
 
@@ -195,7 +253,7 @@ class ChatService:
             if chat_data["files"]:
                 # get relevant chunks from pdf
                 relevant_chunks = await pdf_service.query_similar_chunks(
-                    user_id, 
+                    user_id,
                     query
                 )
             
