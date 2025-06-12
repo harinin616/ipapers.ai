@@ -3,7 +3,6 @@
     <header class="app-header" ref="appHeaderRef">
       <nav>
         <router-link to="/">Home</router-link>
-        <router-link to="/chat">Chat</router-link>
         <router-link to="/review">Review</router-link>
 
         <div class="nav-right-section">
