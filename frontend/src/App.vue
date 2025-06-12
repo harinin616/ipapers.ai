@@ -4,7 +4,7 @@
       <nav>
         <router-link to="/">Home</router-link>
         <router-link to="/review">Review</router-link>
-
+        <a href="#" @click.prevent="showContact" style="color:white; opacity:0.8; margin-right:1rem;">Contact Us</a>
         <div class="nav-right-section">
           <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
           <div class="user-info" v-show="user">
@@ -84,7 +84,10 @@ export default defineComponent({
     const userId = ref<string | null>(null);
     const windowWidth = ref(window.innerWidth);
     
-    
+    const showContact = () => {
+      alert("📬 Contact us at: ipapers.ai@gmail.com");
+    };
+
     const user = ref<{ email: string; name: string; picture: string; user_id: string } | null>(null)
 
     const appHeaderRef = ref<HTMLElement | null>(null);
@@ -316,6 +319,7 @@ export default defineComponent({
       handleFileSelected,
       handlePdfClosed,
       handleFilesUpdated,
+      showContact,
       appHeaderRef,
       fileListStyle,
       appContentStyle,
