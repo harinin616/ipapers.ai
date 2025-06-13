@@ -1,6 +1,6 @@
 <template>
   <button @click="attachPaper" class="action-button chat-button">
-    Add To List
+    Add To List For Chat
   </button>
 </template>
 

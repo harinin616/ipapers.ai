@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { trackPageView } from '@/utils/analytics'
 
 // Define routes with proper types
 const routes: Array<RouteRecordRaw> = [
@@ -98,5 +99,11 @@ router.beforeEach((to, from, next) => {
   // Continue navigation
   next();
 });
+
+router.afterEach((to, from) => {
+  if (to.fullPath !== from.fullPath) {          // 防止同一路径重复计
+    trackPageView(to)
+  }
+})
 
 export default router 

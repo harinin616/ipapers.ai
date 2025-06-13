@@ -5,7 +5,10 @@
         <router-link to="/">Home</router-link>
         <router-link to="/review">Review</router-link>
         <a href="#" @click.prevent="showContact" style="color:white; opacity:0.8; margin-right:1rem;">Contact Us</a>
+
         <div class="nav-right-section">
+          <SiteMetric />
+
           <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
           <div class="user-info" v-show="user">
             <img :src="user?.picture" alt="avatar" class="avatar" />
@@ -54,6 +57,7 @@
 import { defineComponent, onMounted, ref, watch, onBeforeUnmount, computed,  nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import apiService from './services/api'
+import SiteMetric from './components/SiteMetric.vue'
 import FileList from './components/FileList.vue'
 
 // Google API type declaration
@@ -73,7 +77,8 @@ declare global {
 export default defineComponent({
   name: 'App',
   components: {
-    FileList
+    FileList,
+    SiteMetric
   },
   setup() {
     const router = useRouter();
@@ -370,6 +375,7 @@ body {
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
+  overflow: visible;
 }
 
 .app-header nav a {
@@ -378,6 +384,7 @@ body {
   margin-right: 1rem;
   opacity: 0.8;
   transition: opacity 0.2s;
+  overflow: visible;
 }
 
 .app-header nav a:hover {
@@ -497,6 +504,32 @@ body.pdf-active-page {
   align-items: center;
   gap: 1rem;
 }
+.metric-btn{
+  background:rgba(255,255,255,.25);
+  color:#fff;
+  padding:0.15rem 0.55rem;
+  border-radius:9999px;
+  transition:background-color .15s;
+}
+.metric-btn:hover{ background:rgba(255,255,255,.4); }
+
+.metric-btn{ background:rgba(255,255,255,.25); color:#fff;
+             padding:0.15rem 0.55rem; border-radius:9999px;
+             transition:background-color .15s; }
+.metric-btn:hover{ background:rgba(255,255,255,.4); }
+
+.metric-card{ width:200px; background:#fff; border-radius:12px;
+              box-shadow:0 6px 18px rgba(0,0,0,.18);
+              padding:0.6rem 0.9rem; display:flex;
+              flex-direction:column; align-items:center; }
+.metric-label{ margin-top:2px; font-size:10px; color:#6b7280 }
+
+@keyframes fadeSlideIn{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes fadeSlideOut{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(4px)}}
+.animate-fade-slide-in{animation:fadeSlideIn .12s ease-out forwards}
+.animate-fade-slide-out{animation:fadeSlideOut .1s ease-in forwards}
+
+
 
 /* Responsive adjustments to prevent overlay issues */
 @media (max-width: 1024px) {

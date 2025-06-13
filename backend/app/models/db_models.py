@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 from typing import List, Optional
-from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignKey, ARRAY, Text
+from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignKey, ARRAY, Text, Date,BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
+
 
 Base = declarative_base()
 
@@ -135,3 +136,8 @@ class DBMessage(Base):
     
     def __repr__(self):
         return f"<Message {self.message_id}: {self.role} in Session {self.session_id}>"
+
+class PageViewDaily(Base):
+    __tablename__ = "page_view_daily"
+    day  = Column(Date, primary_key=True, index=True)
+    cnt  = Column(BigInteger, nullable=False)

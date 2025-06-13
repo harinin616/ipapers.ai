@@ -165,7 +165,8 @@ async def delete_file(
         )
     
     chat_data = chat_service.active_chats[user_id]
-    await db_service.remove_file_from_user(int(user_id), paper_id)
+    if user_id.isdigit():
+        await db_service.remove_file_from_user(int(user_id), paper_id)
     if chat_data["files"]:
         for file_data in chat_data["files"]:
             if file_data["paper_id"] == paper_id:
