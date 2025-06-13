@@ -518,10 +518,22 @@ body.pdf-active-page {
              transition:background-color .15s; }
 .metric-btn:hover{ background:rgba(255,255,255,.4); }
 
-.metric-card{ width:200px; background:#fff; border-radius:12px;
-              box-shadow:0 6px 18px rgba(0,0,0,.18);
-              padding:0.6rem 0.9rem; display:flex;
-              flex-direction:column; align-items:center; }
+.metric-card{ 
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 85%;
+  transform: translateX(-50%);
+  width: 200px; 
+  background: #fff; 
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  padding: 0.6rem 0.9rem; 
+  display: flex;
+  flex-direction: column; 
+  align-items: center;
+  z-index: 9999;
+  pointer-events: auto;
+}
 .metric-label{ margin-top:2px; font-size:10px; color:#6b7280 }
 
 @keyframes fadeSlideIn{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}

@@ -60,7 +60,6 @@ function draw() {
         display: true,               // 显示纵轴
         grid: {
           color: 'rgba(0,0,0,0.05)', // 网格线颜色
-          drawBorder: false          // 不画最外层那条轴线
         },
         ticks: {
           stepSize: Math.ceil(Math.max(...metric.value.last5) / 3), // 简单分三段
@@ -99,7 +98,7 @@ watch(show, async open => {
       enter-active-class="animate-fade-slide-in"
       leave-active-class="animate-fade-slide-out"
     >
-      <div v-if="show" class="metric-card absolute right-0 top-full mt-2">
+      <div v-if="show" class="metric-card">
         <!-- ① 画布高度改成 64px -->
         <canvas ref="canvasEl" width="180" height="64"></canvas>
         <!-- ② 文本下移 -->
