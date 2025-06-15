@@ -347,17 +347,18 @@ class PdfService:
             if not text_content:
                 return False
             
-            # Use existing chunking method
-            chunks = self.chunk_text(text_content)
-            if not chunks:
-                return False
+            # ! No need to do the following steps for uploaded files
+            # # Use existing chunking method
+            # chunks = self.chunk_text(text_content)
+            # if not chunks:
+            #     return False
 
-            # Use existing embedding generation
-            all_embeddings = await llm_service.get_embeddings(texts=chunks)
+            # # Use existing embedding generation
+            # all_embeddings = await llm_service.get_embeddings(texts=chunks)
             
-            if len(all_embeddings) != len(chunks):
-                logger.error(f"Generated embeddings count ({len(all_embeddings)}) doesn't match chunks count ({len(chunks)})")
-                return False
+            # if len(all_embeddings) != len(chunks):
+            #     logger.error(f"Generated embeddings count ({len(all_embeddings)}) doesn't match chunks count ({len(chunks)})")
+            #     return False
 
             # Save embeddings using existing format and structure
             target_dir = self.embedding_dir / "uploads" / user_id / session_id
@@ -365,8 +366,8 @@ class PdfService:
             local_path = target_dir / f"{paper_id}.json"
             
             embedding_data = {
-                "chunks": chunks, 
-                "embeddings": all_embeddings, 
+                "chunks": None, 
+                "embeddings": None, 
                 "full_text": text_content,
                 "filename": file.filename,
                 "content_type": file.content_type
