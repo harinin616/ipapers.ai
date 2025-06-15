@@ -102,7 +102,7 @@ watch(show, async open => {
         <!-- ① 画布高度改成 64px -->
         <canvas ref="canvasEl" width="180" height="64"></canvas>
         <!-- ② 文本下移 -->
-        <p class="metric-label">Past&nbsp;5&nbsp;days</p>
+        <p class="metric-label">Page Views · Past 5 Days</p>
       </div>
     </transition>
   </div>

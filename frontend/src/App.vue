@@ -504,28 +504,35 @@ body.pdf-active-page {
   align-items: center;
   gap: 1rem;
 }
-.metric-btn{
-  background:rgba(255,255,255,.25);
-  color:#fff;
-  padding:0.15rem 0.55rem;
-  border-radius:9999px;
-  transition:background-color .15s;
+
+.metric-btn {
+  background: transparent;
+  border: 1.5px solid #4ade80;  /* 清新的绿色边框 */
+  color: #4ade80;
+  border-radius: 9999px;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
 }
+.metric-btn:hover {
+  background-color: #4ade8055; /* 带透明度的高亮 */
+}
+
 .metric-btn:hover{ background:rgba(255,255,255,.4); }
 
 .metric-btn{ background:rgba(255,255,255,.25); color:#fff;
              padding:0.15rem 0.55rem; border-radius:9999px;
              transition:background-color .15s; }
-.metric-btn:hover{ background:rgba(255,255,255,.4); }
+
 
 .metric-card{ 
   position: absolute;
   top: calc(100% + 8px);
-  left: 85%;
+  left: 82%;
   transform: translateX(-50%);
   width: 200px; 
   background: #fff; 
-  border-radius: 12px;
+  border-radius: 4px;
   box-shadow: 0 6px 18px rgba(0,0,0,.18);
   padding: 0.6rem 0.9rem; 
   display: flex;
@@ -534,7 +541,11 @@ body.pdf-active-page {
   z-index: 9999;
   pointer-events: auto;
 }
-.metric-label{ margin-top:2px; font-size:10px; color:#6b7280 }
+.metric-card canvas {
+  margin-bottom: 4px; /* 根据需要调整 */
+}
+
+.metric-label{ margin-top:4px; font-size:10px; color:#6b7280 }
 
 @keyframes fadeSlideIn{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes fadeSlideOut{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(4px)}}
