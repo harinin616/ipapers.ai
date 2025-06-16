@@ -500,7 +500,7 @@ Focus on meaningful relationships that would help understand the research landsc
             "1. the summaries of the papers. "
             "2. the relationships between the papers. "
             "3. the guidance for the related work section. "
-            f"{target_paper_info} "
+            # f"{target_paper_info} "
             "Your role is to help users create a concise related work section by analyzing the summaries of the papers. "
             "When a target paper is specified, focus on generating a related work section specifically for that paper, "
             "discussing how the other papers relate to the target paper's research. "
@@ -623,7 +623,9 @@ Focus on meaningful relationships that would help understand the research landsc
                     Based on the summaries of the following papers, help generate a comprehensive related work section:
                     ---
                     {context_text}
-                    ---{target_instruction}
+                    ---
+                    {target_instruction}
+                    ---
                     Please synthesize this information into a coherent related work section with proper flow and citations. 
                     Notice that you should cite the papers in the related work section when mentioning them using the paper id, e.g. [1], [2], etc. Do not cite them too many times. Write at most two sentences for each paper. Please directly output the related work section, do not include any other text.
                     """

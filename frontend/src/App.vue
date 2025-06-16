@@ -3,7 +3,7 @@
     <header class="app-header" ref="appHeaderRef">
       <nav>
         <router-link to="/">Home</router-link>
-        <router-link to="/review">Review</router-link>
+        <router-link to="/review">Related Work Generation</router-link>
         <a href="#" @click.prevent="showContact" style="color:white; opacity:0.8; margin-right:1rem;">Contact Us</a>
 
         <div class="nav-right-section">
