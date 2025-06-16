@@ -968,6 +968,61 @@ function extractTitleFromInput(input) {
   return trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed;
 }
 
+function generateTitleFromFiles(files) {
+  if (!files || files.length === 0) return 'Untitled RWS Session';
+  
+  if (files.length === 1) {
+    // Single file: use paper title if available, otherwise filename
+    const file = files[0];
+    if (file.title && file.title.trim()) {
+      return `RWS: ${file.title.length > 40 ? file.title.substring(0, 40) + '...' : file.title}`;
+    } else if (file.filename) {
+      const nameWithoutExt = file.filename.replace(/\.[^/.]+$/, "");
+      return `RWS: ${nameWithoutExt.length > 40 ? nameWithoutExt.substring(0, 40) + '...' : nameWithoutExt}`;
+    }
+  } else {
+    // Multiple files: create a descriptive title
+    const firstFile = files[0];
+    if (firstFile.title && firstFile.title.trim()) {
+      const shortTitle = firstFile.title.length > 25 ? firstFile.title.substring(0, 25) + '...' : firstFile.title;
+      return `RWS: ${shortTitle} + ${files.length - 1} more`;
+    } else {
+      return `RWS: ${files.length} Papers`;
+    }
+  }
+  
+  return 'Untitled RWS Session';
+}
+
+async function updateSessionTitleAfterFileChange() {
+  // Only update if we have a current session and uploaded files
+  if (!currentSessionId.value || uploadedFiles.value.length === 0) return;
+  
+  const session = rwsSessionStore.sessions?.find(s => s.id === currentSessionId.value);
+  if (!session || (!session.title || session.title === 'Untitled RWS Session' || session.title === 'New RWS Session' || !session.title.trim())) {
+    const newTitle = generateTitleFromFiles(uploadedFiles.value);
+    
+    if (newTitle && newTitle !== session?.title) {
+      try {
+        await api.update_rws_session_title({ 
+          session_id: currentSessionId.value, 
+          title: newTitle 
+        });
+        if (session) {
+          session.title = newTitle;
+          // Update the session's lastMessageAt timestamp
+          session.lastMessageAt = Date.now();
+          // Re-sort sessions by last activity
+          rwsSessionStore.sessions?.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+        }
+      } catch (error) {
+        console.error('Failed to update RWS session title after file change:', error);
+        // Continue operation even if title update fails
+      }
+    }
+  }
+}
+
 // Graph management functions
 async function loadPaperGraph() {
   try {
@@ -1412,6 +1467,36 @@ async function generateRelatedWork() {
   // Save current guidance before we clear it (in case generation fails)
   const currentGuidance = guidanceInputText.value.trim();
   
+  // Auto-update session title if it's empty and we have guidance or files
+  const session = rwsSessionStore.sessions?.find(s => s.id === currentSessionId.value);
+  if (session && (!session.title || session.title === 'Untitled RWS Session' || !session.title.trim())) {
+    let newTitle = '';
+    if (currentGuidance) {
+      // Use guidance text for title generation
+      newTitle = extractTitleFromInput(currentGuidance);
+    } else if (uploadedFiles.value.length > 0) {
+      // Generate title based on uploaded files
+      newTitle = generateTitleFromFiles(uploadedFiles.value);
+    }
+    
+    if (newTitle && newTitle !== session.title) {
+      try {
+        await api.update_rws_session_title({ 
+          session_id: currentSessionId.value, 
+          title: newTitle 
+        });
+        session.title = newTitle;
+        // Update the session's lastMessageAt timestamp
+        session.lastMessageAt = Date.now();
+        // Re-sort sessions by last activity
+        rwsSessionStore.sessions?.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+      } catch (error) {
+        console.error('Failed to update RWS session title:', error);
+        // Continue with generation even if title update fails
+      }
+    }
+  }
+  
   isGenerating.value = true;
   
   try {
@@ -1709,6 +1794,10 @@ async function uploadFile(file) {
       };
       
       uploadedFiles.value.push(uploadedFile);
+      
+      // Auto-update session title if it's still default after adding file
+      await updateSessionTitleAfterFileChange();
+      
       await updateGraphNodes();
       
       // Update graph visualization after adding file
@@ -1810,6 +1899,9 @@ async function addSelectedFiles() {
         x: 50 + (index % 3) * 120,
         y: 50 + Math.floor(index / 3) * 80
       }));
+      
+      // Auto-update session title if it's still default after adding files
+      await updateSessionTitleAfterFileChange();
       
       // Update graph nodes and visualization
       await updateGraphNodes();
