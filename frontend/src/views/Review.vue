@@ -93,7 +93,15 @@
                 <span v-else>🎯 Choose Target</span>
               </button>
               <button 
-                v-else 
+                v-if="targetPaper && !isChoosingTarget"
+                @click="clearTargetPaper" 
+                class="clear-target-btn"
+                title="Clear selected target paper"
+              >
+                ✕ Clear Target
+              </button>
+              <button 
+                v-else-if="isChoosingTarget" 
                 @click="cancelChoosingTarget" 
                 class="cancel-target-btn"
                 title="Cancel choosing target"
@@ -1309,6 +1317,23 @@ async function selectTargetPaper(paperId) {
   }
 }
 
+async function clearTargetPaper() {
+  try {
+    // Clear the target paper locally
+    targetPaper.value = null;
+    
+    // Clear target paper in the backend if we have a session
+    if (currentSessionId.value) {
+      await api.clear_target_paper(currentSessionId.value);
+    }
+    
+    // Save to session state
+    saveSessionState();
+  } catch (error) {
+    console.error('Failed to clear target paper:', error);
+  }
+}
+
 function selectPaper(paperId) {
   if (isChoosingTarget.value) {
     selectTargetPaper(paperId);
@@ -2186,6 +2211,25 @@ function formatDate(timestamp) {
 
 .cancel-target-btn:hover {
   background: #da190b;
+  transform: translateY(-1px);
+}
+
+.clear-target-btn {
+  background: #ff5722;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.clear-target-btn:hover {
+  background: #e64a19;
   transform: translateY(-1px);
 }
 
