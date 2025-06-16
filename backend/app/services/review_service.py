@@ -179,7 +179,7 @@ class ReviewService:
             logger.error(f"Error updating graph nodes for user {user_id}, session {session_id}: {str(e)}")
             return False
     
-    def add_graph_edge(self, user_id: str, from_paper: str, to_paper: str, relationship_type: str = "relates_to", description: str = "", session_id: str = None) -> bool:
+    def add_graph_edge(self, user_id: str, from_paper: str, to_paper: str, relationship_type: str = "", description: str = "", session_id: str = None) -> bool:
         """Add a directed edge between two papers in a specific session"""
         try:
             if session_id is None:
@@ -854,22 +854,6 @@ Focus on meaningful relationships that would help understand the research landsc
         except Exception as e:
             logger.error(f"Error removing file {paper_id} from session {session_id}: {str(e)}")
             return False
-    
-    async def query_session_chunks(self, user_id: str, session_id: str, query: str) -> List[str]:
-        """
-        Query similar chunks from uploaded files in a specific session using pdf_service
-        """
-        try:
-            session_files = self.get_session_files(user_id, session_id)
-            if not session_files:
-                return []
-            
-            # Use pdf_service's existing query method
-            return await pdf_service.query_session_chunks(user_id, session_id, query, session_files)
-            
-        except Exception as e:
-            logger.error(f"Error querying session chunks: {str(e)}")
-            return []
 
     async def get_session_full_texts(self, user_id: str, session_id: str) -> List[Dict[str, str]]:
         """
