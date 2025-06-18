@@ -50,6 +50,16 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/contact',
+    name: 'Contact',
+    component: () => import('@/views/ContactView.vue'),
+     meta: {
+      title: 'Contact Us - iPaper',
+      requiresAuth: false
+    }
+  },
+
+  {
     path: '/share/:share_id',
     name: 'home-share',
     component: HomeView,              // ← 改为 HomeView

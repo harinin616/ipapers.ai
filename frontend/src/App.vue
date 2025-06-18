@@ -4,7 +4,7 @@
       <nav>
         <router-link to="/">Home</router-link>
         <router-link to="/review">Related Work Generation</router-link>
-        <a href="#" @click.prevent="showContact" style="color:white; opacity:0.8; margin-right:1rem;">Contact Us</a>
+        <router-link to="/contact">Contact Us</router-link>
 
         <div class="nav-right-section">
           <SiteMetric />
@@ -12,8 +12,24 @@
           <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
           <div class="user-info" v-show="user">
             <img :src="user?.picture" alt="avatar" class="avatar" />
-            <span class="user-name">{{ user?.name }}</span>
-            <button @click="logout" class="logout-btn">Logout</button>
+
+              <div class="relative">
+                <button class="user-name" @click="toggleUserMenu">
+                  {{ user?.name }}
+                  <svg class="chevron" viewBox="0 0 20 20"><path d="M6 7l4 4 4-4"/></svg>
+                </button>
+
+
+                <transition name="fade-slide">
+                  <div
+                    v-if="showUserMenu"
+                    class="user-dropdown"
+                  >
+                  <router-link to="/profile" class="dropdown-item">Profile</router-link>
+                  <button class="dropdown-item" @click="logout">Logout</button>
+                 </div>
+               </transition>
+             </div>
           </div>
 
           <button @click="toggleFileList" class="file-list-toggle-btn" title="Toggle File List">
@@ -89,14 +105,23 @@ export default defineComponent({
     const userId = ref<string | null>(null);
     const windowWidth = ref(window.innerWidth);
     
-    const showContact = () => {
-      alert("📬 Contact us at: ipapers.ai@gmail.com");
-    };
 
     const user = ref<{ email: string; name: string; picture: string; user_id: string } | null>(null)
 
     const appHeaderRef = ref<HTMLElement | null>(null);
     const headerHeight = ref(0);
+    const showUserMenu = ref(false);
+    function toggleUserMenu() {
+      showUserMenu.value = !showUserMenu.value;
+    }
+    function handleClickOutside(ev: MouseEvent) {
+      const target = ev.target as HTMLElement;
+      if (!target.closest('.user-name') && !target.closest('.user-dropdown')) {
+        showUserMenu.value = false;
+      }
+    }
+    onMounted(() => document.addEventListener('click', handleClickOutside));
+    onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside));
 
     const saveScrollPosition = (path: string): void => {
       sessionStorage.setItem(
@@ -324,11 +349,12 @@ export default defineComponent({
       handleFileSelected,
       handlePdfClosed,
       handleFilesUpdated,
-      showContact,
       appHeaderRef,
       fileListStyle,
       appContentStyle,
       googleBtn,
+      showUserMenu,
+      toggleUserMenu,
       user,
       logout,
     };
@@ -478,11 +504,65 @@ body.pdf-active-page {
   margin-right: 8px;
 }
 
-.user-name {
-  color: white;
-  margin-right: 12px;
-  font-weight: 500;
+.user-name{
+  color:#fff;font-weight:500;margin-right:12px;
+  display:inline-flex;align-items:center;gap:4px;
+  padding:.35rem .9rem;border:none;border-radius:9999px;
+  background:rgba(255,255,255,.12);          /* ← 淡色底 */
+  cursor:pointer;transition:background .15s;
 }
+.user-name:focus{outline:none}
+
+/* 悬停稍深 */
+.user-name:hover{background:rgba(255,255,255,.18)}
+
+/* 展开 / 选中：背景更深，箭头翻转 */
+.user-name.open{background:rgba(255,255,255,.28)}
+.user-name .chevron{
+  width:14px;height:14px;fill:currentColor;transition:transform .15s;
+}
+.user-name.open .chevron{transform:rotate(180deg)}
+
+
+/* 下拉卡片 */
+.user-dropdown{
+  position:absolute;right:7%;top:calc(100% + 6px);
+  width:160px;background:#fff;border-radius:8px;
+  box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:999;
+  overflow:hidden;          /* 让圆角裁掉分隔线 */
+}
+
+/* 菜单项 */
+.dropdown-item{
+  display:block;width:100%;text-align:left;border:none;
+  padding:.65rem 1rem;font-size:.875rem;color:#374151;
+  background:#fff;text-decoration:none;
+}
+.user-dropdown{
+  padding-top: 0.25rem;    /* 原本若无 padding 这行可省略 */
+  padding-bottom: 0.25rem; /* 轻轻压缩上下留白 */
+}
+
+/* ② 每一行条目：高度降低 */
+.dropdown-item{
+  padding: .45rem .95rem;  /* 原来 .65rem 变成 .45rem */
+  font-size: .85rem;       /* 若想更紧凑，可稍缩字体 */
+}
+
+.dropdown-item:visited{color:#374151}          /* 去掉浏览过后的紫色 */
+.dropdown-item.router-link-active{color:#374151}/* Vue router-link 激活色 */
+
+
+.dropdown-item:hover{background:#f3f4f6}
+.dropdown-item + .dropdown-item{border-top:1px solid #e5e7eb}
+.dropdown-item.danger{color:#dc2626}
+
+/* 进出动画保持不变 */
+.fade-slide-enter-from,
+.fade-slide-leave-to{opacity:0;transform:translateY(-4px)}
+.fade-slide-enter-active,
+.fade-slide-leave-active{transition:all .15s ease}
+
 
 .logout-btn {
   background: transparent;
@@ -528,9 +608,9 @@ body.pdf-active-page {
 .metric-card{ 
   position: absolute;
   top: calc(100% + 8px);
-  left: 82%;
+  left: 80%;
   transform: translateX(-50%);
-  width: 200px; 
+  width: 180px; 
   background: #fff; 
   border-radius: 4px;
   box-shadow: 0 6px 18px rgba(0,0,0,.18);
@@ -552,8 +632,6 @@ body.pdf-active-page {
 .animate-fade-slide-in{animation:fadeSlideIn .12s ease-out forwards}
 .animate-fade-slide-out{animation:fadeSlideOut .1s ease-in forwards}
 
-
-
 /* Responsive adjustments to prevent overlay issues */
 @media (max-width: 1024px) {
   .app-content {
@@ -574,4 +652,34 @@ body.pdf-active-page {
     z-index: 200;
   }
 }
+.app-header{
+  padding: .5rem 1rem;        /* 原来是 1rem 1rem */
+}
+
+
+/* 若头像跟着显得偏低，可略缩小并垂直居中（可选） */
+.avatar{
+  width: 28px;
+  height: 28px;
+}
+
+.nav-right-section{ gap:.6rem; }   /* 原来 1rem */
+
+/* ② 用户名胶囊 – 方正一点 + 稍大 */
+.user-name{
+  font-size:0.9rem;
+  padding:.45rem 1.1rem;      /* 内边距增大  → 胶囊更高更宽 */
+  border-radius:8px;          /* 从圆 pill 改成 8px 圆角矩形 */
+  background:rgba(255,255,255,.16);
+}
+.user-name:hover{background:rgba(255,255,255,.22);}
+.user-name.open{background:rgba(255,255,255,.28);}
+
+/* ②-a 让下拉箭头垂直居中且与文字保持 6px 距离 */
+.user-name .chevron{
+  width:14px;height:14px;fill:currentColor;transform-origin:center;
+  margin-left:6px;            /* ↔ 间距 */
+  transition:transform .15s;
+}
+
 </style> 

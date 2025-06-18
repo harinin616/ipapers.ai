@@ -141,3 +141,14 @@ class PageViewDaily(Base):
     __tablename__ = "page_view_daily"
     day  = Column(Date, primary_key=True, index=True)
     cnt  = Column(BigInteger, nullable=False)
+
+# 在 models.py 末尾或合适位置添加
+class DBFeedback(Base):
+    """Contact-Us / Feedback 表"""
+    __tablename__ = "feedback"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    question   = Column(Text,    nullable=False)              # 500 字以内
+    email      = Column(String(100), nullable=True)           # 100 字以内
+    user_id    = Column(Integer, ForeignKey('users.user_id', ondelete='SET NULL'), nullable=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
