@@ -77,7 +77,17 @@ const routes: Array<RouteRecordRaw> = [
       title: '404 Not Found - iPaper',
       requiresAuth: false
     }
+  },
+  {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/ProfileView.vue'),
+    meta: {
+      title: 'User Profile - iPaper',
+      requiresAuth: false
+    }
   }
+
 ]
 
 // Create router instance
