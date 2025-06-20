@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted} from 'vue'
+import { ref, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Eye } from 'lucide-vue-next'
 import Chart from 'chart.js/auto'
 
@@ -7,10 +7,14 @@ interface Metric { total:number; last5:number[] }
 
 const metric   = ref<Metric|null>(null)
 const show     = ref(false)
-const canvasEl = ref<HTMLCanvasElement|null>(null)
+
+const canvasEl  = ref<HTMLCanvasElement|null>(null)
+const wrapperEl = ref<HTMLElement|null>(null)
+
 let   chart: Chart|undefined
 
 // 拉一次数据并更新 metric
+
 async function loadMetric() {
   try {
     const res = await fetch('/api/metrics/site-metric')
@@ -73,6 +77,20 @@ function draw() {
 })
 }
 
+function handleOutside (e: MouseEvent) {
+  if (show.value && wrapperEl.value && !wrapperEl.value.contains(e.target as Node)) {
+    show.value = false
+  }
+}
+
+watch(show, open => {
+  if (open) {
+    document.addEventListener('click', handleOutside)
+  } else {
+    document.removeEventListener('click', handleOutside)
+  }
+})
+
 watch(show, async open => {
   if (open) {
     await loadMetric()
@@ -82,13 +100,16 @@ watch(show, async open => {
     chart = undefined
   }
 })
+onBeforeUnmount(() => {          // 组件卸载时清理
+  document.removeEventListener('click', handleOutside)
+})
 </script>
 
 <template>
-  <div class="relative inline-block">
+  <div ref="wrapperEl" class="relative inline-block">
     <button
       class="metric-btn flex items-center gap-1 text-xs font-semibold focus:outline-none"
-      @click="show = !show"
+      @click.stop="show = !show"
     >
       <Eye class="w-3 h-3" />
       {{ metric?.total?.toLocaleString() ?? '–' }}

@@ -138,6 +138,8 @@ class VectorSearchService:
         vector search by a certain query
         """
         try:
+            logger.info(f"Starting vector search for query: '{query}' with k={k}")
+            
             if self.index is None or self.index.ntotal == 0:
                 logger.warning("empty index!!!")
                 return []
@@ -145,6 +147,8 @@ class VectorSearchService:
             # get query embedding
             query_embedding_list = await self.embed_texts([query])
             
+            logger.info(f"Query embedding for '{query}' generated, shape: {query_embedding_list[0].shape if query_embedding_list else 'None'}")
+
             if not query_embedding_list or query_embedding_list[0] is None:
                  logger.error(f"Failed to get embedding for query: '{query}'")
                  return []
@@ -162,40 +166,32 @@ class VectorSearchService:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
         
-    async def search(self, query:str, k: int = 50) -> List[str]:
-            system_prmpt="""You are a professional information retrieval assistant, capable of generating 5 distinct queries based on the user's input sentence for subsequent vector search. These queries should meet the following requirements:
-            Diversity and Uniqueness: Each query should expand on the core topic of the user's input from different angles or directions, avoiding high similarity or repetition.
-            Relevance: All queries must be closely related to the user's input sentence to ensure that the retrieved content matches the user's needs accurately.
-            Conciseness: Each query should be as concise and clear as possible, avoiding redundancy and complexity, to facilitate subsequent processing and searching.
-            Semantic Clarity: The wording of the queries should be clear and accurate, avoiding ambiguity, to ensure they can be correctly understood and processed by the vector search system.
-            Now, please generate 5 different queries based on the user's input sentence.
-            IMPORTNAT:use phrase instead of long sentence. the answer must be json format with 5 character strings and index from 1 to 5, do not contain any other character
-            """
+    async def search(self, query: str, k: int = 80) -> list[str]:
+            system_prompt = (
+                "You are a professional information-retrieval assistant. "
+                "Generate concise, meaningful phrases that reformulates or expands the user's input "
+                "for subsequent vector search. The phrase must:\n"
+                "• Stay semantically close to the original need.\n"
+                "• Be short (a few keywords, no long sentence).\n"
+                "Return ONLY the phrases themselves, without quotes, numbering, or extra characters."
+            )
 
-            messages=[{"role":"system","content":system_prmpt},
-                      {"role":"user","content":query}
-                    ]
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": query}
+            ]
+
             response = await llm_service.get_conversation_completion(
                 messages=messages,
                 stream=False
             )
-                
-            # Use Gemini API response format instead of OpenAI format
-            json_data = response.text  # Gemini API uses response.text instead of response.choices[0].message.content
-            
-            try:
-                querys = json.loads(json_data)
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse JSON response: {e}")
-                querys = {"1": query}
-            
 
-            # Create a list of coroutines for all queries
-            search_tasks = [self.vector_search(querys[q]) for q in querys]
-            # Execute all searches in parallel
-            results = await asyncio.gather(*search_tasks)
-            # Combine all results
-            result_ids = set().union(*results)
-            return result_ids
+            reformulated = response.text.strip()
+            if not reformulated:
+                logger.warning("LLM returned empty string; fallback to original query")
+                reformulated = query
+            
+            result_ids = await self.vector_search(reformulated, k=k)
+            return list(result_ids)
                 
 vector_search_service = VectorSearchService() 

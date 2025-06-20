@@ -57,6 +57,8 @@ export interface IApiService {
   set_target_paper(session_id: string, paper_id: string): Promise<any>;
   get_target_paper(session_id: string): Promise<{ target_paper_id: string | null }>;
   clear_target_paper(session_id: string): Promise<any>;
+
+  submitFeedback(payload: { question: string; email?: string }): Promise<{ id: number; created_at: string }>;
 }
 /**
  * API Service implementation
@@ -562,6 +564,15 @@ class ApiService implements IApiService {
       return response.data;
     } catch (error) {
       console.error('Failed to clear target paper:', error);
+      throw error;
+    }
+  }
+  async submitFeedback(payload: { question: string; email?: string }): Promise<{ id: number; created_at: string }> {
+    try {
+      const resp = await this.api.post('/api/contact', payload);
+      return resp.data;
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
       throw error;
     }
   }
