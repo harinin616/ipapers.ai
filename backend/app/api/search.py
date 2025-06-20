@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import logging
+import asyncio
 
 from app.models.paper import PaperSearchRequest, PaperSearchResponse, Paper
 from app.services.db_service import db_service
@@ -19,19 +20,23 @@ async def search_papers(search_request: PaperSearchRequest):
     then rerank the results by LLM
     """
     try:
-        paper_ids = await vector_search_service.search(
-            query=search_request.query,
-            k=search_request.limit
-        )
+        logger.info(f"Received search request: {search_request.query}")
+
+        vec_task   = asyncio.create_task(vector_search_service.search(query=search_request.query))
+        arxiv_task = asyncio.create_task(arxivsearch_service.search(query=search_request.query))
+        paper_ids, arxiv_papers = await asyncio.gather(vec_task, arxiv_task)
+        
         if not paper_ids:
             return PaperSearchResponse(results=[], count=0)
         
-        arxiv_papers = await arxivsearch_service.search(
-            query=search_request.query
-        )
+        logger.info(f"Found {len(paper_ids)} paper IDs from vector search")
+        logger.info(f"Found {len(arxiv_papers)} papers from arxiv search")
+
         papers = await db_service.get_papers_by_ids(paper_ids)
 
         existing_paper_ids = {p.paper_id for p in papers}
+
+
         
         for arxiv_paper in arxiv_papers:
             if arxiv_paper.paper_id not in existing_paper_ids:

@@ -31,7 +31,7 @@ class ArxivSearchService:
             finally:
                 self.queue.task_done()
 
-    async def search(self, query: str, max_results: int = 100) -> List[str]:
+    async def search(self, query: str, max_results: int = 20) -> List[str]:
         """
         search papers from arxiv website and add to async queue
         """
