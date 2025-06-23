@@ -170,7 +170,7 @@ export default defineComponent({
     };
 
     const handleFilesUpdated = (count?: number) => {
-      showFilesList.value = true;
+   //   showFilesList.value = true;
       // Don't automatically show PDF when files are updated/attached
       // PDF should only show when user manually selects a file
       if (typeof count === 'number') {

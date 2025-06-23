@@ -35,14 +35,22 @@ async def search_papers(search_request: PaperSearchRequest):
         papers = await db_service.get_papers_by_ids(paper_ids)
 
         existing_paper_ids = {p.paper_id for p in papers}
-
-
         
         for arxiv_paper in arxiv_papers:
             if arxiv_paper.paper_id not in existing_paper_ids:
                 papers.append(arxiv_paper)
                 existing_paper_ids.add(arxiv_paper.paper_id)
 
+
+        unique = []
+        seen_titles = set()
+
+        for p in papers:
+            if p.title not in seen_titles:
+                unique.append(p)
+                seen_titles.add(p.title)
+
+        papers = unique
 
         documents=[p.title+p.abstract for p in papers]
         rerank = await llm_service.get_rerank(documents=documents,query=search_request.query)

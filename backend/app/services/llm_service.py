@@ -1,5 +1,7 @@
 import os
 import logging
+import torch
+from transformers import AutoModel, AutoTokenizer
 import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
@@ -32,20 +34,22 @@ class LLMService:
         # default models and settings
         
         self.conversation_model = os.getenv("LLM_CONVERSATION_MODEL", "") 
+        self.query_model = os.getenv("LLM_QUERY_MODEL", "")
 
-        self.default_embedding_model = os.getenv("LLM_EMBEDDING_MODEL", "") 
+        #self.default_embedding_model = os.getenv("LLM_EMBEDDING_MODEL", "") 
         self.default_embedding_dimensions = int(os.getenv("EMBEDDING_DIMENSIONS", ""))
         self.BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", ""))
 
         self.rerank_model=os.getenv("LLM_RERANK_MODEL","")
         self.rerank_topn=int(os.getenv("LLM_RERANK_TOPN", ""))
 
-        self.embedding_client = AsyncOpenAI(
-            api_key=self.embedding_api_key,
-            base_url=self.api_url
-        )
-        if not self.embedding_client:
-            raise ValueError("embedding client failed to initialize")
+     #   self.embedding_client = AsyncOpenAI(
+      #      api_key=self.embedding_api_key,
+       #     base_url=self.api_url
+        #)
+
+        #if not self.embedding_client:
+         #   raise ValueError("embedding client failed to initialize")
         
         self.llm_client = genai.Client(api_key=self.llm_api_key)
 
@@ -57,6 +61,24 @@ class LLMService:
         self.call_limit_lock = asyncio.Lock()
         self.data_dir = Path(__file__).parent.parent.parent / "data"
         self.data_dir.mkdir(exist_ok=True)
+
+        ...
+        # ↓↓↓ 新增 ↓↓↓
+        self._device = "cuda" if torch.cuda.is_available() else "cpu"
+        model_name = os.getenv("SPECTER2_MODEL", "allenai/specter2_base")
+
+        # trust_remote_code=True 让 Transformers 自动加载 Specter2 自定义类
+        self.specter_tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.specter_model = (
+            AutoModel
+            .from_pretrained(model_name, trust_remote_code=True)
+            .to(self._device)
+            .eval()
+        )
+        # 用 FP16 可省显存
+        if self._device == "cuda":
+            self.specter_model = self.specter_model.half()
+
 
     def save_daily_calls(self, date: str, calls: int):
         """Save daily call count to file"""
@@ -84,12 +106,14 @@ class LLMService:
     async def get_conversation_completion(
         self,
         messages: List[Dict[str, str]],
-        stream: Optional[bool] = True
+        stream: Optional[bool] = True,
+        model: Optional[str] = None 
     ) -> Optional[Any]:
         """
         call chat model to generate response
         """
-        
+        convo_model = model or self.conversation_model
+
         try:
             # Check daily call limit with thread safety
             async with self.call_limit_lock:
@@ -132,13 +156,13 @@ class LLMService:
             if stream:
                 # streaming mode
                 response = await self.llm_client.aio.models.generate_content_stream(
-                    model=self.conversation_model,
+                    model=convo_model,
                     contents=gemini_contents
                 )
             else:
                 # non-streaming mode
                 response = await self.llm_client.aio.models.generate_content(
-                    model=self.conversation_model,
+                    model=convo_model,
                     contents=gemini_contents
                 )
             
@@ -180,50 +204,6 @@ class LLMService:
             if messages:
                 return messages[-1].get("content", "")
             return ""
-
-    async def get_embeddings(
-        self,
-        texts: List[str],
-        dimensions: Optional[int] = None,
-        encoding_format: str = "float"
-    ) -> Optional[List[List[float]]]:
-        """
-        call embedding model to get vector embeddings for texts
-        """
-        
-        if not texts:
-             return []
-
-        use_dimensions = dimensions if dimensions is not None else self.default_embedding_dimensions 
-        
-        try:
-            logger.debug(f"Sending embedding request to LLM, Target Dimensions: {use_dimensions}, Num Texts: {len(texts)}")
-            
-            all_embeddings = []
-            
-            for i in range(0, len(texts), self.BATCH_SIZE):
-                logger.info(f"Sending batch {i//self.BATCH_SIZE + 1}/{len(texts)//self.BATCH_SIZE + 1} to LLM")
-                batch_texts = texts[i:i + self.BATCH_SIZE]
-                
-                batch_response = await self.embedding_client.embeddings.create(
-                    model=self.default_embedding_model,
-                    input=batch_texts,
-                    encoding_format=encoding_format
-                )
-                
-                if batch_response.data:
-                    batch_embeddings = [item.embedding for item in batch_response.data]
-                    all_embeddings.extend(batch_embeddings)
-                else:
-                    logger.warning(f"Batch {i//self.BATCH_SIZE + 1} embedding response did not contain data")
-                    return None
-                
-                if i + self.BATCH_SIZE < len(texts):
-                    await asyncio.sleep(0.1)
-            
-            return all_embeddings
-            
-
         except RateLimitError as e:
             logger.error(f"Embedding API rate limit exceeded: {e}")
             return None
@@ -239,7 +219,57 @@ class LLMService:
         except Exception as e: 
              logger.error(f"Unknown error occurred when calling LLM API (Embeddings): {e.__class__.__name__} - {e}")
              return None
-        
+
+    async def get_embeddings(
+        self,
+        texts: List[str],
+        dimensions: Optional[int] = None,
+        encoding_format: str = "float"
+    ) -> Optional[List[List[float]]]:
+        if not texts:
+            return []
+            # Specter-2 输出 768 维固定向量，忽略 dimensions/encoding_format
+        try:
+                # 让 CPU/GPU 推理跑在线程，不阻塞事件循环
+            loop = asyncio.get_event_loop()
+            batch_size = self.BATCH_SIZE or 16
+
+            async def _embed_batch(batch: List[str]) -> torch.Tensor:
+                return await loop.run_in_executor(
+                    None,  # 默认 ThreadPoolExecutor
+                    self._sync_embed, batch
+                )
+
+                # 分批并行
+            tasks = [
+                _embed_batch(texts[i: i + batch_size])
+                for i in range(0, len(texts), batch_size)
+            ]
+            results: List[torch.Tensor] = await asyncio.gather(*tasks)
+
+                # 拼接并转为普通 Python 列表
+            embeddings = torch.cat(results, dim=0).cpu().tolist()
+            return embeddings
+        except Exception as e:
+            logger.error(f"Specter2 embedding error: {e.__class__.__name__} - {e}")
+            return None
+
+        # 同类中新增一个同步 helper
+    def _sync_embed(self, batch: List[str]) -> torch.Tensor:
+        with torch.inference_mode():
+            inputs = self.specter_tokenizer(
+                batch,
+                truncation=True,
+                padding=True,
+                max_length=self.specter_model.config.max_position_embeddings,
+                return_tensors="pt"
+            ).to(self._device)
+            outputs = self.specter_model(**inputs)
+                # Specter-2 把 CLS 位置池化到 pooler_output
+            vecs = outputs.pooler_output  # (batch, 768)
+            return vecs.detach()
+
+            
 
     async def get_rerank(
         self,
@@ -260,6 +290,4 @@ class LLMService:
         return []
 
 # Create global LLM service instance
-llm_service = LLMService() 
-
-
+llm_service = LLMService()

@@ -195,7 +195,36 @@ class DBService:
                 raise
             
         return added_ids
-    
+
+    async def get_all_papers(self) -> List[Paper]:
+        """
+        Retrieve *all* papers from the database.
+        """
+        papers: List[Paper] = []
+        async for db in get_async_db():
+            # Select everything
+            result = await db.execute(
+                select(DBPaper)
+                .options(
+                    selectinload(DBPaper.authors),
+                    selectinload(DBPaper.categories)
+                )
+                # no limit or offset → fetch all
+            )
+            db_papers = result.scalars().all()
+            for db_paper in db_papers:
+                papers.append(Paper(
+                    paper_id=db_paper.paper_id,
+                    title=db_paper.title,
+                    authors=[a.name for a in db_paper.authors],
+                    abstract=db_paper.abstract,
+                    categories=[c.name for c in db_paper.categories],
+                    pdf_url=db_paper.pdf_url.replace("http://", "https://"),
+                    published_date=db_paper.published_date,
+                    updated_date=db_paper.updated_date
+                ))
+        return papers
+        
     async def get_paper_by_id(self, paper_id: str) -> Optional[Paper]:
         """
         get paper Object by paper_id

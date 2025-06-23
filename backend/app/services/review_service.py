@@ -366,7 +366,7 @@ Focus on meaningful relationships that would help understand the research landsc
             # Call LLM
             messages = [{"role": "user", "content": prompt}]
             response = await llm_service.get_conversation_completion(messages, stream=False)
-            
+
             if not response:
                 return {"success": False, "error": "Failed to get LLM response"}
             
@@ -956,9 +956,9 @@ Focus on meaningful relationships that would help understand the research landsc
                         {"role": "system", "content": "You are an expert at summarizing academic papers. Provide clear, concise summaries that capture the essential contributions and methods."},
                         {"role": "user", "content": summary_prompt}
                     ]
-                    
+
                     summary_response = await llm_service.get_conversation_completion(messages=api_messages, stream=False)
-                    
+
                     if summary_response:
                         # Handle non-streaming response
                         summary_text = ""

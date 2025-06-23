@@ -165,17 +165,16 @@ class VectorSearchService:
         except Exception as e:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
-        
+            
     async def search(self, query: str, k: int = 80) -> list[str]:
             system_prompt = (
-                "You are a professional information-retrieval assistant. "
-                "Generate concise, meaningful phrases that reformulates or expands the user's input "
-                "for subsequent vector search. The phrase must:\n"
-                "• Stay semantically close to the original need.\n"
-                "• Be short (a few keywords, no long sentence).\n"
-                "Return ONLY the phrases themselves, without quotes, numbering, or extra characters."
+                "You are a professional information-retrieval assistant. Given a user query, generate a concise and semantically faithful reformulation for vector search. The output should be a single line containing a few meaningful keywords or short phrases, separated by commas.\n\n"
+                "Requirements:\n\n"
+                "Stay semantically close to the original query\n\n"
+                "Avoid irrelevant or overly broad expansions\n\n"
+                "Be concise: a few keywords or short noun phrases only\n\n"
+                "Output only the result line, no explanation, no quotes, no numbering"
             )
-
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": query}
@@ -183,7 +182,8 @@ class VectorSearchService:
 
             response = await llm_service.get_conversation_completion(
                 messages=messages,
-                stream=False
+                stream=False,
+                model= llm_service.query_model
             )
 
             reformulated = response.text.strip()

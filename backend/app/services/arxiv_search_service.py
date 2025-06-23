@@ -161,7 +161,7 @@ class ArxivSearchService:
                                 collecting_abstract = False
                                 collecting_date = True
                                 date_lines.append(line)
-                                submitted_date_parsed = parse_submitted_date(line)
+                                submitted_date_parsed = self.parse_submitted_date(line)
                                 continue
                             elif line == '▽ More':
                                 continue  # Skip the "More" indicator
@@ -232,7 +232,7 @@ class ArxivSearchService:
                     updated_date=pre_paper['submitted_date_parsed']
                 )
                 
-            paper_list.append(paper)
+                paper_list.append(paper)
 
             await self.queue.put(paper_list)
 
