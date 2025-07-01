@@ -9,3 +9,5 @@ model = AutoModel.from_pretrained(MODEL, trust_remote_code=True)  # 关键 flag
 text = "Random walk on GPUs accelerates Markov chains."
 with torch.inference_mode():
     emb = model(**tok(text, return_tensors="pt")).pooler_output
+
+print(emb)

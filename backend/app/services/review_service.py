@@ -169,6 +169,7 @@ class ReviewService:
             
             # Remove edges that reference non-existent papers
             valid_paper_ids = {paper["paper_id"] for paper in papers}
+            
             graph["edges"] = [
                 edge for edge in graph["edges"]
                 if edge["from"] in valid_paper_ids and edge["to"] in valid_paper_ids

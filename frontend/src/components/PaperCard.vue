@@ -1,5 +1,5 @@
 <template>
-  <div class="paper-card">
+  <div :class="['paper-card', { expanded }]">
     <h3 class="paper-title">
       <a :href="`https://arxiv.org/abs/${paper.paper_id}`" target="_blank" rel="noopener">
         {{ paper.title }}
@@ -21,11 +21,21 @@
       </span>
     </div>
     
-    <p class="paper-abstract">{{ truncatedAbstract }}</p>
+    <div class="abstract-wrapper">
+      <p :class="['paper-abstract', { expanded }]">{{ expanded ? paper.abstract : truncatedAbstract }}</p>
+      <div class="toggle-btn" @click.stop="toggleExpand">
+        <svg v-if="!expanded" class="arrow-icon" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5z" />
+        </svg>
+        <svg v-else class="arrow-icon" viewBox="0 0 24 24">
+          <path d="M7 14l5-5 5 5z" />
+        </svg>
+      </div>
+    </div>
     
     <div class="paper-actions">
       <a :href="paper.pdf_url" target="_blank" rel="noopener" class="action-button" @click="handlePdfClick">
-        Open PDF
+        PDF
       </a>
       <button @click="goToPaperDetail" class="action-button">
         Details
@@ -36,7 +46,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed } from 'vue'
+import { defineComponent, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { paperStore } from '../stores/paperStore'
 import type { Paper } from '../types/paper'
@@ -59,6 +69,11 @@ export default defineComponent({
   
   setup(props) {
     const router = useRouter();
+    
+    const expanded = ref(false);
+    const toggleExpand = () => {
+      expanded.value = !expanded.value;
+    };
     
     // Format the authors list (show first 3 names, then "et al" if more)
     const authorText = computed(() => {
@@ -120,6 +135,8 @@ export default defineComponent({
       authorText,
       formattedDate,
       truncatedAbstract,
+      expanded,
+      toggleExpand,
       handlePdfClick,
       goToPaperDetail
     };
@@ -131,7 +148,7 @@ export default defineComponent({
 .paper-card {
   background-color: white;
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1rem;
   margin-bottom: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.3s ease;
@@ -206,16 +223,55 @@ export default defineComponent({
   font-size: 0.8rem;
 }
 
+.abstract-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
 .paper-abstract {
   color: #333;
-  margin-bottom: 1rem;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex-grow: 1;
-  height: 4.5em; /* Approximately three lines height */
+  height: 3.6em;
+  position: relative;
+}
+
+.paper-abstract::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2em;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff);
+}
+
+.paper-abstract.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  height: auto;
+  overflow: visible;
+}
+
+.paper-abstract.expanded::after {
+  display: none;
+}
+
+.toggle-btn {
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.arrow-icon {
+  width: 20px;
+  height: 20px;
+  fill: #3f51b5;
 }
 
 .paper-actions {

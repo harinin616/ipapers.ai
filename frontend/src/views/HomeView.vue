@@ -9,34 +9,19 @@
     </div>
     
     <!-- Papers Sections Container -->
-    <div class="papers-container">
-      <!-- Recent Papers List -->
-      <div class="recent-papers">
-        <h2>Recent Papers</h2>
-        
-        <div v-if="isLoading" class="loading">
-          Loading papers...
-        </div>
-        
-        <div v-else-if="papers.length === 0" class="no-papers">
-          <p>No papers found</p>
-        </div>
-        
-        <div v-else class="papers-list">
-          <PaperCard v-for="paper in papers" :key="paper.paper_id" :paper="paper" />
-        </div>
-        
-        <!-- Load More button for Recent Papers -->
-        <div v-if="papers.length > 0" class="section-load-more">
-          <button 
-            v-if="hasMorePapers" 
-            @click="loadMoreRecent" 
-            :disabled="isLoadingMoreRecent"
-            class="secondary-button"
-          >
-            {{ isLoadingMoreRecent ? 'Loading...' : 'Load More Recent' }}
-          </button>
-        </div>
+    <div class="sections-grid">
+      <ScrollablePaperList
+        v-for="index in sectionCount"
+        :key="index"
+        :papers="papers"
+        :is-loading="isLoading"
+        title="Recent Papers"
+      />
+      <!-- Placeholder card for adding new list -->
+      <div class="add-list-placeholder" title="Add new list">
+        <svg class="add-icon" viewBox="0 0 24 24">
+          <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
+        </svg>
       </div>
     </div>
   </div>
@@ -45,8 +30,8 @@
 <script>
 import { defineComponent, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import PaperCard from '../components/PaperCard.vue'
 import SearchBox from '../components/SearchBox.vue'
+import ScrollablePaperList from '../components/ScrollablePaperList.vue'
 import api from '../services/api'
 import { searchStore } from '../stores/searchStore'
 
@@ -54,8 +39,8 @@ export default defineComponent({
   name: 'HomeView',
   
   components: {
-    PaperCard,
-    SearchBox
+    SearchBox,
+    ScrollablePaperList
   },
   
   setup() {
@@ -70,6 +55,7 @@ export default defineComponent({
     const limit = ref(10);
     const hasMorePapers = ref(true);
     const searchQuery = ref('');
+    const sectionCount = 6; // Number of scrollable windows to render
 
     // Handle search
     const handleSearch = (query) => {
@@ -115,7 +101,8 @@ export default defineComponent({
       papers, paperCount, isLoading, 
       isLoadingMoreRecent, loadMoreRecent,
       offset, limit, hasMorePapers,
-      searchQuery, handleSearch
+      searchQuery, handleSearch,
+      sectionCount
     };
   }
 })
@@ -223,47 +210,34 @@ export default defineComponent({
   cursor: not-allowed;
 }
 
-.papers-container {
-  margin-bottom: 3rem;
-}
-
-.recent-papers {
-  margin-bottom: 2rem;
+.sections-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
   padding: 0 0.5rem;
   box-sizing: border-box;
-  max-width: 100%;
 }
 
-.recent-papers h2 {
-  margin-bottom: 1.5rem;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.75rem;
-  font-size: 1.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.papers-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  overflow: hidden;
-}
-
-.loading, .no-papers {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-  background-color: white;
+.add-list-placeholder {
+  background-color: #f8f9fa;
+  border: 2px dashed #cbd5e1;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  height: 450px;
+  width: 100%;
 }
 
-.section-load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 1.5rem;
+.add-list-placeholder:hover {
+  background-color: #e9ecef;
+}
+
+.add-icon {
+  width: 32px;
+  height: 32px;
+  fill: #6b7280;
 }
 </style> 

@@ -347,18 +347,6 @@ class PdfService:
             if not text_content:
                 return False
             
-            # ! No need to do the following steps for uploaded files
-            # # Use existing chunking method
-            # chunks = self.chunk_text(text_content)
-            # if not chunks:
-            #     return False
-
-            # # Use existing embedding generation
-            # all_embeddings = await llm_service.get_embeddings(texts=chunks)
-            
-            # if len(all_embeddings) != len(chunks):
-            #     logger.error(f"Generated embeddings count ({len(all_embeddings)}) doesn't match chunks count ({len(chunks)})")
-            #     return False
 
             # Save embeddings using existing format and structure
             target_dir = self.embedding_dir / "uploads" / user_id / session_id
