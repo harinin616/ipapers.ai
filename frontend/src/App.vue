@@ -4,6 +4,7 @@
       <nav>
         <router-link to="/">Home</router-link>
         <router-link to="/review">Related Work Generation</router-link>
+        <router-link to="/daily-feed">Daily Feed</router-link>
         <router-link to="/contact">Contact Us</router-link>
 
         <div class="nav-right-section">

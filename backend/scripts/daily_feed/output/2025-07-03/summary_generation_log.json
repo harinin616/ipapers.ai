@@ -1,0 +1,82 @@
+{
+  "date": "2025-07-03",
+  "generated_at": "2025-07-04T14:58:15.563999",
+  "total_disciplines": 7,
+  "top_n": 3,
+  "disciplines": {
+    "Quantitative Biology (q-bio.)": {
+      "discipline": "Quantitative Biology (q-bio.)",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Quantitative Biology (q-bio.)/summaries",
+      "generated_files": [
+        "1_language_model.md"
+      ],
+      "phrases_processed": 1
+    },
+    "Economics (econ.)": {
+      "discipline": "Economics (econ.)",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Economics (econ.)/summaries",
+      "generated_files": [
+        "1_labor_market.md",
+        "2_investment_decision.md",
+        "3_percentage_point.md"
+      ],
+      "phrases_processed": 3
+    },
+    "Computer Science (cs.)": {
+      "discipline": "Computer Science (cs.)",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Computer Science (cs.)/summaries",
+      "generated_files": [
+        "1_language_model.md",
+        "2_large_language_models.md",
+        "3_language_models.md"
+      ],
+      "phrases_processed": 3
+    },
+    "Statistics (stat.)": {
+      "discipline": "Statistics (stat.)",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Statistics (stat.)/summaries",
+      "generated_files": [
+        "1_valuable_insights.md",
+        "2_ridge_regression.md"
+      ],
+      "phrases_processed": 2
+    },
+    "Electrical Engineering & Systems Science (eess.)": {
+      "discipline": "Electrical Engineering & Systems Science (eess.)",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Electrical Engineering & Systems Science (eess.)/summaries",
+      "generated_files": [
+        "1_neural_network.md",
+        "2_predictive_control.md",
+        "3_computational_complexity.md"
+      ],
+      "phrases_processed": 3
+    },
+    "Mathematics (math.)": {
+      "discipline": "Mathematics (math.)",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Mathematics (math.)/summaries",
+      "generated_files": [
+        "1_dynamical_systems.md",
+        "2_generating_function.md",
+        "3_hyperelliptic_curve.md"
+      ],
+      "phrases_processed": 3
+    },
+    "Physics": {
+      "discipline": "Physics",
+      "date": "2025-07-03",
+      "summaries_directory": "output/2025-07-03/Physics/summaries",
+      "generated_files": [
+        "1_field_theory.md",
+        "2_dark_matter.md",
+        "3_quantum_computing.md"
+      ],
+      "phrases_processed": 3
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "category": "Statistics (stat.)",
+  "date": "2025-07-03",
+  "total_papers": 15,
+  "phrases_summary": [
+    {
+      "rank": 1,
+      "phrase": "valuable insights",
+      "frequency": 2,
+      "paper_count": 2
+    },
+    {
+      "rank": 2,
+      "phrase": "ridge regression",
+      "frequency": 2,
+      "paper_count": 2
+    }
+  ]
+}

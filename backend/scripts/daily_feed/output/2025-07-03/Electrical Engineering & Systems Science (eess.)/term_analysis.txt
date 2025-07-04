@@ -1,0 +1,333 @@
+Term Analysis Report
+====================
+
+Category: Electrical Engineering & Systems Science
+Date: 2025-07-03
+Total Terms: 918
+Total Phrases Available: 40
+Total Words Available: 878
+Displayed in Word Cloud: 40 phrases + 40 words
+
+TOP PHRASES (Displayed)
+========================
+
+neural network                 | Freq:   5 | Papers:   5
+  Papers: 2503.19228, 2507.02824, 2507.02562, 2506.20589, 2507.02427
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+predictive control             | Freq:   5 | Papers:   5
+  Papers: 2507.02584, 2507.02374, 2507.02468, 2503.19228, 2507.02325
+  Context: Observer-Based Distributed Model Predictive Control for String-Stable Multi-vehicle Systems with Mar...
+
+computational complexity       | Freq:   4 | Papers:   4
+  Papers: 2507.02824, 2507.02374, 2502.16436, 2507.02755
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+network dnn                    | Freq:   3 | Papers:   3
+  Papers: 2507.02824, 2503.19228, 2507.02562
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+stochastic nature              | Freq:   3 | Papers:   3
+  Papers: 2507.02584, 2507.02351, 2507.02641
+  Context: Pinching-Antenna-Assisted Index Modulation Channel Modeling Transceiver Design and Performance Analy...
+
+antenna system                 | Freq:   3 | Papers:   3
+  Papers: 2507.02348, 2503.09075, 2507.02641
+  Context: Pinching-Antenna-Assisted Index Modulation Channel Modeling Transceiver Design and Performance Analy...
+
+signal processing              | Freq:   3 | Papers:   3
+  Papers: 2506.15463, 2507.02556, 2507.02385
+  Context: Corrections to Published Values of Frequency Sampling Filter Transition Coefficients Corrections to ...
+
+isac system                    | Freq:   3 | Papers:   3
+  Papers: 2502.16436, 2504.02641, 2507.02385
+  Context: Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems Framework Algorithm and Analysis ...
+
+integrated sensing             | Freq:   3 | Papers:   3
+  Papers: 2507.02352, 2507.02346, 2502.16436
+  Context: Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems Framework Algorithm and Analysis ...
+
+communication isac             | Freq:   3 | Papers:   3
+  Papers: 2502.16436, 2504.02641, 2507.02385
+  Context: Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems Framework Algorithm and Analysis ...
+
+output mimo                    | Freq:   2 | Papers:   2
+  Papers: 2507.02824, 2507.02348
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+mimo systems                   | Freq:   2 | Papers:   2
+  Papers: 2507.02824, 2507.02802
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+reconfigurable intelligent surface | Freq:   2 | Papers:   2
+  Papers: 2507.02824, 2507.02346
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+mimo system                    | Freq:   2 | Papers:   2
+  Papers: 2507.02824, 2507.02348
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+learned representations        | Freq:   2 | Papers:   2
+  Papers: 2507.02815, 2501.17772
+  Context: Towards Perception-Informed Latent HRTF Representations Towards Perception-Informed Latent HRTF Repr...
+
+hardware complexity            | Freq:   2 | Papers:   2
+  Papers: 2507.02802, 2507.02641
+  Context: AREE-Based Decoupled Design of Hybrid Beamformers in mmWave XL-MIMO Systems AREE-Based Decoupled Des...
+
+training strategy              | Freq:   2 | Papers:   2
+  Papers: 2507.02768, 2506.20589
+
+path loss                      | Freq:   2 | Papers:   2
+  Papers: 2507.02348, 2507.02641
+  Context: Pinching-Antenna-Assisted Index Modulation Channel Modeling Transceiver Design and Performance Analy...
+
+model predictive               | Freq:   2 | Papers:   2
+  Papers: 2507.02584, 2503.19228
+  Context: Observer-Based Distributed Model Predictive Control for String-Stable Multi-vehicle Systems with Mar...
+
+time frame                     | Freq:   2 | Papers:   2
+  Papers: 2507.02562, 2507.02367
+  Context: Multi-Utterance Speech Separation and Association Trained on Short Segments Multi-Utterance Speech S...
+
+medical imaging                | Freq:   2 | Papers:   2
+  Papers: 2503.17089, 2408.04318
+  Context: Understanding-informed Bias Mitigation for Fair CMR Segmentation Understanding-informed Bias Mitigat...
+
+great potential                | Freq:   2 | Papers:   2
+  Papers: 2507.02549, 2507.02411
+  Context: A Data-Driven Prescribed-Time Control Framework via Koopman Operator and Adaptive Backstepping A Dat...
+
+complex dynamics               | Freq:   2 | Papers:   2
+  Papers: 2507.02549, 2507.02351
+  Context: A Data-Driven Prescribed-Time Control Framework via Koopman Operator and Adaptive Backstepping A Dat...
+
+control framework              | Freq:   2 | Papers:   2
+  Papers: 2507.02549, 2503.19228
+  Context: A Data-Driven Prescribed-Time Control Framework via Koopman Operator and Adaptive Backstepping A Dat...
+
+control strategy               | Freq:   2 | Papers:   2
+  Papers: 2507.02549, 2503.19228
+  Context: A Data-Driven Prescribed-Time Control Framework via Koopman Operator and Adaptive Backstepping A Dat...
+
+complex systems                | Freq:   2 | Papers:   2
+  Papers: 2507.02549, 2410.20160
+  Context: A Data-Driven Prescribed-Time Control Framework via Koopman Operator and Adaptive Backstepping A Dat...
+
+control mpc                    | Freq:   2 | Papers:   2
+  Papers: 2503.19228, 2507.02374
+  Context: Bridging the Sim-to-real Gap A Control Framework for Imitation Learning of Model Predictive Control ...
+
+datum acquisition              | Freq:   2 | Papers:   2
+  Papers: 2506.15463, 2507.02351
+
+transfer learning              | Freq:   2 | Papers:   2
+  Papers: 2408.07079, 2408.04318
+  Context: Deep Transfer Learning for Kidney Cancer Diagnosis Deep Transfer Learning for Kidney Cancer Diagnosi...
+
+deep learning                  | Freq:   2 | Papers:   2
+  Papers: 2408.07079, 2408.04318
+  Context: Deep Transfer Learning for Kidney Cancer Diagnosis Deep Transfer Learning for Kidney Cancer Diagnosi...
+
+antenna systems                | Freq:   2 | Papers:   2
+  Papers: 2507.02348, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+form expression                | Freq:   2 | Papers:   2
+  Papers: 2507.02374, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+block coordinate               | Freq:   2 | Papers:   2
+  Papers: 2507.02348, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+descent bcd                    | Freq:   2 | Papers:   2
+  Papers: 2507.02348, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+system pass                    | Freq:   2 | Papers:   2
+  Papers: 2507.02348, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+coordinate descent             | Freq:   2 | Papers:   2
+  Papers: 2507.02348, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+training datum                 | Freq:   2 | Papers:   2
+  Papers: 2507.02367, 2507.02468
+
+transient predictive           | Freq:   2 | Papers:   2
+  Papers: 2507.02325, 2507.02468
+  Context: The Bias of Subspace-based Data-Driven Predictive Control The Bias of Subspace-based Data-Driven Pre...
+
+resource allocation            | Freq:   2 | Papers:   2
+  Papers: 2507.02374, 2507.02427
+  Context: When Attention is Beneficial for Learning Wireless Resource Allocation Efficiently When Attention is...
+
+velocity estimation            | Freq:   2 | Papers:   2
+  Papers: 2507.02346, 2504.02641
+  Context: Utilizing 5G NR SSB Blocks for Passive Detection and Localization of Low-Altitude Drones Utilizing 5...
+
+TOP WORDS (Displayed)
+=====================
+
+control                        | Freq:  50 | Papers:   9
+  Papers: 2507.02584, 2507.02374, 2507.02468, 2503.19228, 2507.02325
+  Context: A formal specification of the desired software behaviour of the Princess Marijke lock complex A form...
+
+communication                  | Freq:  25 | Papers:  13
+  Papers: 2506.20589, 2507.02584, 2507.02374, 2502.16436, 2507.02755
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+bias                           | Freq:  25 | Papers:   2
+  Papers: 2503.17089, 2507.02468
+  Context: Understanding-informed Bias Mitigation for Fair CMR Segmentation Understanding-informed Bias Mitigat...
+
+antenna                        | Freq:  24 | Papers:   3
+  Papers: 2507.02348, 2503.09075, 2507.02641
+  Context: Pinching-Antenna-Assisted Index Modulation Channel Modeling Transceiver Design and Performance Analy...
+
+signal                         | Freq:  23 | Papers:  11
+  Papers: 2502.16436, 2507.02346, 2507.02641, 2506.15463, 2507.02791
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+
+system                         | Freq:  22 | Papers:  14
+  Papers: 2507.02348, 2507.02374, 2507.02468, 2502.16436, 2503.09075
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+channel                        | Freq:  20 | Papers:   8
+  Papers: 2507.02348, 2502.16436, 2507.02346, 2507.02641, 2501.17772
+  Context: AREE-Based Decoupled Design of Hybrid Beamformers in mmWave XL-MIMO Systems AREE-Based Decoupled Des...
+
+learning                       | Freq:  20 | Papers:   8
+  Papers: 2408.07079, 2507.02367, 2503.19228, 2501.17772, 2507.00660
+  Context: Bridging the Sim-to-real Gap A Control Framework for Imitation Learning of Model Predictive Control ...
+
+complexity                     | Freq:  18 | Papers:  10
+  Papers: 2507.02374, 2502.16436, 2507.02755, 2507.02641, 2503.09075
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+input                          | Freq:  17 | Papers:   9
+  Papers: 2507.02348, 2507.02374, 2507.02367, 2410.20160, 2507.02668
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+detection                      | Freq:  17 | Papers:   9
+  Papers: 2507.02346, 2507.02755, 2507.02641, 2507.02351, 2410.20160
+  Context: Multi-agent Auditory Scene Analysis Multi-agent Auditory Scene Analysis Auditory scene analysis ASA ...
+
+estimation                     | Freq:  17 | Papers:   7
+  Papers: 2507.02367, 2502.16436, 2507.02346, 2507.02411, 2504.02641
+  Context: Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems Framework Algorithm and Analysis ...
+
+sensing                        | Freq:  16 | Papers:   5
+  Papers: 2507.02346, 2502.16436, 2507.02352, 2504.02641, 2507.02385
+  Context: Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems Framework Algorithm and Analysis ...
+
+training                       | Freq:  15 | Papers:   8
+  Papers: 2408.07079, 2507.02468, 2507.02367, 2501.17772, 2507.02768
+  Context: DeSTA2 5-Audio Toward General-Purpose Large Audio Language Model with Self-Generated Cross-Modal Ali...
+
+information                    | Freq:  15 | Papers:   6
+  Papers: 2507.02584, 2408.07079, 2507.02755, 2507.02641, 2501.17772
+  Context: Multi-agent Auditory Scene Analysis Multi-agent Auditory Scene Analysis Auditory scene analysis ASA ...
+
+power                          | Freq:  15 | Papers:   4
+  Papers: 2507.02348, 2507.02374, 2503.09075, 2408.04318
+  Context: Deep Transfer Learning for Kidney Cancer Diagnosis Deep Transfer Learning for Kidney Cancer Diagnosi...
+
+function                       | Freq:  14 | Papers:   4
+  Papers: 2507.02367, 2507.02815, 2503.09075, 2507.02427
+  Context: Towards Perception-Informed Latent HRTF Representations Towards Perception-Informed Latent HRTF Repr...
+
+source                         | Freq:  14 | Papers:   7
+  Papers: 2507.02755, 2507.02530, 2503.19228, 2506.15463, 2501.17772
+  Context: Multi-agent Auditory Scene Analysis Multi-agent Auditory Scene Analysis Auditory scene analysis ASA ...
+
+model                          | Freq:  14 | Papers:   7
+  Papers: 2408.07079, 2507.02668, 2503.17089, 2507.02549, 2408.04318
+  Context: MEGANet-W A Wavelet-Driven Edge-Guided Attention Framework for Weak Boundary Polyp Detection MEGANet...
+
+optimization                   | Freq:  14 | Papers:   4
+  Papers: 2507.02348, 2507.02374, 2507.02532, 2507.02641
+  Context: Pinching-Antenna-Assisted Index Modulation Channel Modeling Transceiver Design and Performance Analy...
+
+predictive                     | Freq:  14 | Papers:   5
+  Papers: 2507.02584, 2507.02374, 2507.02468, 2503.19228, 2507.02325
+  Context: Observer-Based Distributed Model Predictive Control for String-Stable Multi-vehicle Systems with Mar...
+
+topology                       | Freq:  14 | Papers:   2
+  Papers: 2507.02584, 2507.00660
+  Context: Observer-Based Distributed Model Predictive Control for String-Stable Multi-vehicle Systems with Mar...
+
+systems                        | Freq:  13 | Papers:   7
+  Papers: 2507.02584, 2507.02348, 2502.16436, 2503.09075, 2410.20160
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+simulation                     | Freq:  13 | Papers:  12
+  Papers: 2507.02584, 2507.02374, 2507.02348, 2502.16436, 2507.02641
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+attention                      | Freq:  13 | Papers:   4
+  Papers: 2507.02668, 2507.00660, 2507.02427, 2502.16436
+  Context: MEGANet-W A Wavelet-Driven Edge-Guided Attention Framework for Weak Boundary Polyp Detection MEGANet...
+
+ris                            | Freq:  12 | Papers:   3
+  Papers: 2507.02824, 2507.02352, 2507.02346
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+filter                         | Freq:  12 | Papers:   5
+  Papers: 2507.02791, 2507.02556, 2507.02668, 2507.02351, 2507.02385
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+
+vehicle                        | Freq:  12 | Papers:   4
+  Papers: 2507.02584, 2503.19228, 2507.02374, 2504.02641
+  Context: Observer-Based Distributed Model Predictive Control for String-Stable Multi-vehicle Systems with Mar...
+
+network                        | Freq:  11 | Papers:  10
+  Papers: 2507.02348, 2507.02374, 2503.19228, 2507.02668, 2507.00660
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+audio                          | Freq:  11 | Papers:   4
+  Papers: 2507.02768, 2507.02562, 2507.02815, 2507.02755
+  Context: Towards Perception-Informed Latent HRTF Representations Towards Perception-Informed Latent HRTF Repr...
+
+scenario                       | Freq:  11 | Papers:  10
+  Papers: 2506.20589, 2507.02755, 2507.02530, 2503.09075, 2507.02791
+  Context: AREE-Based Decoupled Design of Hybrid Beamformers in mmWave XL-MIMO Systems AREE-Based Decoupled Des...
+
+self                           | Freq:  11 | Papers:   3
+  Papers: 2507.02768, 2507.02791, 2501.17772
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+
+speaker                        | Freq:  11 | Papers:   4
+  Papers: 2507.02791, 2507.02562, 2507.02755, 2501.17772
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+
+strategy                       | Freq:  11 | Papers:   8
+  Papers: 2503.19228, 2507.02791, 2501.17772, 2507.02768, 2507.02549
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+
+gap                            | Freq:  11 | Papers:   6
+  Papers: 2507.02348, 2503.19228, 2501.17772, 2507.00660, 2507.02562
+  Context: Empowering Intelligent Low-altitude Economy with Large AI Model Deployment Empowering Intelligent Lo...
+
+subspace                       | Freq:  11 | Papers:   2
+  Papers: 2507.02468, 2410.20160
+  Context: Vibration-based damage detection of a trainer jet via multiple input tangential interpolation Vibrat...
+
+pass                           | Freq:  11 | Papers:   2
+  Papers: 2507.02348, 2503.09075
+  Context: Physical Layer Security for Pinching-Antenna Systems PASS Physical Layer Security for Pinching-Anten...
+
+effect                         | Freq:  10 | Papers:   6
+  Papers: 2507.02755, 2507.02641, 2506.15463, 2503.17089, 2507.02824
+  Context: DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift DNN-Based Precoding ...
+
+resource                       | Freq:  10 | Papers:   4
+  Papers: 2507.02374, 2507.02791, 2505.22343, 2507.02427
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+
+speech                         | Freq:  10 | Papers:   4
+  Papers: 2507.02768, 2507.02791, 2507.02562, 2507.02530
+  Context: Self-Steering Deep Non-Linear Spatially Selective Filters for Efficient Extraction of Moving Speaker...
+

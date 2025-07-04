@@ -1,0 +1,855 @@
+[
+  {
+    "rank": 1,
+    "phrase": "field theory",
+    "frequency": 12,
+    "paper_count": 12,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2507.02786",
+        "title": "Dynamical group approach to conformal field theory",
+        "authors": [
+          "G. A. Kerimov"
+        ],
+        "abstract": "We propose a purely group-theoretical method for describing the S-matrix in quantum field theory with dynamical symmetry. In this approach, the Heisenberg S-matrix in a QFT with dynamical symmetry is an intertwining operator between unitary representations of the underlining dynamical group acting in Hilbert spaces spanned by the 'in' and 'out' states. As application we consider scalar Euclidean QFT with conformal symmetry.",
+        "categories": [
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02786"
+      },
+      {
+        "arxiv_id": "2305.11697",
+        "title": "Quadratic Hamiltonians in Fermionic Fock Spaces",
+        "authors": [
+          "Jean-Bernard Bru",
+          "Nathan Metraud"
+        ],
+        "abstract": "Quadratic Hamiltonians are important in quantum field theory and quantum statistical mechanics. Their general studies, which go back to the sixties, are relatively incomplete for the fermionic case studied here. Following Berezin, they are quadratic in the fermionic field and in this way well-defined self-adjoint operators acting on the fermionic Fock space. We analyze their diagonalization by applying a novel elliptic operator-valued differential equations studied in a companion paper. This allows for their ($\\mathrm{N}$-) diagonalization under much weaker assumptions than before. Last but not least, in 1994 Bach, Lieb and Solovej defined them to be generators of strongly continuous unitary groups of Bogoliubov transformations. This is shown to be an equivalent definition, as soon as the vacuum state belongs to the domain of definition of these Hamiltonians. This second outcome is demonstrated to be reminiscent to the celebrated Shale-Stinespring condition on Bogoliubov transformations.",
+        "categories": [
+          "math-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2305.11697"
+      },
+      {
+        "arxiv_id": "2507.02418",
+        "title": "Application of the microscopic optical potential of chiral effective field theory in astrophysical neutron-capture reactions",
+        "authors": [
+          "Bing Wang",
+          "Dong Bai",
+          "Yi Xu"
+        ],
+        "abstract": "The microscopic global nucleon-nucleus optical potential proposed by Whitehead, Lim, and Holt (WLH) is a state-of-the-art potential developed within the framework of many-body perturbation theory using realistic nuclear interactions from chiral effective field theory. Given its potentially greater predictive power for reactions involving exotic isotopes, we apply it to the calculations of astrophysical neutron-capture reactions for the first time, which are particularly important to the nucleosynthesis of elements heavier than iron. It is found that this potential provides a good description of experimental known neutron-capture cross sections and Maxwellian-averaged cross sections. For unstable neutron-rich nuclei, we comprehensively calculate the neutron-capture reaction rates for all nuclei with $26\\leq Z\\leq84$, located between the valley of stability and the neutron drip line, using the backward-forward Monte Carlo method with the $f_{rms}$ deviation as the $χ^2$ estimator. The results reveal a noticeable separation in the uncertainty of rates around an isospin asymmetry of 0.28 under the constraint $f_{rms} \\leq 1.56$. This highlights the critical role of isospin dependence in optical potentials and suggests that future developments of the WLH potential may pay special attention to the isospin dependence.",
+        "categories": [
+          "nucl-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02418"
+      },
+      {
+        "arxiv_id": "2507.02692",
+        "title": "Cosmic structure from the path integral of classical mechanics and its comparison to standard perturbation theory",
+        "authors": [
+          "Marvin Sipp",
+          "Hannes Heisler",
+          "Matthias Bartelmann"
+        ],
+        "abstract": "We investigate cosmic structure formation in the framework of a path-integral formulation of an $N$-particle ensemble in phase space, dubbed Resummed Kinetic Field Theory (RKFT), up to one-loop perturbative order. In particular, we compute power spectra of the density contrast, the divergence and curl of the momentum density and arbitrary $n$-point cumulants of the stress tensor. In contrast to earlier works, we propose a different method of sampling initial conditions, with a Gaussian initial phase-space density. Doing so, we exactly reproduce the corresponding results from Eulerian standard perturbation theory (SPT) at one-loop order, showing that formerly found deviations can be fully attributed to inconsistencies in the previous sampling method. Since, in contrast to SPT, the full phase-space description does not assume a truncation of the Vlasov hierarchy, our findings suggest that non-perturbative techniques are required to accurately capture the physics of cosmic structure formation.",
+        "categories": [
+          "astro-ph.CO",
+          "cond-mat.stat-mech"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02692"
+      },
+      {
+        "arxiv_id": "2507.02669",
+        "title": "Density dependent speed of sound and its consequences in neutron stars",
+        "authors": [
+          "Suman Pal",
+          "Gargi Chaudhuri"
+        ],
+        "abstract": "We introduce a parametrized density-dependent speed of sound and construct an ensemble of equations of state for neutron stars which are found to closely resemble the realistic equations of state calculated using relativistic mean field theory. We show that each of these parameters display an unique feature relevant to the properties of the compact stars. The emergence of special points in the Mass-Radius plot is a significant outcome for neutron stars which is more commonly seen in case of hybrid stars. We have also shown that the curvature term in the speed of sound changes its sign for these hadronic equations of state without the matter reaching the conformal limit or undergoing any phase transition. It is related to the 1st derivative of the energy per nucleon reaching a maximum. We have also examined the detailed behavior of the trace anomaly and polytropic index for RMF models, as well as for a density-dependent parametrized speed of sound. Our analysis demonstrates that the sign of the trace anomaly at high densities is sensitive to the stiffness or softness of the EOS. Different observational constraints from mass-radius and tidal deformability can restrict the range of parameters in the proposed speed of sound model.",
+        "categories": [
+          "nucl-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02669"
+      },
+      {
+        "arxiv_id": "2507.02386",
+        "title": "Bootstrapping periodic quantum systems",
+        "authors": [
+          "Zhijian Huang",
+          "Wenliang Li"
+        ],
+        "abstract": "Periodic structures are ubiquitous in quantum many-body systems and quantum field theories, ranging from lattice models, compact spaces, to topological phenomena. However, previous bootstrap studies encountered technical challenges even for one-body periodic problems, such as a failure in determining the accurate dispersion relations for Bloch bands. In this work, we develop a new bootstrap procedure to resolve these issues, which does not make use of positivity constraints. We mainly consider a quantum particle in a periodic cosine potential. The same procedure also applies to a particle on a circle, where the role of the Bloch momentum $k$ is played by the boundary condition or the $θ$ angle. We unify the natural set of operators and the translation operator by a new set of operators $\\{e^{inx} e^{iap} p^s\\}$. To extract the Bloch momentum $k$, we further introduce a set of differential equations for $\\langle{e^{inx} e^{iap} p^s}\\rangle$ in the translation parameter $a$. At some fixed $a$, the boundary conditions can be determined accurately by analytic bootstrap techniques and matching conditions. After solving the differential equations, we impose certain reality conditions to determine the accurate dispersion relations, as well as the $k$ dependence of other physical quantities. We also investigate the case of noninteger $s$ using the Weyl integral in fractional calculus.",
+        "categories": [
+          "hep-th",
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02386"
+      },
+      {
+        "arxiv_id": "2506.15778",
+        "title": "Twisted-Circle Compactifications of SQCD-like Theories and Holography",
+        "authors": [
+          "Niall Macpherson",
+          "Paul Merrikin",
+          "Carlos Nunez",
+          "Ricardo Stuardo"
+        ],
+        "abstract": "We construct and analyse holographic duals to a class of four-dimensional N = 1 SU($N_c$) SQCD-like theories compactified on a circle with an R-symmetry twist. The setup originates from type IIB backgrounds previously proposed as duals to SQCD with $N_f$ fundamental flavours. The U(1) R-symmetry is anomaly-free only if $ N_f = 2N_c$. We implement a supersymmetric twisted-circle reduction, holographically realised through a smoothly shrinking $S^1$ fibered over the internal U(1)$_R$ direction. We obtain new regular type IIB supergravity backgrounds that are valid only if the condition $N_f = 2N_c$ is satisfied--mirroring the anomaly cancellation requirement in the field theory. We compute various field-theoretic observables--including the Chern-Simons level, Wilson loop and the holographic central charge--showing the emergence of a 3D ${\\cal N} = 2$ gapped phase consistent with a Chern-Simons TQFT. This work highlights the interplay between anomalies, supersymmetry, and geometry in the holographic realisation of compactified gauge theories with fundamental matter.",
+        "categories": [
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2506.15778"
+      },
+      {
+        "arxiv_id": "2503.19022",
+        "title": "Symmetries Beyond Branes: Geometric Engineering and Isometries",
+        "authors": [
+          "Mario De Marco",
+          "Shani Nadir Meynet"
+        ],
+        "abstract": "In this work we consider the relation between finite isometries of the internal space and symmetries of the transverse field theory in Geometric Engineering. On top of the established relation between branes wrapping torsional cycles and topological defects, we study other symmetries of the field theory that are not captured by branes wrapped at infinity. Isometries of the engineering geometry have a representations on the field theory, encoded by their non-trivial actions on exceptional and torsional cycles. In this work we describe such action in general terms. As examples, we focus on three classes of geometric engineering spaces: Du Val singularities, toric Calabi-Yau threefolds and $G_2$ manifolds obtained as fibrations of Du Val singularities over $\\mathbb S^3$. In the latter case, we check explicitly that M-theory on Calabi-Yau or $G_2$ manifold with finite isometries reproduces correctly the higher group structures and non-invertible symmetries of the transverse field theories.",
+        "categories": [
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2503.19022"
+      },
+      {
+        "arxiv_id": "2507.02508",
+        "title": "Spin-charge bound states and emerging fermions in a quantum spin liquid",
+        "authors": [
+          "Jens H. Nyhegn",
+          "Kristian Knakkergaard Nielsen",
+          "Leon Balents",
+          "Georg M. Bruun"
+        ],
+        "abstract": "The complex interplay between charge and spin dynamics lies at the heart of strongly correlated quantum materials, and it is a fundamental topic in basic research with far reaching technological perspectives. We explore in this paper the dynamics of holes in a single band extended $t-J$ model where the background spins form a $\\mathbb{Z}_{2}$ quantum spin liquid (QSL). Using a field theory approach based on a parton construction, we show that while the electrons for most momenta fractionalize into uncorrelated charge carrying holons and spin carrying spinons as generally expected for a QSL, the spinon-holon scattering cross-section diverges for certain momenta signalling strong correlations. By deriving an effective low-energy Hamiltonian describing this dynamics, we demonstrate that these divergencies are due to the formation of long lived spinon-holon bound states. We then show that quantum gas microscopy with atoms in optical lattices provides an excellent platform for verifying and probing the internal spatial structure of these emergent fermions. The fermions will furthermore show up as clear quasiparticle peaks in angle-resolved photoemission spectroscopy with an intensity determined by their internal structure. For a non-zero hole concentration, the fermions form hole pockets with qualitatively the same location, shape, and intensity variation in the Brillouin zone as the so-called Fermi arcs observed in the pseudogap phase. Such agreement is remarkable since the Fermi arcs arise from the delicate interplay between the symmetry of the QSL and the internal structure of the emerging fermions in a minimal single band model with no extra degrees of freedom added. Our results, therefore, provide a microscopic mechanism for the conjectured fractionalized Fermi liquid and open up new pathways for exploring the pseudogap phase and high temperature superconductivity as arising from a QSL.",
+        "categories": [
+          "cond-mat.str-el"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02508"
+      },
+      {
+        "arxiv_id": "2507.02362",
+        "title": "Coupling Electromagnetism to Torsion: Black Holes and Spin-Charge Interactions",
+        "authors": [
+          "Sebastian Bahamonde",
+          "Jorge Maggiolo",
+          "Christian Pfeifer"
+        ],
+        "abstract": "The coupling between matter fields and gravity (encoded in the geometry of spacetime) can be realized in various ways. Most commonly, a minimal coupling principle is employed, meaning that all matter fields, except spinors, couple only to the spacetime metric, while spinors additionally couple to the spacetime connection. Non-minimal couplings between matter fields and spacetime curvature can arise, for example, from quantum field theory on curved spacetime through renormalization corrections, in gauge theories of gravity, and in effective field theories. In this article, we consider a non-minimal coupling $F^{μν}\\tilde{R}{μν}$ between the field strength tensor of the electromagnetic field $F{μν}$ and the antisymmetric part of the Ricci tensor $\\tilde{R}_{[μν]}$ in Riemann-Cartan geometry, which is based on a general metric-compatible connection with torsion. We find an exact 4-dimensional vacuum solution that generalizes the Reissner-Nordström black hole from Einstein-Maxwell and reveals new interactions between the intrinsic torsion-spin charge and the electric charge. Qualitatively, this solution exhibits two distinct features: the effective charge is not constrained to be positive, and the sign of the electric charge influences its gravitational effects. We also derive slowly rotating solutions in 3 dimensions, representing a generalized slowly rotating BTZ black hole solution with couplings among the magnetic and electric charges, the angular momentum, and the intrinsic torsion-spin charge.",
+        "categories": [
+          "gr-qc",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02362"
+      },
+      {
+        "arxiv_id": "2409.14450",
+        "title": "Theory of Casimir Forces: A Unified Approach Using Finite-Temperature Field Theory",
+        "authors": [
+          "P. E. Brandyshev",
+          "Yu. A. Budkov"
+        ],
+        "abstract": "We present a quantum theory of Casimir forces between perfect electrical conductors, based on quantum electrodynamics and quantum statistical physics. This theory utilizes Kapusta's finite-temperature quantum field theory, combined with the Faddeev-Popov ghost formalism. This approach allows us to calculate Casimir forces at finite temperatures, providing both previously known and new physical insights from a unified perspective. Furthermore, our method enables us to compute the stress tensor associated with Casimir forces, in accordance with the Helmholtz free energy of an equilibrium quantum electromagnetic field. Using this methodology, we calculate the excess surface tension on the walls of slit-like pores due to the Casimir effect.",
+        "categories": [
+          "cond-mat.stat-mech"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2409.14450"
+      },
+      {
+        "arxiv_id": "1906.11843",
+        "title": "Nonperturbative Corrections to Soft Drop Jet Mass",
+        "authors": [
+          "André H. Hoang",
+          "Sonny Mantry",
+          "Aditya Pathak",
+          "Iain W. Stewart"
+        ],
+        "abstract": "We provide a quantum field theory based description of the nonperturbative effects from hadronization for soft drop groomed jet mass distributions using the soft-collinear effective theory and the coherent branching formalism. There are two distinct regions of jet mass $m_J$ where grooming modifies hadronization effects. In a region with intermediate $m_J$ an operator expansion can be used, and the leading power corrections are given by three universal nonperturbative parameters that are independent of all kinematic variables and grooming parameters, and only depend on whether the parton initiating the jet is a quark or gluon. The leading power corrections in this region cannot be described by a standard normalized shape function. These power corrections depend on the kinematics of the subjet that stops soft drop through short distance coefficients, which encode a perturbatively calculable dependence on the jet transverse momentum, jet rapidity, and on the soft drop grooming parameters $z_{\\rm cut}$ and $β$. Determining this dependence requires a resummation of large logarithms, which we carry out at LL order. For smaller $m_J$ there is a nonperturbative region described by a one-dimensional shape function that is unusual because it is not normalized to unity, and has a non-trivial dependence on $β$.",
+        "categories": [
+          "hep-ph",
+          "nucl-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/1906.11843"
+      }
+    ],
+    "contexts": [
+      "Dynamical group approach to conformal field theory Dynamical group approach to conformal field theory We propose a purely group-theoretical method for describing the S-matrix in quantum field theory w",
+      "Symmetries Beyond Branes Geometric Engineering and Isometries Symmetries Beyond Branes Geometric Engineering and Isometries In this work we consider the relation between finite isometries of the inter",
+      "Quadratic Hamiltonians in Fermionic Fock Spaces Quadratic Hamiltonians in Fermionic Fock Spaces Quadratic Hamiltonians are important in quantum field theory and quantum statistical mechanics Their gen",
+      "Cosmic structure from the path integral of classical mechanics and its comparison to standard perturbation theory Cosmic structure from the path integral of classical mechanics and its comparison to s",
+      "Density dependent speed of sound and its consequences in neutron stars Density dependent speed of sound and its consequences in neutron stars We introduce a parametrized density-dependent speed of sou"
+    ]
+  },
+  {
+    "rank": 2,
+    "phrase": "dark matter",
+    "frequency": 11,
+    "paper_count": 11,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2412.06889",
+        "title": "Primordial Black Holes (as Dark Matter) from the Supercooled Phase Transitions with Radiative Symmetry Breaking",
+        "authors": [
+          "Indra Kumar Banerjee",
+          "Francesco Rescigno",
+          "Alberto Salvio"
+        ],
+        "abstract": "We study in detail the production of primordial black holes (PBHs), as well as their mass and initial spin, due to the phase transitions corresponding to radiative symmetry breaking (RSB) and featuring a large supercooling. The latter property allows us to use a model-independent approach. In this context, we demonstrate that the decay rate of the false vacuum grows exponentially with time to a high degree of accuracy, justifying a time dependence commonly assumed in the literature. Our study provides ready-to-use results for determining the abundance, mass and initial spin of PBHs generated in a generic RSB model with large supercooling. We find that PBHs are generically produced in a broad region of the model-independent parameter space. As an application, we identify the subregion that may explain recently reported microlensing anomalies. Additionally, we show that a simple Standard-Model extension, with right-handed neutrinos and gauged $B-L$ featuring RSB, may explain an anomaly of this sort in a region of its parameter space.",
+        "categories": [
+          "hep-ph",
+          "astro-ph.CO",
+          "gr-qc",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2412.06889"
+      },
+      {
+        "arxiv_id": "2507.02610",
+        "title": "Entropy Analysis of Dark Matter Halo Structures",
+        "authors": [
+          "Abdelhakim Benkrane"
+        ],
+        "abstract": "In this study, we aim to derive the entropy associated with a dark matter halo modeled using a double (broken) power-law density profile. Our approach is inspired by the pioneering work of Verlinde, who proposed that gravity may not be a fundamental force but rather an emergent phenomenon rooted in entropic principles. To investigate this idea, we examine four different dark matter halo profiles: the Dehnen-type, Hernquist, Jaffe, Plummer sphere, and the perfect sphere. Using these profiles, we derive corresponding entropy expressions and assess their consistency with the second law of thermodynamics, which governs the behavior of entropy in closed systems. Furthermore, to broaden the scope of our analysis, we extend the study to a cosmological context, allowing us to explore how the derived entropy expressions influence the dynamics of the Friedmann equations that describe the evolution of the universe.",
+        "categories": [
+          "gr-qc"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02610"
+      },
+      {
+        "arxiv_id": "2507.02563",
+        "title": "Dipolar dark matter theory based on a non-Abelian Yang-Mills field",
+        "authors": [
+          "Luc Blanchet",
+          "Emeric Seraille"
+        ],
+        "abstract": "Most theories that attempt to reproduce the Modified Newtonian Dynamics (MOND) phenomenology for dark matter at galactic scales rely on ad hoc free functions, preventing them from being regarded as fundamental. In this work, we present a new theory that reproduces MOND, built on a supposed to be fundamental Yang-Mills gauge field based on SU(2), with a gravitational coupling constant, and emerging in a low-acceleration regime, below the MOND acceleration scale. The gauge field plays the role of the internal force in the dipolar dark matter (DDM) model. We discuss how certain solutions of this theory recover the deep MOND regime without introducing arbitrary functions in the action. Within this framework, the MOND phenomenology appears to be due to the existence of a new sector of particle physics.",
+        "categories": [
+          "gr-qc",
+          "astro-ph.CO",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02563"
+      },
+      {
+        "arxiv_id": "2507.02410",
+        "title": "Estimation of gravitational production uncertainties",
+        "authors": [
+          "Jose A. R. Cembranos",
+          "Luis J. Garay",
+          "Álvaro Parra-López",
+          "Javier Ortega del Río"
+        ],
+        "abstract": "Cosmological production of scalar, non-minimally coupled dark matter depends on the specifics of the inflationary model under consideration. We analyze both Starobinsky inflation and a quadratic potential, solve the full background dynamics, study pair production during inflation and reheating, and find that the observed dark matter abundance can be explained solely by this mechanism, regardless of the inflationary model. Qualitative differences between the two cases only appear for dark matter masses close to the inflationary scale. In addition, we identify a large region in parameter space in which cosmological production of dark matter is mostly independent of the chosen inflationary potential, highlighting the robustness of this dark matter production mechanism and its independence of the unknown particular details of inflation. In the region of masses lower than the scale of inflation, and sufficiently away from the conformal limit, the total comoving number density of produced particles becomes a function of the coupling to the geometry alone. This allows us to provide an approximated analytic expression for fitting the resulting abundance.",
+        "categories": [
+          "gr-qc",
+          "hep-ph",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02410"
+      },
+      {
+        "arxiv_id": "2507.02821",
+        "title": "Relativistic accretion and burdened primordial black holes",
+        "authors": [
+          "Suvashis Maity"
+        ],
+        "abstract": "We examine the joint effects of relativistic accretion and memory burdened evaporation on the evolution of primordial black holes (PBHs). The memory burden effect, which delays the evaporation by inducing a backreaction and making the evaporation rate scale as an inverse power law of the PBH entropy, opens up a new window that allows PBHs with $M \\lesssim 10^{15}~\\mathrm{g}$ to survive until the present epoch. Meanwhile, accretion increases the mass of PBHs, thereby enhancing their chances of survival for a given initial mass. We consider two main scenarios: one where PBHs evaporate completely before big bang nucleosynthesis, and another where PBHs persist until today. In the case of evaporation, we analyse the emission of dark matter (DM) and dark radiation (DR) during the process of evaporation. Conversely, in the other case, the surviving PBHs themselves can contribute as DM. We further investigate how relativistic and non-relativistic accretion, together with memory burdened evaporation, impact the parameter space of the emitted DM, the abundance of stable PBHs as DM, and the contribution of DR to the effective number of relativistic degrees of freedom, $ΔN_{\\mathrm{eff}}$.",
+        "categories": [
+          "astro-ph.CO",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02821"
+      },
+      {
+        "arxiv_id": "2507.02653",
+        "title": "An Ultra-Cold Mechanical Quantum Sensor for Tests of New Physics",
+        "authors": [
+          "Andraz Omahen",
+          "Simon Storz",
+          "Marius Bild",
+          "Dario Scheiwiller",
+          "Matteo Fadel",
+          "Yiwen Chu"
+        ],
+        "abstract": "Initialization of mechanical modes in the quantum ground state is crucial for their use in quantum information and quantum sensing protocols. In quantum processors, impurity of the modes' initial state affects the infidelity of subsequent quantum algorithms. In quantum sensors, excitations out of the ground state contribute to the noise of the detector, and their prevalence puts a bound on rare events that deposit energy into the mechanical modes. In this work, we measure the excited-state populations of GHz-frequency modes in a high-overtone bulk acoustic wave resonator (HBAR). We find that the population of the first excited state can be as low as $P_p$=(1.2$\\pm$5.5)$\\times10^{-5}$, corresponding to an effective temperature of 25.2 mK, which are upper bounds limited by imperfections in the measurement process. These results compare favorably to the lowest populations measured in superconducting circuits. Finally, we use the measured populations to constrain the amplitude of high-frequency gravitational waves, the kinetic mixing strength of ultra-light dark matter, and non-linear modifications of the Schrödinger equation describing wavefunction collapse mechanisms. Our work establishes HBARs as a versatile resource for quantum state initialization and studies of fundamental physics.",
+        "categories": [
+          "quant-ph",
+          "cond-mat.mes-hall"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02653"
+      },
+      {
+        "arxiv_id": "2507.02396",
+        "title": "Primordial regular black holes as all the dark matter. III. Covariant canonical quantum gravity models",
+        "authors": [
+          "Marco Calzà",
+          "Davide Pedrotti",
+          "Guan-Wen Yuan",
+          "Sunny Vagnozzi"
+        ],
+        "abstract": "In earlier companion papers, we showed that non-singular primordial black holes (PBHs) could account for all the dark matter (DM) over a significantly wider mass range compared to Schwarzschild PBHs. Those studies, mostly based on phenomenological metrics, are now extended by considering the quantum-corrected space-time recently proposed by Zhang, Lewandowski, Ma and Yang (ZLMY), derived from an effective canonical (loop) quantum gravity approach explicitly enforcing general covariance. Unlike the BHs considered earlier, ZLMY BHs are free from Cauchy horizons, and are hotter than their Schwarzschild counterparts. We show that this higher temperature boosts the evaporation spectra of ZLMY PBHs, tightening limits on their abundance relative to Schwarzschild PBHs and shrinking the asteroid mass window where they can constitute all the DM, a result which reverses the earlier trend, but rests on firmer theoretical ground. While stressing the potential key role of quantum gravity effects in addressing the singularity and DM problems, our study shows that working within a consistent theoretical framework can strongly affect observational predictions.",
+        "categories": [
+          "gr-qc",
+          "astro-ph.CO",
+          "hep-ph",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02396"
+      },
+      {
+        "arxiv_id": "2507.02651",
+        "title": "Prospects for probing dark matter particles and primordial black holes with the Square Kilometre Array using the 21 cm power spectrum at cosmic dawn",
+        "authors": [
+          "Meng-Lin Zhao",
+          "Yue Shao",
+          "Sai Wang",
+          "Xin Zhang"
+        ],
+        "abstract": "Probing the nature of dark matter (DM) remains an outstanding problem in modern cosmology. The 21 cm signal, as a sensitive tracer of neutral hydrogen during cosmic dawn, provides a unique means to investigate DM nature during this critical epoch. Annihilation and decay of DM particles, as well as Hawking radiation of primordial black holes (PBHs), can modify the thermal and ionization histories of the early universe, leaving distinctive imprints on the 21 cm power spectrum. Therefore, the redshifted 21 cm power spectrum serves as a powerful tool to investigate such DM processes. In this work, we systematically assess the potential of the upcoming Square Kilometre Array (SKA) to constrain DM and PBH parameters using the 21 cm power spectrum. Assuming $10,000$ hours of integration time, the SKA is projected to reach sensitivities of $\\langleσv\\rangle \\leq 10^{-28}\\,{\\rm cm}^{3}\\,{\\rm s}^{-1}$ and $τ\\geq 10^{28}\\,{\\rm seconds}$, for $10\\,{\\rm GeV}$ DM particles. It can also probe PBHs with masses of $10^{16}\\,\\mathrm{g}$ and abundances $f_{\\mathrm{PBH}} \\leq 10^{-6}$. These results indicate that the SKA could place constraints on DM annihilation, decay, and PBH Hawking radiation that are up to two to three orders of magnitude stronger than current limits. Furthermore, the SKA is expected to exceed existing bounds on sub-GeV DM and to probe Hawking radiation from PBHs with masses above $10^{17}\\,{\\rm g}$, which are otherwise inaccessible by conventional cosmological probes. Overall, the SKA holds great promise for advancing our understanding of both DM particles and PBHs, potentially offering new insights into the fundamental nature of DM.",
+        "categories": [
+          "astro-ph.CO",
+          "gr-qc",
+          "hep-ph",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02651"
+      },
+      {
+        "arxiv_id": "2507.02474",
+        "title": "Optimisation of amplification and gas mixture for directional Dark Matter searches with the CYGNO/INITIUM project",
+        "authors": [
+          "Giorgio Dho"
+        ],
+        "abstract": "Astrophysical and cosmological observations suggest the existence of beyond standard model ingredient known as dark matter (DM). One of the most supported class of theories suggests that DM is composed of weakly interactive massive particles (WIMPs), possibly detectable via weak interaction with standard matter resulting in the recoil of the latter. The motion of the Sun and Earth with respect to the Galactic Centre is expected to induce a strong directional dependence in the recoil spectrum. Direct detection experiments capable of measuring the angular features of the recoils gain access to a wide range of advantages such as the possibility to positively claim a discovery of DM. The CYGNO project sets into this context, with the aim of deploying a large directional detector for rare event searches as DM. It exploits a gaseous time projection chamber filled with a He:CF4 gas mixture with a segmented amplification stage and granular optical readout. In this thesis, it is presented the work carried out with small CYGNO prototypes to maximise the light yield without degrading spatial and energy resolution, the addition of highly electronegative gases to induce a reduction of the electron cloud diffusion while drifting towards the amplification stage, very relevant to precisely measure the topological information of the recoil tracks. Moreover, the potential performances of directional detectors in the context of a direct DM search are analysed with the use of rigorous statistical tools both in the improvement in setting limits in the WIMP to nucleon sensitivity and in the capability of discerning two different DM models exploiting a directional detector.",
+        "categories": [
+          "physics.ins-det",
+          "astro-ph.IM"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02474"
+      },
+      {
+        "arxiv_id": "2507.02566",
+        "title": "LHC and dark matter implications of t-b-τ Yukawa unification in split SUSY GUTs",
+        "authors": [
+          "Mureed Hussain",
+          "Rizwan Khalid",
+          "Cem Salih Un"
+        ],
+        "abstract": "and next-generation dark matter experiments.",
+        "categories": [
+          "hep-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02566"
+      },
+      {
+        "arxiv_id": "2507.02811",
+        "title": "Bayesian frequency estimation at the fundamental quantum limit",
+        "authors": [
+          "James W. Gardner",
+          "Tuvia Gefen",
+          "Ethan Payne",
+          "Su Direkci",
+          "Sander M. Vermeulen",
+          "Simon A. Haine",
+          "Joseph J. Hope",
+          "Lee McCuller",
+          "Yanbei Chen"
+        ],
+        "abstract": "Searching for a weak signal at an unknown frequency is a canonical task in experiments probing fundamental physics such as gravitational-wave observatories and ultra-light dark matter haloscopes. These state-of-the-art sensors are limited by quantum noise arising from the fundamental uncertainty about the state of the device. Classically, frequency estimation suffers from a threshold effect in the signal-to-noise ratio such that weak signals are extremely hard to localise in frequency. We show that this phenomenon persists at the fundamental quantum limit but that the classical approach, a quadrature measurement, can nevertheless be beaten by a coherent protocol of projecting onto the \"quantum whitened\" possible quantum states. Quantum whitening is a covariant measurement, and we examine it analytically in the wide-prior limit and numerically for finite-width priors. Beyond accelerating searches for unknown frequencies, quantum whitening may be used generally to sense the parameter of a unitary encoding given no prior information about the parameter.",
+        "categories": [
+          "quant-ph",
+          "gr-qc"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02811"
+      }
+    ],
+    "contexts": [
+      "Relativistic accretion and burdened primordial black holes Relativistic accretion and burdened primordial black holes We examine the joint effects of relativistic accretion and memory burdened evapora",
+      "Bayesian frequency estimation at the fundamental quantum limit Bayesian frequency estimation at the fundamental quantum limit Searching for a weak signal at an unknown frequency is a canonical task in",
+      "An Ultra-Cold Mechanical Quantum Sensor for Tests of New Physics An Ultra-Cold Mechanical Quantum Sensor for Tests of New Physics Initialization of mechanical modes in the quantum ground state is cruc",
+      "Prospects for probing dark matter particles and primordial black holes with the Square Kilometre Array using the 21 cm power spectrum at cosmic dawn Prospects for probing dark matter particles and pri",
+      "Entropy Analysis of Dark Matter Halo Structures Entropy Analysis of Dark Matter Halo Structures In this study we aim to derive the entropy associated with a dark matter halo modeled using a double bro"
+    ]
+  },
+  {
+    "rank": 3,
+    "phrase": "quantum computing",
+    "frequency": 9,
+    "paper_count": 9,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2507.02622",
+        "title": "Access Control Threatened by Quantum Entanglement",
+        "authors": [
+          "Zhicheng Zhang",
+          "Mingsheng Ying"
+        ],
+        "abstract": "Access control is a cornerstone of computer security that prevents unauthorised access to resources. In this paper, we study access control in quantum computer systems. We present the first explicit scenario of a security breach when a classically secure access control system is straightforwardly adapted to the quantum setting. The breach is ultimately due to that quantum mechanics allows the phenomenon of entanglement and violates Mermin inequality, a multi-party variant of the celebrated Bell inequality. This reveals a threat from quantum entanglement to access control if existing computer systems integrate with quantum computing. To protect against such threat, we propose several new models of quantum access control, and rigorously analyse their security, flexibility and efficiency.",
+        "categories": [
+          "quant-ph",
+          "cs.CR",
+          "cs.OS"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02622"
+      },
+      {
+        "arxiv_id": "2412.21171",
+        "title": "Quantum Error Correction near the Coding Theoretical Bound",
+        "authors": [
+          "Daiki Komoto",
+          "Kenta Kasai"
+        ],
+        "abstract": "Recent progress in quantum computing has enabled systems with tens of reliable logical qubits, built from thousands of noisy physical qubits. However, many impactful applications demand quantum computations with millions of logical qubits, necessitating highly scalable quantum error correction. In classical information theory, low-density parity-check (LDPC) codes can approach channel capacity efficiently. Yet, no quantum error-correcting codes with efficient decoding have been shown to approach the hashing bound - a fundamental limit on quantum capacity - despite decades of research. Here, we present quantum LDPC codes that not only approach the hashing bound but also allow decoding with computational cost linear in the number of physical qubits. This breakthrough paves the way for large-scale, fault-tolerant quantum computation. Combined with emerging hardware that manages many qubits, our approach brings quantum solutions to important real-world problems significantly closer to reality.",
+        "categories": [
+          "quant-ph",
+          "cs.IT"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2412.21171"
+      },
+      {
+        "arxiv_id": "2507.02420",
+        "title": "Generalized tensor transforms and their applications in classical and quantum computing",
+        "authors": [
+          "Alok Shukla",
+          "Prakash Vedula"
+        ],
+        "abstract": "We explore diverse applications of GTTs in quantum computing, including quantum state compression and transmission, function encoding and quantum digital signal processing. The proposed framework provides fine-grained control of the transformation through the adjustable parameters of the base matrix $W$. This versatility allows precise shaping of each basis function while preserving their effective Walsh-type structure, thus tailoring basis representations to specific quantum data and computational tasks. Our numerical results demonstrate that GTTs enable improved performance in quantum state compression and function encoding compared to fixed transforms (such as FWHT or FFT), achieving higher fidelities with fewer retained components. We also provided novel classical and quantum digital signal filtering algorithms based on our GTT framework.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02420"
+      },
+      {
+        "arxiv_id": "2504.16718",
+        "title": "Simulating Quantum Circuits with Tree Tensor Networks using Density-Matrix Renormalization Group Algorithm",
+        "authors": [
+          "Aditya Dubey",
+          "Zeki Zeybek",
+          "Peter Schmelcher"
+        ],
+        "abstract": "Quantum computing offers the potential for computational abilities that can go beyond classical machines. However, they are still limited by several challenges such as noise, decoherence, and gate errors. As a result, efficient classical simulation of quantum circuits is vital not only for validating and benchmarking quantum hardware but also for gaining deeper insights into the behavior of quantum algorithms. A promising framework for classical simulation is provided by tensor networks. Recently, the Density-Matrix Renormalization Group (DMRG) algorithm was developed for simulating quantum circuits using matrix product states (MPS). Although MPS is efficient for representing quantum states with one-dimensional correlation structures, the fixed linear geometry restricts the expressive power of the MPS. In this work, we extend the DMRG algorithm for simulating quantum circuits to tree tensor networks (TTNs). The framework employs a variational compression scheme that optimizes the TTN to approximate the evolved quantum state. To benchmark the method, we simulate random circuits and the quantum approximate optimization algorithm (QAOA) with various two-qubit gate connectivities. For the random circuits, we devise tree-like gate layouts that are suitable for TTN and show that TTN requires less memory than MPS for the simulations. For the QAOA circuits, a naive TTN construction that exploits graph structure significantly improves the simulation fidelities. Our findings show that the DMRG algorithm with TTNs provides a promising framework for simulating quantum circuits, particularly when gate connectivities exhibit clustering or a hierarchical structure.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2504.16718"
+      },
+      {
+        "arxiv_id": "2507.02333",
+        "title": "A global quantum network with ground-based single-atom memories in optical cavities and satellite links",
+        "authors": [
+          "Jia-Wei Ji",
+          "Shinichi Sunami",
+          "Seigo Kikura",
+          "Akihisa Goban",
+          "Christoph Simon"
+        ],
+        "abstract": "The realization of a global quantum network holds the potential to enable groundbreaking applications such as secure quantum communication and blind quantum computing. However, building such a network remains a formidable challenge, primarily due to photon loss in optical fibers. In this work, we propose a quantum repeater architecture for distributing entanglement over intercontinental distances by leveraging low-Earth-orbit satellites equipped with spontaneous parametric down-conversion (SPDC) photon-pair sources and ground stations utilizing single-atom memories in optical cavities and single-photon detectors to implement the cavity-assisted photon scattering (CAPS) gates for high-fidelity entanglement mapping. The efficient entanglement swapping is achieved by performing high-fidelity Rydberg gates and readouts. We evaluate the entanglement distribution rates and fidelities by analyzing several key imperfections, including time-dependent two-photon transmission and time-dependent pair fidelity, for various satellite heights and ground station distances. We also investigate the impact of pair source fidelity and spin decoherence rate on the repeater performance. Furthermore, we introduce a spatial-frequency multiplexing strategy within this architecture to enhance the design's performance. Finally, we discuss in detail the practical implementation of this architecture. Our results show that this architecture enables entanglement distribution over intercontinental distances. For example, it can distribute over 10000 pairs per flyby over 10000 km with a fidelity above 90%, surpassing the capabilities of terrestrial quantum repeaters",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02333"
+      },
+      {
+        "arxiv_id": "2507.02577",
+        "title": "Future Impact of Quantum Computing on the Computational Landscape of Power Electronics: A Short Tutorial",
+        "authors": [
+          "Nikolaos G. Paterakis",
+          "Petros Karamanakos",
+          "Corey O'Meara",
+          "Georgios Papafotiou"
+        ],
+        "abstract": "Quantum computing is emerging as a promising technology for solving complex optimization problems that arise in various engineering fields, and therefore has the potential to also significantly impact power electronics applications. This paper offers a concise tutorial on fundamental concepts in quantum computing, serving as both an introduction to the field and a bridge to its potential applications in power electronics. As a first step in this direction, the use of quantum computing for solving offline mixed-integer optimization problems commonly encountered in power electronics is examined. To this end, a simplified power electronics design problem is reformulated as a quadratic unconstrained binary optimization (QUBO) problem and executed on quantum hardware, despite current limitations such as low qubit counts and hardware noise. This demonstration marks a pioneering step towards leveraging quantum methods in power electronics. Moreover, the implications of ongoing advancements in quantum algorithms and hardware are discussed, highlighting their potential to enable the efficient solution of large-scale, multiobjective design and control problems. The presented findings suggest that early adoption and exploration of quantum computing could significantly expand the capabilities and performance of power electronic systems in the near future.",
+        "categories": [
+          "quant-ph",
+          "math.OC"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02577"
+      },
+      {
+        "arxiv_id": "2507.02499",
+        "title": "Electron Orbital Angular Momentum Polarization in Neutral Atoms",
+        "authors": [
+          "Hongtao Hu",
+          "Sebastian Mai",
+          "Peng Peng",
+          "Andrius Baltuška",
+          "Xinhua Xie"
+        ],
+        "abstract": "We demonstrate the polarization of electron orbital angular momentum (OAM) in neutral atoms by integrating the Zeeman effect with attosecond transient absorption spectroscopy (ATAS). Using density matrix simulations, we show that in a helium atom, the absorption probability asymmetry between mj=-1 and mj = 1 in the 1s2p state can be precisely controlled by adjusting the time delay between infrared (IR) and extreme ultraviolet (XUV) fields, the strength of an applied static magnetic field, as well as the angle between laser polarization and magnetic field direction. This approach has significant implications across various fields, including quantum computing, quantum communication, and spintronics. Moreover, it paves the way for advancements in applications such as manipulating chemical reactions control, tailoring the magnetic properties of matter, and enabling novel laser emissions.",
+        "categories": [
+          "physics.atom-ph",
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02499"
+      },
+      {
+        "arxiv_id": "2506.18435",
+        "title": "Accelerating Photonic Integrated Circuit Design: Traditional, ML and Quantum Methods",
+        "authors": [
+          "Alessandro Daniele Genuardi Oquendo",
+          "Ali Nadir",
+          "Tigers Jonuzi",
+          "Siddhartha Patra",
+          "Nilotpal Kanti Sinha",
+          "Román Orús",
+          "Sam Mugel"
+        ],
+        "abstract": "Photonic Integrated Circuits (PICs) provide superior speed, bandwidth, and energy efficiency, making them ideal for communication, sensing, and quantum computing applications. Despite their potential, PIC design workflows and integration lag behind those in electronics, calling for groundbreaking advancements. This review outlines the state of PIC design, comparing traditional simulation methods with machine learning approaches that enhance scalability and efficiency. It also explores the promise of quantum algorithms and quantum-inspired methods to address design challenges.",
+        "categories": [
+          "quant-ph",
+          "physics.app-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2506.18435"
+      },
+      {
+        "arxiv_id": "2507.02832",
+        "title": "LCQNN: Linear Combination of Quantum Neural Networks",
+        "authors": [
+          "Hongshun Yao",
+          "Xia Liu",
+          "Mingrui Jing",
+          "Xin Wang"
+        ],
+        "abstract": "Quantum neural networks combine quantum computing with advanced data-driven methods, offering promising applications in quantum machine learning. However, the optimal paradigm of quantum neural networks in the context trainability and expressivity remains an open question. To overcome this issue, we first introduce a framework called Linear Combination of Quantum Neural Networks (LCQNN), which leverages the linear combination of unitaries concept to coordinate the composition of QNNs, thereby balancing trainability and expressivity. Secondly, LCQNN provides a tunable design that can reduce vanishing gradients without incurring excessive classical simulability. Specifically, we detail how restricting certain subspaces or adopting $k$-local control unitaries prevents gradients from collapsing while maintaining enough parameter volume for complex tasks. These findings also align with prior discussions on expanding QNN capabilities for multi-qubit systems. Additionally, we extend the LCQNN to the group action scenarios. By exploiting symmetry, the LCQNN model, excluding exponentially large irreducible subspaces, can circumvent barren plateaus. Overall, LCQNN provides a novel framework for focusing quantum resources into architectures that remain practically trainable yet expressive enough to tackle challenging machine-learning applications.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02832"
+      }
+    ],
+    "contexts": [
+      "LCQNN Linear Combination of Quantum Neural Networks LCQNN Linear Combination of Quantum Neural Networks Quantum neural networks combine quantum computing with advanced data-driven methods offering pro",
+      "Quantum Error Correction near the Coding Theoretical Bound Quantum Error Correction near the Coding Theoretical Bound Recent progress in quantum computing has enabled systems with tens of reliable log",
+      "Access Control Threatened by Quantum Entanglement Access Control Threatened by Quantum Entanglement Access control is a cornerstone of computer security that prevents unauthorised access to resources ",
+      "Future Impact of Quantum Computing on the Computational Landscape of Power Electronics A Short Tutorial Future Impact of Quantum Computing on the Computational Landscape of Power Electronics A Short T",
+      "Accelerating Photonic Integrated Circuit Design Traditional ML and Quantum Methods Accelerating Photonic Integrated Circuit Design Traditional ML and Quantum Methods Photonic Integrated Circuits PICs "
+    ]
+  },
+  {
+    "rank": 4,
+    "phrase": "quantum state",
+    "frequency": 7,
+    "paper_count": 7,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2507.02849",
+        "title": "Three-qubit W state tomography via full and marginal state reconstructions on ibm_osaka",
+        "authors": [
+          "H. Talath",
+          "B. P. Govindaraja",
+          "B. G. Divyamani",
+          "Akshata Shenoy H.",
+          "A. R. Usha Devi",
+          "Sudha"
+        ],
+        "abstract": "We present a three-qubit quantum state tomography scheme requiring a set of 17 measurements, significantly reducing the experimental overhead compared to the conventional 63 Pauli measurements. Using IBM's 127-qubit open-access quantum processor ibm osaka, we prepare the three-qubit W state and employ our tomography scheme to reconstruct it. Additionally, we implement a two-qubit tomography protocol, involving a set of 7 measurements, on ibm osaka to reconstruct two of the two-qubit marginals of the W state. This serves as a proof-of-principle demonstration of the well-known theoretical result that any two of the two-qubit reduced density matrices can uniquely determine most of the whole three-qubit pure states. We show that the fidelity of the W-state reconstructed from its two-qubit subsystems is consistently larger than that obtained from the full three-qubit tomography, highlighting the practical advantage of the subsystem-based tomography approach.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02849"
+      },
+      {
+        "arxiv_id": "2507.02623",
+        "title": "Interplay of frustration and quantum fluctuations in a spin-1/2 anisotropic square lattice",
+        "authors": [
+          "L. M. Ramos",
+          "F. M. Zimmer",
+          "M. Schmidt"
+        ],
+        "abstract": "Motivated by theoretical and experimental studies reported by Yamaguchi et al. (Phys. Rev. B 98, 094402 (2018)), we performed a cluster mean-field analysis of an anisotropic Heisenberg model with six competing exchange interactions. We study the ground and thermal states by tuning the spin anisotropy, magnetic field, and temperature. Our results show that an external magnetic field induces quantum fluctuations, suppressing local moments and leading to the occurrence of a magnetization plateaulike state. When weak spin anisotropy is considered, the competing interactions are affected, and the field-induced fluctuations can lead to a well-defined magnetization plateau within a field range, in which an exotic quantum state can emerge. This state exhibits the coexistence of ferromagnetic and dimerized chains driven by the relation between frustration and the external field. Moreover, we identify a phase transition from a collinear antiferromagnetic order to a disordered state at a finite temperature. Our findings reveal unconventional magnetic properties at low temperatures that can guide future experimental studies of verdazyl-based compounds with anisotropic exchange interactions.",
+        "categories": [
+          "cond-mat.str-el",
+          "cond-mat.mtrl-sci",
+          "cond-mat.stat-mech"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02623"
+      },
+      {
+        "arxiv_id": "2504.16718",
+        "title": "Simulating Quantum Circuits with Tree Tensor Networks using Density-Matrix Renormalization Group Algorithm",
+        "authors": [
+          "Aditya Dubey",
+          "Zeki Zeybek",
+          "Peter Schmelcher"
+        ],
+        "abstract": "Quantum computing offers the potential for computational abilities that can go beyond classical machines. However, they are still limited by several challenges such as noise, decoherence, and gate errors. As a result, efficient classical simulation of quantum circuits is vital not only for validating and benchmarking quantum hardware but also for gaining deeper insights into the behavior of quantum algorithms. A promising framework for classical simulation is provided by tensor networks. Recently, the Density-Matrix Renormalization Group (DMRG) algorithm was developed for simulating quantum circuits using matrix product states (MPS). Although MPS is efficient for representing quantum states with one-dimensional correlation structures, the fixed linear geometry restricts the expressive power of the MPS. In this work, we extend the DMRG algorithm for simulating quantum circuits to tree tensor networks (TTNs). The framework employs a variational compression scheme that optimizes the TTN to approximate the evolved quantum state. To benchmark the method, we simulate random circuits and the quantum approximate optimization algorithm (QAOA) with various two-qubit gate connectivities. For the random circuits, we devise tree-like gate layouts that are suitable for TTN and show that TTN requires less memory than MPS for the simulations. For the QAOA circuits, a naive TTN construction that exploits graph structure significantly improves the simulation fidelities. Our findings show that the DMRG algorithm with TTNs provides a promising framework for simulating quantum circuits, particularly when gate connectivities exhibit clustering or a hierarchical structure.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2504.16718"
+      },
+      {
+        "arxiv_id": "2503.05465",
+        "title": "Compare Similarities Between DNA Sequences Using Permutation-Invariant Quantum Kernel",
+        "authors": [
+          "Chenyu Shi",
+          "Gabriele Leoni",
+          "Mauro Petrillo",
+          "Antonio Puertas Gallardo",
+          "Hao Wang"
+        ],
+        "abstract": "Computing the similarity between two DNA sequences is of vital importance in bioscience. However, traditional computational methods can be resource-intensive due to the enormous sequence length encountered in practice. Recently, applied quantum algorithms have been anticipated to provide potential advantages over classical approaches. In this paper, we propose a permutation-invariant variational quantum kernel model specifically designed for DNA comparison. To represent the four nucleotide bases in DNA sequences with quantum states, we introduce a novel, theoretically motivated encoding scheme: the four distinct bases are encoded using the states of symmetric, informationally complete, positive operator-valued measures (SIC-POVMs). This encoding ensures mutual equality: each pair of symbols is equidistant on the Bloch sphere. Also, common DNA similarity measures, such as the Levenshtein distance, exhibit permutation-insensitive property. To approximately capture this property, we specially design a parameterized quantum layer to realize permutation invariance in the kernel model. We show that our novel encoding method and parameterized layers used in the quantum kernel model can effectively capture the symmetric characteristics of the pairwise DNA sequence comparison task. We validate our model through numerical experiments, which yield promising results on length-$8$ DNA sequences.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2503.05465"
+      },
+      {
+        "arxiv_id": "2507.02540",
+        "title": "An Algorithm for Estimating $α$-Stabilizer Rényi Entropies via Purity",
+        "authors": [
+          "Benjamin Stratton"
+        ],
+        "abstract": "Non-stabilizerness, or magic, is a resource for universal quantum computation in most fault-tolerant architectures; access to states with non-stabilizerness allows for non-classically simulable quantum computation to be performed. Quantifying this resource for unknown states is therefore essential to assessing their utility in quantum computation. The Stabilizer Rényi Entropies have emerged as a leading tools for achieving this, having already enabled one efficient algorithm for measuring non-stabilizerness. In addition, the Stabilizer Rényi Entropies have proven useful in developing connections between non-stabilizerness and other quantum phenomena. In this work, we introduced an alternative algorithm for measuring the Stabilizer Rényi Entropies of an unknown quantum state. Firstly, we show the existence of a state, produced from the action of a channel on $α$ copies of some pure state, that encodes the $α$-Stabilizer Rényi Entropy into its purity. We detail several methods of applying this channel and then, by employing existing purity-measuring algorithms, provide an algorithm for measuring the $α$-Stabilizer Rényi Entropies for all integers $α>1$. This algorithm is benchmarked for qubits and the resource requirements compared to other known algorithms. Finally, a non-stabilizerness/entanglement relationship is shown to exist in the algorithm, demonstrating an novel relationship between the two resources.",
+        "categories": [
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02540"
+      },
+      {
+        "arxiv_id": "2507.02644",
+        "title": "Solving the Hubbard model with Neural Quantum States",
+        "authors": [
+          "Yuntian Gu",
+          "Wenrui Li",
+          "Heng Lin",
+          "Bo Zhan",
+          "Ruichen Li",
+          "Yifei Huang",
+          "Di He",
+          "Yantao Wu",
+          "Tao Xiang",
+          "Mingpu Qin",
+          "Liwei Wang",
+          "Dingshun Lv"
+        ],
+        "abstract": "The rapid development of neural quantum states (NQS) has established it as a promising framework for studying quantum many-body systems. In this work, by leveraging the cutting-edge transformer-based architectures and developing highly efficient optimization algorithms, we achieve the state-of-the-art results for the doped two-dimensional (2D) Hubbard model, arguably the minimum model for high-Tc superconductivity. Interestingly, we find different attention heads in the NQS ansatz can directly encode correlations at different scales, making it capable of capturing long-range correlations and entanglements in strongly correlated systems. With these advances, we establish the half-filled stripe in the ground state of 2D Hubbard model with the next nearest neighboring hoppings, consistent with experimental observations in cuprates. Our work establishes NQS as a powerful tool for solving challenging many-fermions systems.",
+        "categories": [
+          "cond-mat.str-el",
+          "cs.AI",
+          "quant-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02644"
+      },
+      {
+        "arxiv_id": "2507.02811",
+        "title": "Bayesian frequency estimation at the fundamental quantum limit",
+        "authors": [
+          "James W. Gardner",
+          "Tuvia Gefen",
+          "Ethan Payne",
+          "Su Direkci",
+          "Sander M. Vermeulen",
+          "Simon A. Haine",
+          "Joseph J. Hope",
+          "Lee McCuller",
+          "Yanbei Chen"
+        ],
+        "abstract": "Searching for a weak signal at an unknown frequency is a canonical task in experiments probing fundamental physics such as gravitational-wave observatories and ultra-light dark matter haloscopes. These state-of-the-art sensors are limited by quantum noise arising from the fundamental uncertainty about the state of the device. Classically, frequency estimation suffers from a threshold effect in the signal-to-noise ratio such that weak signals are extremely hard to localise in frequency. We show that this phenomenon persists at the fundamental quantum limit but that the classical approach, a quadrature measurement, can nevertheless be beaten by a coherent protocol of projecting onto the \"quantum whitened\" possible quantum states. Quantum whitening is a covariant measurement, and we examine it analytically in the wide-prior limit and numerically for finite-width priors. Beyond accelerating searches for unknown frequencies, quantum whitening may be used generally to sense the parameter of a unitary encoding given no prior information about the parameter.",
+        "categories": [
+          "quant-ph",
+          "gr-qc"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02811"
+      }
+    ],
+    "contexts": [
+      "Three-qubit W state tomography via full and marginal state reconstructions on ibm_osaka Three-qubit W state tomography via full and marginal state reconstructions on ibm_osaka We present a three-qubit",
+      "Bayesian frequency estimation at the fundamental quantum limit Bayesian frequency estimation at the fundamental quantum limit Searching for a weak signal at an unknown frequency is a canonical task in",
+      "Solving the Hubbard model with Neural Quantum States Solving the Hubbard model with Neural Quantum States The rapid development of neural quantum states NQS has established it as a promising framework",
+      "Interplay of frustration and quantum fluctuations in a spin-1 2 anisotropic square lattice Interplay of frustration and quantum fluctuations in a spin-1 2 anisotropic square lattice Motivated by theor",
+      "An Algorithm for Estimating α -Stabilizer Rényi Entropies via Purity An Algorithm for Estimating α -Stabilizer Rényi Entropies via Purity Non-stabilizerness or magic is a resource for universal quantu"
+    ]
+  },
+  {
+    "rank": 5,
+    "phrase": "parameter space",
+    "frequency": 7,
+    "paper_count": 7,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2412.06889",
+        "title": "Primordial Black Holes (as Dark Matter) from the Supercooled Phase Transitions with Radiative Symmetry Breaking",
+        "authors": [
+          "Indra Kumar Banerjee",
+          "Francesco Rescigno",
+          "Alberto Salvio"
+        ],
+        "abstract": "We study in detail the production of primordial black holes (PBHs), as well as their mass and initial spin, due to the phase transitions corresponding to radiative symmetry breaking (RSB) and featuring a large supercooling. The latter property allows us to use a model-independent approach. In this context, we demonstrate that the decay rate of the false vacuum grows exponentially with time to a high degree of accuracy, justifying a time dependence commonly assumed in the literature. Our study provides ready-to-use results for determining the abundance, mass and initial spin of PBHs generated in a generic RSB model with large supercooling. We find that PBHs are generically produced in a broad region of the model-independent parameter space. As an application, we identify the subregion that may explain recently reported microlensing anomalies. Additionally, we show that a simple Standard-Model extension, with right-handed neutrinos and gauged $B-L$ featuring RSB, may explain an anomaly of this sort in a region of its parameter space.",
+        "categories": [
+          "hep-ph",
+          "astro-ph.CO",
+          "gr-qc",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2412.06889"
+      },
+      {
+        "arxiv_id": "2507.02455",
+        "title": "Constraining nearby substellar companion architectures using High Contrast Imaging, Radial Velocity and Astrometry data",
+        "authors": [
+          "L. F. Sartori",
+          "M. J. Bonse",
+          "Y. Li",
+          "F. A. Dannert",
+          "S. P. Quanz",
+          "A. Boehle"
+        ],
+        "abstract": "Nearby stars offer prime opportunities for exoplanet discovery and characterization through various detection methods. By combining HCI, RV, and astrometry, it is possible to better constrain the presence of substellar companions, as each method probes different regions of their parameter space. A detailed census of planets around nearby stars is essential to guide the selection of targets for future space missions seeking to identify Earth-like planets and potentially habitable worlds. In addition, the detection and characterisation of giant planets and brown dwarfs is crucial for understanding the formation and evolution of planetary systems. We aim to constrain the possible presence of substellar companions for 7 nearby M-dwarf stars using a combination of new SPHERE/H2 HCI and archival RV and astrometric data. We investigate how combining these techniques improves the detection constraints for giant planets and brown dwarfs compared to using each method individually. For each star and each data set, we compute the mass limits as a function of semi-major axis or projected separation using standard techniques. We then use a Monte Carlo approach to assess the completeness of the companion mass / semi-major axis parameter space probed by the combination of the three methods, as well as by the three methods independently. Our combined approach significantly increases the fraction of detectable companions. Although no new companion was detected, we could place stronger constraints on potential substellar companions. The combination of HCI, RV and astrometry provides significant improvements in the detection of substellar companions over a wider parameter space. Applying this approach to larger samples and lower-mass companions will help constraining the search space for future space missions aimed at finding potentially habitable or even inhabited planets.",
+        "categories": [
+          "astro-ph.EP",
+          "astro-ph.SR"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02455"
+      },
+      {
+        "arxiv_id": "2507.02746",
+        "title": "Dynamical-System analysis of single-axion monodromy inflation with periodically-modulated potentials",
+        "authors": [
+          "Panagiotis Dorlis",
+          "Nick E. Mavromatos",
+          "Sotirios-Neilos Vlachos",
+          "Makarios Vyros"
+        ],
+        "abstract": "In this work, we study field theoretic systems of a single axion-like field with linear potentials modulated by cosine terms, allegedly induced by non-perturbative instanton configurations. These systems are considered in expanding-Universe spacetime backgrounds (of Friedman-Lema$\\hat{\\rm i}$tre-Robertson-Walker type). Using a dynamical-system approach, we classify the various de-Sitter like (inflationary) vacua from the point of view of their stability, which depend on the values of the model parameters. In this respect, bifurcation points are found to be present for the various models under consideration. Part of the parameter space of the systems under consideration includes the running-vacuum (approximately) linear-axion monodromy potentials, considered in previous works by some of the authors, where inflation is induced by primordial gravitational-wave condensates. A particularly interesting case, corresponding to another part of the parameter space of the models, includes a series of stable de-Sitter vacua, which physically may correspond to a series of successive tunnelings of the system, via say non-perturbative effects, with a decreasing effective cosmological constant. Under certain values of the parameters, these successive tunnelings can reach a Minkowski spacetime, with zero value of the minimum of the axion potential. The situation is not dissimilar to the one of discrete inflation that arguably characterizes some minimal non-critical-string (Liouville) models of cosmology. Finally, for comparison, we also include in this article a dynamical-system study of standard axion-monodromy-modulated potentials characterizing some string/brane-compactification models of inflation.",
+        "categories": [
+          "gr-qc",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02746"
+      },
+      {
+        "arxiv_id": "2507.02410",
+        "title": "Estimation of gravitational production uncertainties",
+        "authors": [
+          "Jose A. R. Cembranos",
+          "Luis J. Garay",
+          "Álvaro Parra-López",
+          "Javier Ortega del Río"
+        ],
+        "abstract": "Cosmological production of scalar, non-minimally coupled dark matter depends on the specifics of the inflationary model under consideration. We analyze both Starobinsky inflation and a quadratic potential, solve the full background dynamics, study pair production during inflation and reheating, and find that the observed dark matter abundance can be explained solely by this mechanism, regardless of the inflationary model. Qualitative differences between the two cases only appear for dark matter masses close to the inflationary scale. In addition, we identify a large region in parameter space in which cosmological production of dark matter is mostly independent of the chosen inflationary potential, highlighting the robustness of this dark matter production mechanism and its independence of the unknown particular details of inflation. In the region of masses lower than the scale of inflation, and sufficiently away from the conformal limit, the total comoving number density of produced particles becomes a function of the coupling to the geometry alone. This allows us to provide an approximated analytic expression for fitting the resulting abundance.",
+        "categories": [
+          "gr-qc",
+          "hep-ph",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02410"
+      },
+      {
+        "arxiv_id": "2507.02821",
+        "title": "Relativistic accretion and burdened primordial black holes",
+        "authors": [
+          "Suvashis Maity"
+        ],
+        "abstract": "We examine the joint effects of relativistic accretion and memory burdened evaporation on the evolution of primordial black holes (PBHs). The memory burden effect, which delays the evaporation by inducing a backreaction and making the evaporation rate scale as an inverse power law of the PBH entropy, opens up a new window that allows PBHs with $M \\lesssim 10^{15}~\\mathrm{g}$ to survive until the present epoch. Meanwhile, accretion increases the mass of PBHs, thereby enhancing their chances of survival for a given initial mass. We consider two main scenarios: one where PBHs evaporate completely before big bang nucleosynthesis, and another where PBHs persist until today. In the case of evaporation, we analyse the emission of dark matter (DM) and dark radiation (DR) during the process of evaporation. Conversely, in the other case, the surviving PBHs themselves can contribute as DM. We further investigate how relativistic and non-relativistic accretion, together with memory burdened evaporation, impact the parameter space of the emitted DM, the abundance of stable PBHs as DM, and the contribution of DR to the effective number of relativistic degrees of freedom, $ΔN_{\\mathrm{eff}}$.",
+        "categories": [
+          "astro-ph.CO",
+          "hep-th"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02821"
+      },
+      {
+        "arxiv_id": "2503.09678",
+        "title": "Probing the ringdown perturbation in binary black hole coalescences with an improved quasi-normal mode extraction algorithm",
+        "authors": [
+          "Keefe Mitman",
+          "Isabella Pretto",
+          "Harrison Siegel",
+          "Mark A. Scheel",
+          "Saul A. Teukolsky",
+          "Michael Boyle",
+          "Nils Deppe",
+          "Lawrence E. Kidder",
+          "Jordan Moxon",
+          "Kyle C. Nelli",
+          "William Throwe",
+          "Nils L. Vu"
+        ],
+        "abstract": "Using gravitational waves to probe the geometry of the ringing remnant black hole formed in a binary black hole coalescence is a well-established way to test Einstein's theory of general relativity. However, doing so requires knowledge of when the predictions of black hole perturbation theory, i.e., quasi-normal modes (QNMs), are a valid description of the emitted gravitational wave as well as what the amplitudes of these excitations are. In this work, we develop an algorithm to systematically extract QNMs from the ringdown of black hole merger simulations. Our algorithm improves upon previous ones in three ways: it fits over the two-sphere, enabling a complete model of the strain; it performs a reverse-search in time for QNMs using a more robust nonlinear least squares routine called \\texttt{VarPro}; and it checks the variance of QNM amplitudes, which we refer to as ``stability'', over an interval matching the natural time scale of each QNM. Using this algorithm, we not only demonstrate the stability of a multitude of QNMs and their overtones across the parameter space of quasi-circular, non-precessing binary black holes, but we also identify new quadratic QNMs that may be detectable in the near future using ground-based interferometers. Furthermore, we provide evidence which suggests that the source of remnant black hole perturbations is roughly independent of the overtone index in a given angular harmonic across binary parameter space, at least for overtones with $n\\lesssim2$. This finding may hint at the spatiotemporal structure of ringdown perturbations in black hole coalescences, as well as the regime of validity of perturbation theory in the ringdown of these events. Our algorithm is made publicly available at the following GitHub repository: https://github.com/keefemitman/qnmfinder.",
+        "categories": [
+          "gr-qc"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2503.09678"
+      },
+      {
+        "arxiv_id": "2507.02604",
+        "title": "PhenomXPNR: An improved gravitational wave model linking precessing inspirals and NR-calibrated merger-ringdown",
+        "authors": [
+          "Eleanor Hamilton",
+          "Marta Colleoni",
+          "Jonathan E. Thompson",
+          "Charlie Hoy",
+          "Anna Heffernan",
+          "Meryl Kinnear",
+          "Jorge Valencia",
+          "Felip A Ramis Vidal",
+          "Cecilio García-Quirós",
+          "Shrobana Ghosgh",
+          "Lionel London",
+          "Mark Hannam",
+          "Sascha Husa"
+        ],
+        "abstract": "We present the frequency-domain quasi-circular precessing binary-black-hole model PhenomXPNR. This model combines the most precise available post-Newtonian description of the evolution of the precession dynamics through inspiral with merger-ringdown model informed by numerical relativity. This, along with a phenomenological model of the dominant multipole asymmetries, results in the most accurate and complete representation of the physics of precessing binaries natively in the frequency-domain to date. All state-of-the-art precessing models show bias when inferring binary parameters in certain regions of the parameter space. We demonstrate that the developments presented ensure that for some precessing systems PhenomXPNR shows the least degree of bias. Further, as a phenomenological, frequency-domain model, PhenomXPNR remains one of the most computationally efficient models available and is therefore well-suited to the era of gravitational-wave astronomy with its ever growing rate of detected signals.",
+        "categories": [
+          "gr-qc"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02604"
+      }
+    ],
+    "contexts": [
+      "Probing the ringdown perturbation in binary black hole coalescences with an improved quasi-normal mode extraction algorithm Probing the ringdown perturbation in binary black hole coalescences with an ",
+      "Relativistic accretion and burdened primordial black holes Relativistic accretion and burdened primordial black holes We examine the joint effects of relativistic accretion and memory burdened evapora",
+      "Dynamical-System analysis of single-axion monodromy inflation with periodically-modulated potentials Dynamical-System analysis of single-axion monodromy inflation with periodically-modulated potential",
+      "PhenomXPNR An improved gravitational wave model linking precessing inspirals and NR-calibrated merger-ringdown PhenomXPNR An improved gravitational wave model linking precessing inspirals and NR-calib",
+      "Primordial Black Holes as Dark Matter from the Supercooled Phase Transitions with Radiative Symmetry Breaking Primordial Black Holes as Dark Matter from the Supercooled Phase Transitions with Radiativ"
+    ]
+  }
+]

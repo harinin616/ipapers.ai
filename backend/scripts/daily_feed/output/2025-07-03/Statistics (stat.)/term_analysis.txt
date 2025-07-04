@@ -1,0 +1,335 @@
+Term Analysis Report
+====================
+
+Category: Statistics
+Date: 2025-07-03
+Total Terms: 342
+Total Phrases Available: 2
+Total Words Available: 340
+Displayed in Word Cloud: 2 phrases + 78 words
+
+TOP PHRASES (Displayed)
+========================
+
+valuable insights              | Freq:   2 | Papers:   2
+  Papers: 2506.11369, 2507.02504
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+ridge regression               | Freq:   2 | Papers:   2
+  Papers: 2409.15582, 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+TOP WORDS (Displayed)
+=====================
+
+model                          | Freq:  22 | Papers:   8
+  Papers: 2408.07066, 2507.02377, 2507.01555, 2507.02425, 2409.15582
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+effect                         | Freq:  15 | Papers:   6
+  Papers: 2504.05909, 2507.01555, 2506.11369, 2501.03129, 2409.15582
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+regression                     | Freq:  14 | Papers:   5
+  Papers: 2507.02377, 2506.11369, 2409.15582, 2501.03821, 2507.02504
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+matrix                         | Freq:  12 | Papers:   4
+  Papers: 2506.03764, 2507.02377, 2412.11554, 2505.13112
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+prediction                     | Freq:  11 | Papers:   2
+  Papers: 2409.15582, 2408.07066
+  Context: Conformal prediction after data-dependent model selection Conformal prediction after data-dependent ...
+
+covariate                      | Freq:   9 | Papers:   3
+  Papers: 2507.02425, 2506.11369, 2507.01555
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+change                         | Freq:   9 | Papers:   3
+  Papers: 2409.15582, 2507.01555, 2507.02467
+  Context: DUST A Duality-Based Pruning Method For Exact Multiple Change-Point Detection DUST A Duality-Based P...
+
+point                          | Freq:   8 | Papers:   3
+  Papers: 2507.02425, 2507.02377, 2507.02467
+  Context: DUST A Duality-Based Pruning Method For Exact Multiple Change-Point Detection DUST A Duality-Based P...
+
+estimation                     | Freq:   7 | Papers:   3
+  Papers: 2507.02425, 2412.11554, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+risk                           | Freq:   7 | Papers:   6
+  Papers: 2505.13112, 2412.11554, 2504.05909, 2506.11369, 2409.15582
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+selection                      | Freq:   7 | Papers:   3
+  Papers: 2507.01555, 2412.11554, 2408.07066
+  Context: Learning Massive-scale Partial Correlation Networks in Clinical Multi-omics Studies with HP-ACCORD L...
+
+markov                         | Freq:   7 | Papers:   2
+  Papers: 2507.02425, 2507.01555
+  Context: Dealing with separation problem in hidden Markov models with covariates based on a penalized maximum...
+
+shift                          | Freq:   7 | Papers:   1
+  Papers: 2409.15582
+  Context: Generalization vs Specialization under Concept Shift Generalization vs Specialization under Concept ...
+
+variance                       | Freq:   6 | Papers:   4
+  Papers: 2504.05909, 2507.02467, 2501.03821, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+context                        | Freq:   6 | Papers:   6
+  Papers: 2505.13112, 2504.05909, 2507.01555, 2506.11369, 2409.15582
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+power                          | Freq:   6 | Papers:   3
+  Papers: 2504.05909, 2507.02377, 2506.11369
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+distribution                   | Freq:   6 | Papers:   4
+  Papers: 2507.02425, 2409.15582, 2507.02580, 2505.13112
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+operator                       | Freq:   6 | Papers:   2
+  Papers: 2506.03764, 2412.11554
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+interaction                    | Freq:   6 | Papers:   2
+  Papers: 2507.01555, 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+health                         | Freq:   6 | Papers:   1
+  Papers: 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+attention                      | Freq:   6 | Papers:   2
+  Papers: 2504.05909, 2505.13112
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+dust                           | Freq:   6 | Papers:   1
+  Papers: 2507.02467
+  Context: DUST A Duality-Based Pruning Method For Exact Multiple Change-Point Detection DUST A Duality-Based P...
+
+likelihood                     | Freq:   6 | Papers:   3
+  Papers: 2507.02425, 2507.01555, 2507.02467
+  Context: DUST A Duality-Based Pruning Method For Exact Multiple Change-Point Detection DUST A Duality-Based P...
+
+concept                        | Freq:   6 | Papers:   1
+  Papers: 2409.15582
+  Context: Generalization vs Specialization under Concept Shift Generalization vs Specialization under Concept ...
+
+sample                         | Freq:   5 | Papers:   3
+  Papers: 2507.02580, 2408.07066, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+observation                    | Freq:   5 | Papers:   2
+  Papers: 2507.01555, 2507.02580
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+product                        | Freq:   5 | Papers:   3
+  Papers: 2506.03764, 2507.01555, 2507.02580
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+test                           | Freq:   5 | Papers:   3
+  Papers: 2409.15582, 2507.02580, 2507.02467
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+classification                 | Freq:   5 | Papers:   2
+  Papers: 2409.15582, 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+decision                       | Freq:   5 | Papers:   2
+  Papers: 2504.05909, 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+win                            | Freq:   5 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+function                       | Freq:   5 | Papers:   3
+  Papers: 2507.01555, 2412.11554, 2507.02467
+  Context: Learning Massive-scale Partial Correlation Networks in Clinical Multi-omics Studies with HP-ACCORD L...
+
+state                          | Freq:   5 | Papers:   2
+  Papers: 2507.02425, 2507.01555
+  Context: Dealing with separation problem in hidden Markov models with covariates based on a penalized maximum...
+
+inference                      | Freq:   4 | Papers:   2
+  Papers: 2507.01555, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+grouping                       | Freq:   4 | Papers:   1
+  Papers: 2506.11369
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+disease                        | Freq:   4 | Papers:   2
+  Papers: 2504.05909, 2506.11369
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+gait                           | Freq:   4 | Papers:   1
+  Papers: 2506.11369
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+response                       | Freq:   4 | Papers:   3
+  Papers: 2507.02425, 2506.11369, 2507.02580
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+assumption                     | Freq:   4 | Papers:   4
+  Papers: 2412.11554, 2507.01555, 2507.02580, 2507.02467
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+derivative                     | Freq:   4 | Papers:   1
+  Papers: 2506.03764
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+perturbation                   | Freq:   4 | Papers:   1
+  Papers: 2506.03764
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+expression                     | Freq:   4 | Papers:   3
+  Papers: 2409.15582, 2506.03764, 2412.11554
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+learning                       | Freq:   4 | Papers:   3
+  Papers: 2409.15582, 2506.03764, 2412.11554
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+normalization                  | Freq:   4 | Papers:   1
+  Papers: 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+tool                           | Freq:   4 | Papers:   3
+  Papers: 2504.05909, 2507.01555, 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+ratio                          | Freq:   4 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+network                        | Freq:   4 | Papers:   2
+  Papers: 2412.11554, 2505.13112
+  Context: Learning Massive-scale Partial Correlation Networks in Clinical Multi-omics Studies with HP-ACCORD L...
+
+setting                        | Freq:   4 | Papers:   4
+  Papers: 2507.02377, 2408.07066, 2505.13112, 2507.02467
+  Context: DUST A Duality-Based Pruning Method For Exact Multiple Change-Point Detection DUST A Duality-Based P...
+
+width                          | Freq:   4 | Papers:   1
+  Papers: 2408.07066
+  Context: Conformal prediction after data-dependent model selection Conformal prediction after data-dependent ...
+
+generalization                 | Freq:   4 | Papers:   1
+  Papers: 2409.15582
+  Context: Generalization vs Specialization under Concept Shift Generalization vs Specialization under Concept ...
+
+use                            | Freq:   3 | Papers:   2
+  Papers: 2507.02467, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+addition                       | Freq:   3 | Papers:   2
+  Papers: 2506.11369, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+methodology                    | Freq:   3 | Papers:   3
+  Papers: 2507.01555, 2507.02504, 2501.03129
+  Context: Generalized coarsened confounding for causal effects a large-sample framework Generalized coarsened ...
+
+age                            | Freq:   3 | Papers:   1
+  Papers: 2506.11369
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+relationship                   | Freq:   3 | Papers:   3
+  Papers: 2409.15582, 2506.11369, 2507.02504
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+multi                          | Freq:   3 | Papers:   2
+  Papers: 2506.11369, 2412.11554
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+insight                        | Freq:   3 | Papers:   2
+  Papers: 2506.11369, 2507.02504
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+interpretability               | Freq:   3 | Papers:   3
+  Papers: 2504.05909, 2506.11369, 2507.02504
+  Context: Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regre...
+
+intervention                   | Freq:   3 | Papers:   1
+  Papers: 2507.02580
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+statistic                      | Freq:   3 | Papers:   2
+  Papers: 2504.05909, 2507.02580
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+estimate                       | Freq:   3 | Papers:   3
+  Papers: 2507.02425, 2507.02580, 2501.03821
+  Context: On the analysis of sequential designs without a specified number of observations On the analysis of ...
+
+form                           | Freq:   3 | Papers:   2
+  Papers: 2409.15582, 2506.03764
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+block                          | Freq:   3 | Papers:   2
+  Papers: 2506.03764, 2507.02377
+  Context: Higher-Order Singular-Value Derivatives of Rectangular Real Matrices Higher-Order Singular-Value Der...
+
+choice                         | Freq:   3 | Papers:   1
+  Papers: 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+regularized                    | Freq:   3 | Papers:   1
+  Papers: 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+ridge                          | Freq:   3 | Papers:   2
+  Papers: 2409.15582, 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+coefficient                    | Freq:   3 | Papers:   2
+  Papers: 2507.01555, 2501.03821
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+cost                           | Freq:   3 | Papers:   3
+  Papers: 2507.02377, 2501.03821, 2408.07066
+  Context: The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalizati...
+
+strategy                       | Freq:   3 | Papers:   2
+  Papers: 2507.02504, 2507.02467
+
+covid-19                       | Freq:   3 | Papers:   1
+  Papers: 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+restriction                    | Freq:   3 | Papers:   1
+  Papers: 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+modelling                      | Freq:   3 | Papers:   2
+  Papers: 2507.01555, 2507.02504
+  Context: Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies...
+
+hierarchical                   | Freq:   3 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+composite                      | Freq:   3 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+endpoints                      | Freq:   3 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+kidney                         | Freq:   3 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+interpretation                 | Freq:   3 | Papers:   1
+  Papers: 2504.05909
+  Context: Interpreting the Win Ratio in Hierarchical Composite Endpoints Challenges Limitations and Perspectiv...
+
+correlation                    | Freq:   3 | Papers:   1
+  Papers: 2412.11554
+  Context: Learning Massive-scale Partial Correlation Networks in Clinical Multi-omics Studies with HP-ACCORD L...
+

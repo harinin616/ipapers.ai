@@ -1,0 +1,93 @@
+[
+  {
+    "rank": 1,
+    "phrase": "valuable insights",
+    "frequency": 2,
+    "paper_count": 2,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2506.11369",
+        "title": "Filtrated Grouping in Multiple Functional Regression",
+        "authors": [
+          "Shuhao Jiao",
+          "Hernando Ombao",
+          "Ian W. McKeague"
+        ],
+        "abstract": "To understand and communicate the risk of chronic joint disease associated with aging, it is essential to investigate how age is associated with gait patterns, particularly through gait angular kinematics. Motivated by this need, and by the critical role of joint coordination in gait, we propose a novel covariate grouping framework within the context of multiple functional regression, where a scalar response is linked to multiple functional covariates. We apply this approach to investigate the relationship between chronological age and gait angular kinematics, aiming to uncover biomechanical patterns that signal age-related gait pattern evolution. Specifically, we develop a forest-structured covariate grouping framework in which different functional covariates are aggregated hierarchically based on the level of coefficient homogeneity. This approach allows for the analysis of both common and idiosyncratic effects of covariates in a nuanced, multi-resolution manner. The identification of the forest structure is entirely data-driven and requires no prior knowledge, providing valuable insights into the interdependence among covariates. Compared to existing methods, the proposed regression framework demonstrates superior predictive power and offers more insightful interpretability on joint coordination. In addition, the proposed framework is broadly applicable and can be readily extended to analyze multivariate functional data in other scientific domains.",
+        "categories": [
+          "stat.ME",
+          "stat.CO"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2506.11369"
+      },
+      {
+        "arxiv_id": "2507.02504",
+        "title": "Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions",
+        "authors": [
+          "Giuseppe Drago",
+          "Giulia Marcon",
+          "Alberto Lombardo",
+          "Giuseppe Aiello"
+        ],
+        "abstract": "This study presents a comprehensive assessment of the Italian risk model used during the COVID-19 pandemic to guide regional mobility restrictions through a colour-coded classification system. The research focuses on evaluating the variables selected by the Italian Ministry of Health for this purpose and their effectiveness in supporting public health decision-making. The analysis adopts a statistical framework which combines data reduction and regression modelling techniques to enhance interpretability and predictive accuracy. Dimensionality reduction is applied to address multicollinearity and simplify complex variable structures, while an ordinal regression model is employed to investigate the relationship between the reduced set of variables and the colour regional classifications. Model performance is evaluated using classification error metrics, providing insights into the adequacy of the selected variables in explaining the decision-making process. Results reveal significant redundancy within the variables chosen by the Italian Ministry of Health, suggesting that excessive predictors may compromise information. To address this, the study proposes refined and robust predictive models for regional classification, offering a reliable tool of the proposed framework and to support public health decision-makers. This study contributes to the ongoing development of quantitative methodologies aimed at improving the effectiveness of statistical models in guiding public health policies. The findings offer valuable insights for refining data-driven decision-making processes during health crises and improving the quality of information available to policymakers.",
+        "categories": [
+          "stat.AP",
+          "physics.soc-ph"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02504"
+      }
+    ],
+    "contexts": [
+      "Filtrated Grouping in Multiple Functional Regression Filtrated Grouping in Multiple Functional Regression To understand and communicate the risk of chronic joint disease associated with aging it is es",
+      "Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions Strategies and statistical evaluation of Italy's regional model for COVID-19 restrictions This study presents "
+    ]
+  },
+  {
+    "rank": 2,
+    "phrase": "ridge regression",
+    "frequency": 2,
+    "paper_count": 2,
+    "contributing_papers": [
+      {
+        "arxiv_id": "2409.15582",
+        "title": "Generalization vs. Specialization under Concept Shift",
+        "authors": [
+          "Alex Nguyen",
+          "David J. Schwab",
+          "Vudtiwat Ngampruetikorn"
+        ],
+        "abstract": "Machine learning models are often brittle under distribution shift, i.e., when data distributions at test time differ from those during training. Understanding this failure mode is central to identifying and mitigating safety risks of mass adoption of machine learning. Here we analyze ridge regression under concept shift -- a form of distribution shift in which the input-label relationship changes at test time. We derive an exact expression for prediction risk in the thermodynamic limit. Our results reveal nontrivial effects of concept shift on generalization performance, including a phase transition between weak and strong concept shift regimes and nonmonotonic data dependence of test performance even when double descent is absent. Our theoretical results are in good agreement with experiments based on transformers pretrained to solve linear regression; under concept shift, too long context length can be detrimental to generalization performance of next token prediction. Finally, our experiments on MNIST and FashionMNIST suggest that this intriguing behavior is present also in classification problems.",
+        "categories": [
+          "stat.ML",
+          "cond-mat.dis-nn",
+          "cond-mat.stat-mech",
+          "cs.LG"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2409.15582"
+      },
+      {
+        "arxiv_id": "2501.03821",
+        "title": "The Choice of Normalization Influences Shrinkage in Regularized Regression",
+        "authors": [
+          "Johan Larsson",
+          "Jonas Wallin"
+        ],
+        "abstract": "Regularized models are often sensitive to the scales of the features in the data and it has therefore become standard practice to normalize (center and scale) the features before fitting the model. But there are many different ways to normalize the features and the choice may have dramatic effects on the resulting model. In spite of this, there has so far been no research on this topic. In this paper, we begin to bridge this knowledge gap by studying normalization in the context of lasso, ridge, and elastic net regression. We focus on binary features and show that their class balances (proportions of ones) directly influences the regression coefficients and that this effect depends on the combination of normalization and regularization methods used. We demonstrate that this effect can be mitigated by scaling binary features with their variance in the case of the lasso and standard deviation in the case of ridge regression, but that this comes at the cost of increased variance of the coefficient estimates. For the elastic net, we show that scaling the penalty weights, rather than the features, can achieve the same effect. Finally, we also tackle mixes of binary and normal features as well as interactions and provide some initial results on how to normalize features in these cases.",
+        "categories": [
+          "stat.ML",
+          "cs.LG",
+          "stat.ME"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2501.03821"
+      }
+    ],
+    "contexts": [
+      "The Choice of Normalization Influences Shrinkage in Regularized Regression The Choice of Normalization Influences Shrinkage in Regularized Regression Regularized models are often sensitive to the scal",
+      "Generalization vs Specialization under Concept Shift Generalization vs Specialization under Concept Shift Machine learning models are often brittle under distribution shift i e when data distributions"
+    ]
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "category": "Economics (econ.)",
+  "date": "2025-07-03",
+  "total_papers": 9,
+  "phrases_summary": [
+    {
+      "rank": 1,
+      "phrase": "labor market",
+      "frequency": 2,
+      "paper_count": 2
+    },
+    {
+      "rank": 2,
+      "phrase": "investment decision",
+      "frequency": 2,
+      "paper_count": 2
+    },
+    {
+      "rank": 3,
+      "phrase": "percentage point",
+      "frequency": 2,
+      "paper_count": 2
+    }
+  ]
+}
