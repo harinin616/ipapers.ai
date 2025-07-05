@@ -25,10 +25,10 @@
       <p :class="['paper-abstract', { expanded }]">{{ expanded ? paper.abstract : truncatedAbstract }}</p>
       <div class="toggle-btn" @click.stop="toggleExpand">
         <svg v-if="!expanded" class="arrow-icon" viewBox="0 0 24 24">
-          <path d="M7 10l5 5 5-5z" />
+          <polyline points="6 9 12 15 18 9" />
         </svg>
         <svg v-else class="arrow-icon" viewBox="0 0 24 24">
-          <path d="M7 14l5-5 5 5z" />
+          <polyline points="6 15 12 9 18 15" />
         </svg>
       </div>
     </div>
@@ -262,16 +262,23 @@ export default defineComponent({
 }
 
 .toggle-btn {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px; /* slight offset */
   display: flex;
   justify-content: center;
   cursor: pointer;
-  margin-top: 0.25rem;
 }
 
 .arrow-icon {
-  width: 20px;
-  height: 20px;
-  fill: #3f51b5;
+  width: 24px;
+  height: 24px;
+  stroke: #3f51b5;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 
 .paper-actions {

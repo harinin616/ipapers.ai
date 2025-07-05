@@ -1,6 +1,10 @@
 <template>
   <div class="contact-page">
     <h1>Contact Us</h1>
+    <p class="contact-note">
+      You can also email us at
+      <a href="mailto:ipapers.ai@gmail.com" class="underline text-blue-600 hover:text-blue-800">ipapers.ai@gmail.com</a>.
+    </p>
 
     <!-- ① 用 @submit.prevent -->
     <form id="contactForm" @submit.prevent="onSubmit">
@@ -70,6 +74,8 @@ const onSubmit = async () => {
 
 
 <style scoped>
+
+
 .contact-page {
   max-width: 1000px;
   width: 90%;
@@ -95,7 +101,11 @@ const onSubmit = async () => {
   display: flex;
   flex-direction: column;
 }
-
+.contact-note {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: #555;
+}
 .form-group label {
   font-weight: 500;
   margin-bottom: 0.5rem;

@@ -1,6 +1,12 @@
 <template>
   <div class="scrollable-paper-list" :style="{ height }">
-    <span v-if="title" class="list-title">{{ title }}</span>
+    <span class="list-title">{{ displayTitle }}</span>
+    <button class="close-btn" @click.stop="$emit('remove')" title="Remove list">
+       <svg class="close-icon" viewBox="0 0 24 24">
+         <path d="M18 6L6 18" />
+         <path d="M6 6L18 18" />
+       </svg>
+    </button>
     <div class="scroll-body">
       <div v-if="isLoading" class="loading">Loading papers...</div>
       <div v-else-if="papers.length === 0" class="no-papers">No papers found</div>
@@ -20,6 +26,7 @@ export default defineComponent({
   components: {
     PaperCard
   },
+  emits: ['remove'],
   props: {
     papers: {
       type: Array,
@@ -31,11 +38,16 @@ export default defineComponent({
     },
     title: {
       type: String,
-      default: 'Recent Papers'
+      default: ''
     },
     height: {
       type: String,
       default: '450px'
+    }
+  },
+  computed: {
+    displayTitle() {
+      return this.title && this.title.trim() !== '' ? this.title : 'Recent Papers';
     }
   }
 })
@@ -83,5 +95,31 @@ export default defineComponent({
   text-align: center;
   color: #666;
   padding: 2rem 0;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: rgba(0,0,0,0.05);
+}
+
+.close-icon {
+  width: 18px;
+  height: 18px;
+  stroke: #9ca3af; /* gray-400 */
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 </style> 

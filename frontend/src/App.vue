@@ -67,6 +67,13 @@
       @files-updated="handleFilesUpdated"
       @update-file-count="(count: number) => fileCount = count"
     />
+    <footer class="site-footer">
+      <p>
+        © 2025 iPapers. All rights reserved. |
+        <a href="/terms-of-use" target="_blank">Terms of Use</a> |
+        <a href="/privacy-policy" target="_blank">Privacy Policy</a>
+      </p>
+    </footer>
   </div>
 </template>
 
@@ -682,5 +689,24 @@ body.pdf-active-page {
   margin-left:6px;            /* ↔ 间距 */
   transition:transform .15s;
 }
+.site-footer {
+  margin-top: 3rem;
+  padding: 1.5rem 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  border-top: 1px solid #e5e7eb;
+}
+
+.site-footer a {
+  color: #3f51b5;
+  text-decoration: none;
+  margin: 0 0.5rem;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
 
 </style> 

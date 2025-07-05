@@ -203,6 +203,7 @@ class ChatService:
                 return True
             
             self.processing_files.add(paper_id)
+            logger.info(f"Processing embeddings for paper {paper_id}")
 
             await pdf_service.generate_embeddings_for_paper(paper_id)
 
