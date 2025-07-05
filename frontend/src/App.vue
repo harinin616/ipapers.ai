@@ -3,6 +3,7 @@
     <header class="app-header" ref="appHeaderRef">
       <nav>
         <router-link to="/">Home</router-link>
+        <router-link to="/monitor">Paper Monitor</router-link>
         <router-link to="/review">Related Work Generation</router-link>
         <router-link to="/contact">Contact Us</router-link>
 

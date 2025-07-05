@@ -7,32 +7,47 @@
         @search="handleSearch"
       />
     </div>
-    
+
     <!-- Papers Sections Container -->
-    <div class="sections-grid">
-      <ScrollablePaperList
-        v-for="(section, idx) in sections"
-        :key="section.id"
-        :papers="section.papers || []"
-        :is-loading="section.isLoading || false"
-        :title="section.title"
-        @remove="removeSection(idx)"
-      />
-      <!-- Placeholder card for adding new list -->
-      <div class="add-list-placeholder" title="Add new list" @click="addSection">
-        <svg class="add-icon" viewBox="0 0 24 24">
-          <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
-        </svg>
+    <div class="papers-container">
+      <!-- Recent Papers List -->
+      <div class="recent-papers">
+        <h2>Recent Papers</h2>
+        
+        <div v-if="isLoading" class="loading">
+          Loading papers...
+        </div>
+        
+        <div v-else-if="papers.length === 0" class="no-papers">
+          <p>No papers found</p>
+        </div>
+        
+        <div v-else class="papers-list">
+          <PaperCard v-for="paper in papers" :key="paper.paper_id" :paper="paper" />
+        </div>
+        
+        <!-- Load More button for Recent Papers -->
+        <div v-if="papers.length > 0" class="section-load-more">
+          <button 
+            v-if="hasMorePapers" 
+            @click="loadMoreRecent" 
+            :disabled="isLoadingMoreRecent"
+            class="secondary-button"
+          >
+            {{ isLoadingMoreRecent ? 'Loading...' : 'Load More Recent' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { defineComponent, ref, onMounted, watch, reactive } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import PaperCard from '../components/PaperCard.vue'
 import SearchBox from '../components/SearchBox.vue'
-import ScrollablePaperList from '../components/ScrollablePaperList.vue'
+
 import api from '../services/api'
 import { searchStore } from '../stores/searchStore'
 
@@ -40,61 +55,23 @@ export default defineComponent({
   name: 'HomeView',
   
   components: {
-    SearchBox,
-    ScrollablePaperList
+    PaperCard,
+    SearchBox
   },
   
   setup() {
     const router = useRouter();
     
     // define refs
+    const papers = ref([]);
     const paperCount = ref(null);
-    const limit = ref(20);
+    const isLoading = ref(false);
+    const isLoadingMoreRecent = ref(false);
+    const offset = ref(0);
+    const limit = ref(10);
+    const hasMorePapers = ref(true);
     const searchQuery = ref('');
-    
-    const STORAGE_KEY = 'paper-sections';
-    
-    // Load sections from localStorage or use default
-    const loadSections = () => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            // Ensure each section has the required properties and is reactive
-            return parsed.map(section => reactive({
-              id: section.id || Date.now(),
-              title: section.title || '',
-              papers: [],
-              isLoading: false
-            }));
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load sections from localStorage:', e);
-      }
-      return [reactive({ id: 1, title: '', papers: [], isLoading: false })];
-    };
-    
-    // Save sections to localStorage (only save id and title, not papers)
-    const saveSections = (sectionsData) => {
-      try {
-        const sectionsToSave = sectionsData.map(section => ({
-          id: section.id,
-          title: section.title
-        }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sectionsToSave));
-      } catch (e) {
-        console.error('Failed to save sections to localStorage:', e);
-      }
-    };
-    
-    const sections = ref(loadSections());
-    
-    // Watch sections for changes and save automatically
-    watch(sections, (newSections) => {
-      saveSections(newSections);
-    }, { deep: true });
+
 
     // Handle search
     const handleSearch = (query) => {
@@ -107,68 +84,41 @@ export default defineComponent({
       });
     };
 
-    // Load papers for a specific section
-    const loadSectionPapers = async (section) => {
+    // Load recent papers
+    const loadPapers = async () => {
       try {
-        section.isLoading = true;
-        const keyword = section.title.trim() || '';
-        const papers = await api.getRecentPapers(limit.value, keyword);
-        section.papers = papers;
-      } catch (error) {
-        console.error(`Error loading papers for section "${section.title}":`, error);
-        section.papers = [];
-      } finally {
-        section.isLoading = false;
-      }
-    };
-
-    // Load papers for all sections
-    const loadPapersForAllSections = async () => {
-      try {
+        isLoading.value = true;
+        papers.value = await api.getRecentPapers(limit.value, 0);
+        offset.value = papers.value.length;
         paperCount.value = await api.countPapers();
-        
-        // Load papers for each section in parallel
-        const loadPromises = sections.value.map(section => loadSectionPapers(section));
-        await Promise.all(loadPromises);
-      } catch (error) {
-        console.error('Error loading paper count:', error);
-      }
+        hasMorePapers.value = papers.value.length < (paperCount.value || 0);
+      } catch (error) { console.error('Error loading papers:', error); }
+      finally { isLoading.value = false; }
     };
 
-    const removeSection = (index) => {
-      sections.value.splice(index, 1);
-    };
-
-    const addSection = async () => {
-      const input = window.prompt('Enter list keyword:');
-      if (input === null) return; // user cancelled
-      const title = input.trim();
-      
-      // Allow empty title - it will show recent papers without keyword filter
-      const newSection = reactive({ 
-        id: Date.now(), 
-        title, 
-        papers: [], 
-        isLoading: true  // Start with loading state
-      });
-      
-      sections.value.push(newSection);
-      
-      // Load papers for the new section
-      await loadSectionPapers(newSection);
+    // Load more recent papers
+    const loadMoreRecent = async () => {
+      try {
+        isLoadingMoreRecent.value = true;
+        const morePapers = await api.getRecentPapers(limit.value, offset.value);
+        papers.value = [...papers.value, ...morePapers];
+        offset.value += morePapers.length;
+        hasMorePapers.value = morePapers.length === limit.value;
+      } catch (error) { console.error('Error loading more recent papers:', error); }
+      finally { isLoadingMoreRecent.value = false; }
     };
 
     onMounted(() => {
-      loadPapersForAllSections();
+      loadPapers();
     });
     
     // return all refs and methods
     return {
-      paperCount,
-      limit,
-      searchQuery, handleSearch,
-      sections, removeSection, addSection,
-      loadPapersForAllSections, loadSectionPapers
+      papers, paperCount, isLoading, 
+      isLoadingMoreRecent, loadMoreRecent,
+      offset, limit, hasMorePapers,
+      searchQuery, handleSearch
+
     };
   }
 })
@@ -177,7 +127,6 @@ export default defineComponent({
 <style scoped>
 .home {
   max-width: 1000px;
-  width: 100%;
   margin: 0 auto;
 }
 
@@ -277,35 +226,47 @@ export default defineComponent({
   cursor: not-allowed;
 }
 
-.sections-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.5rem;
+.papers-container {
+  margin-bottom: 3rem;
+}
+
+.recent-papers {
+  margin-bottom: 2rem;
   padding: 0 0.5rem;
   box-sizing: border-box;
-  grid-auto-rows: 1fr;
+  max-width: 100%;
 }
 
-.add-list-placeholder {
-  background-color: #f8f9fa;
-  border: 2px dashed #cbd5e1;
+.recent-papers h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.75rem;
+  font-size: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.papers-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.loading, .no-papers {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  background-color: white;
   border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.section-load-more {
   display: flex;
-  align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  height: 450px;
-  width: 100%;
-}
-
-.add-list-placeholder:hover {
-  background-color: #e9ecef;
-}
-
-.add-icon {
-  width: 32px;
-  height: 32px;
-  fill: #6b7280;
+  margin-top: 1.5rem;
 }
 </style> 
