@@ -144,9 +144,7 @@ export default defineComponent({
       if (input === null) return; // user cancelled
       const title = input.trim();
       
-      // Only proceed if title is not empty
-      if (!title) return;
-      
+      // Allow empty title - it will show recent papers without keyword filter
       const newSection = reactive({ 
         id: Date.now(), 
         title, 

@@ -225,7 +225,7 @@ class LLMService:
              logger.error(f"Unknown error occurred when calling LLM API (Embeddings): {e.__class__.__name__} - {e}")
              return None
 
-    def get_embeddings(
+    async def get_embeddings(
         self,
         texts: List[str]
     ) -> Optional[List[List[float]]]:

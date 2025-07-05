@@ -314,16 +314,17 @@ class DBService:
     
         papers = []
         async for db in get_async_db():
-            result = await db.execute(
-                select(DBPaper)
-                .options(
-                    selectinload(DBPaper.authors),
-                    selectinload(DBPaper.categories)
-                )
-                .order_by(DBPaper.published_date.desc())
-                .limit(limit)
-                .where(DBPaper.title.ilike(f"%{keyword}%")) if keyword else None
-            )
+            # Build base query
+            query = select(DBPaper).options(
+                selectinload(DBPaper.authors),
+                selectinload(DBPaper.categories)
+            ).order_by(DBPaper.published_date.desc()).limit(limit)
+            
+            # Add keyword filter if provided
+            if keyword:
+                query = query.where(DBPaper.title.ilike(f"%{keyword}%"))
+            
+            result = await db.execute(query)
             db_papers = result.scalars().all()
             
             for db_paper in db_papers:

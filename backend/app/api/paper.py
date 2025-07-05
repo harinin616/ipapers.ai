@@ -19,9 +19,24 @@ async def get_papers(
     Get recent papers from database
     """
     papers_1 = await db_service.get_recent_papers(limit=10, keyword=keyword)
-    papers_2 = await vector_search_service.vector_search(keyword, 10)
+    paper_ids_2 = await vector_search_service.vector_search(keyword, 10)
+    
+    # Convert paper_ids to Paper objects
+    papers_2 = []
+    if paper_ids_2:
+        papers_2 = await db_service.get_papers_by_ids(list(paper_ids_2))
+    
     papers = papers_1 + papers_2
-    papers = list(set(papers))
+    
+    # Manual deduplication using paper_id
+    seen_ids = set()
+    unique_papers = []
+    for paper in papers:
+        if paper.paper_id not in seen_ids:
+            seen_ids.add(paper.paper_id)
+            unique_papers.append(paper)
+    
+    papers = unique_papers
     papers.sort(key=lambda x: x.published_date, reverse=True)
     return papers
 
