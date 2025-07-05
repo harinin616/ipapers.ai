@@ -307,10 +307,11 @@ class DBService:
         
         return papers
     
-    async def get_recent_papers(self, limit: int = 30, offset: int = 0) -> List[Paper]:
+    async def get_recent_papers(self, limit: int = 30, keyword: str = None) -> List[Paper]:
         """
         get recent papers from database
         """
+    
         papers = []
         async for db in get_async_db():
             result = await db.execute(
@@ -320,8 +321,8 @@ class DBService:
                     selectinload(DBPaper.categories)
                 )
                 .order_by(DBPaper.published_date.desc())
-                .offset(offset)
                 .limit(limit)
+                .where(DBPaper.title.ilike(f"%{keyword}%")) if keyword else None
             )
             db_papers = result.scalars().all()
             

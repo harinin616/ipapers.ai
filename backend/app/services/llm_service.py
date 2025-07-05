@@ -37,11 +37,11 @@ class LLMService:
         self.query_model = os.getenv("LLM_QUERY_MODEL", "")
 
         #self.default_embedding_model = os.getenv("LLM_EMBEDDING_MODEL", "") 
-        self.default_embedding_dimensions = int(os.getenv("EMBEDDING_DIMENSIONS", ""))
+        self.default_embedding_dimensions = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
         self.BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", ""))
 
         self.rerank_model=os.getenv("LLM_RERANK_MODEL","")
-        self.rerank_topn=int(os.getenv("LLM_RERANK_TOPN", ""))
+        self.rerank_topn=int(os.getenv("LLM_RERANK_TOPN", "10"))
 
      #   self.embedding_client = AsyncOpenAI(
       #      api_key=self.embedding_api_key,
@@ -51,7 +51,12 @@ class LLMService:
         #if not self.embedding_client:
          #   raise ValueError("embedding client failed to initialize")
         
-        self.llm_client = genai.Client(api_key=self.llm_api_key)
+        # Only initialize Gemini client if API key is provided
+        if self.llm_api_key:
+            self.llm_client = genai.Client(api_key=self.llm_api_key)
+        else:
+            self.llm_client = None
+            logger.warning("LLM_API_KEY not provided, Gemini client not initialized")
 
         # initialize call limits
         self.hourly_calls = 0
@@ -220,35 +225,35 @@ class LLMService:
              logger.error(f"Unknown error occurred when calling LLM API (Embeddings): {e.__class__.__name__} - {e}")
              return None
 
-    async def get_embeddings(
+    def get_embeddings(
         self,
-        texts: List[str],
-        dimensions: Optional[int] = None,
-        encoding_format: str = "float"
+        texts: List[str]
     ) -> Optional[List[List[float]]]:
         if not texts:
             return []
-            # Specter-2 输出 768 维固定向量，忽略 dimensions/encoding_format
+            
         try:
-                # 让 CPU/GPU 推理跑在线程，不阻塞事件循环
-            loop = asyncio.get_event_loop()
-            batch_size = self.BATCH_SIZE or 16
+            batch_size = self.BATCH_SIZE 
+            total_texts = len(texts)
+            total_batches = (total_texts + batch_size - 1) // batch_size
+            
+            logger.info(f"Starting embedding generation for {total_texts} texts in {total_batches} batches (batch_size={batch_size})")
 
-            async def _embed_batch(batch: List[str]) -> torch.Tensor:
-                return await loop.run_in_executor(
-                    None,  # 默认 ThreadPoolExecutor
-                    self._sync_embed, batch
-                )
+            all_embeddings = []
+            
+            # Process batches serially
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i + batch_size]
+                batch_idx = i // batch_size
+                
+                logger.info(f"Processing batch {batch_idx + 1}/{total_batches} with {len(batch)} texts")
+                batch_embeddings = self._sync_embed(batch)
+                all_embeddings.append(batch_embeddings)
+                logger.info(f"Completed batch {batch_idx + 1}/{total_batches}")
 
-                # 分批并行
-            tasks = [
-                _embed_batch(texts[i: i + batch_size])
-                for i in range(0, len(texts), batch_size)
-            ]
-            results: List[torch.Tensor] = await asyncio.gather(*tasks)
-
-                # 拼接并转为普通 Python 列表
-            embeddings = torch.cat(results, dim=0).cpu().tolist()
+            # Concatenate all batches and convert to Python list
+            embeddings = torch.cat(all_embeddings, dim=0).cpu().tolist()
+            logger.info(f"Successfully generated embeddings for all {total_texts} texts")
             return embeddings
         except Exception as e:
             logger.error(f"Specter2 embedding error: {e.__class__.__name__} - {e}")
@@ -264,8 +269,10 @@ class LLMService:
                 max_length=self.specter_model.config.max_position_embeddings,
                 return_tensors="pt"
             ).to(self._device)
+            logger.info(f"inputs is ok")
             outputs = self.specter_model(**inputs)
                 # Specter-2 把 CLS 位置池化到 pooler_output
+            logger.info(f"outputs is ok")
             vecs = outputs.pooler_output  # (batch, 768)
             return vecs.detach()
 

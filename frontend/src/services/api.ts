@@ -6,7 +6,7 @@ import { fileSelectionStore } from '@/stores/fileSelectionStore';
  * API Service interface
  */
 export interface IApiService {
-  getRecentPapers(limit?: number, offset?: number): Promise<Paper[]>;
+  getRecentPapers(limit?: number, keyword?: string): Promise<Paper[]>;
   countPapers(): Promise<number>;
   searchPapers(payload: { query: string, limit?: number }): Promise<any>;
   getUserId(): Promise<string>;
@@ -97,10 +97,10 @@ class ApiService implements IApiService {
    * @param offset Pagination offset
    * @returns Promise with array of papers
    */
-  async getRecentPapers(limit: number = 10, offset: number = 0): Promise<Paper[]> {
+  async getRecentPapers(limit: number = 10, keyword: string = ''): Promise<Paper[]> {
     try {
       const response = await this.api.get('/api/papers', {
-        params: { limit, offset }
+        params: { limit, keyword }
       });
       return response.data;
     } catch (error) {
