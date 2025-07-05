@@ -11,14 +11,15 @@
     <!-- Papers Sections Container -->
     <div class="sections-grid">
       <ScrollablePaperList
-        v-for="index in sectionCount"
-        :key="index"
-        :papers="papers"
-        :is-loading="isLoading"
-        title="Recent Papers"
+        v-for="(section, idx) in sections"
+        :key="section.id"
+        :papers="section.papers || []"
+        :is-loading="section.isLoading || false"
+        :title="section.title"
+        @remove="removeSection(idx)"
       />
       <!-- Placeholder card for adding new list -->
-      <div class="add-list-placeholder" title="Add new list">
+      <div class="add-list-placeholder" title="Add new list" @click="addSection">
         <svg class="add-icon" viewBox="0 0 24 24">
           <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
         </svg>
@@ -28,7 +29,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, onMounted } from 'vue'
+import { defineComponent, ref, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import SearchBox from '../components/SearchBox.vue'
 import ScrollablePaperList from '../components/ScrollablePaperList.vue'
@@ -47,15 +48,53 @@ export default defineComponent({
     const router = useRouter();
     
     // define refs
-    const papers = ref([]);
     const paperCount = ref(null);
-    const isLoading = ref(false);
-    const isLoadingMoreRecent = ref(false);
-    const offset = ref(0);
-    const limit = ref(10);
-    const hasMorePapers = ref(true);
+    const limit = ref(20);
     const searchQuery = ref('');
-    const sectionCount = 6; // Number of scrollable windows to render
+    
+    const STORAGE_KEY = 'paper-sections';
+    
+    // Load sections from localStorage or use default
+    const loadSections = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Ensure each section has the required properties and is reactive
+            return parsed.map(section => reactive({
+              id: section.id || Date.now(),
+              title: section.title || '',
+              papers: [],
+              isLoading: false
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load sections from localStorage:', e);
+      }
+      return [reactive({ id: 1, title: '', papers: [], isLoading: false })];
+    };
+    
+    // Save sections to localStorage (only save id and title, not papers)
+    const saveSections = (sectionsData) => {
+      try {
+        const sectionsToSave = sectionsData.map(section => ({
+          id: section.id,
+          title: section.title
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sectionsToSave));
+      } catch (e) {
+        console.error('Failed to save sections to localStorage:', e);
+      }
+    };
+    
+    const sections = ref(loadSections());
+    
+    // Watch sections for changes and save automatically
+    watch(sections, (newSections) => {
+      saveSections(newSections);
+    }, { deep: true });
 
     // Handle search
     const handleSearch = (query) => {
@@ -68,41 +107,70 @@ export default defineComponent({
       });
     };
 
-    // Load recent papers
-    const loadPapers = async () => {
+    // Load papers for a specific section
+    const loadSectionPapers = async (section) => {
       try {
-        isLoading.value = true;
-        papers.value = await api.getRecentPapers(limit.value, 0);
-        offset.value = papers.value.length;
-        paperCount.value = await api.countPapers();
-        hasMorePapers.value = papers.value.length < (paperCount.value || 0);
-      } catch (error) { console.error('Error loading papers:', error); }
-      finally { isLoading.value = false; }
+        section.isLoading = true;
+        const keyword = section.title.trim() || '';
+        const papers = await api.getRecentPapers(limit.value, keyword);
+        section.papers = papers;
+      } catch (error) {
+        console.error(`Error loading papers for section "${section.title}":`, error);
+        section.papers = [];
+      } finally {
+        section.isLoading = false;
+      }
     };
 
-    // Load more recent papers
-    const loadMoreRecent = async () => {
+    // Load papers for all sections
+    const loadPapersForAllSections = async () => {
       try {
-        isLoadingMoreRecent.value = true;
-        const morePapers = await api.getRecentPapers(limit.value, offset.value);
-        papers.value = [...papers.value, ...morePapers];
-        offset.value += morePapers.length;
-        hasMorePapers.value = morePapers.length === limit.value;
-      } catch (error) { console.error('Error loading more recent papers:', error); }
-      finally { isLoadingMoreRecent.value = false; }
+        paperCount.value = await api.countPapers();
+        
+        // Load papers for each section in parallel
+        const loadPromises = sections.value.map(section => loadSectionPapers(section));
+        await Promise.all(loadPromises);
+      } catch (error) {
+        console.error('Error loading paper count:', error);
+      }
+    };
+
+    const removeSection = (index) => {
+      sections.value.splice(index, 1);
+    };
+
+    const addSection = async () => {
+      const input = window.prompt('Enter list keyword:');
+      if (input === null) return; // user cancelled
+      const title = input.trim();
+      
+      // Only proceed if title is not empty
+      if (!title) return;
+      
+      const newSection = reactive({ 
+        id: Date.now(), 
+        title, 
+        papers: [], 
+        isLoading: true  // Start with loading state
+      });
+      
+      sections.value.push(newSection);
+      
+      // Load papers for the new section
+      await loadSectionPapers(newSection);
     };
 
     onMounted(() => {
-      loadPapers();
+      loadPapersForAllSections();
     });
     
     // return all refs and methods
     return {
-      papers, paperCount, isLoading, 
-      isLoadingMoreRecent, loadMoreRecent,
-      offset, limit, hasMorePapers,
+      paperCount,
+      limit,
       searchQuery, handleSearch,
-      sectionCount
+      sections, removeSection, addSection,
+      loadPapersForAllSections, loadSectionPapers
     };
   }
 })
@@ -111,6 +179,7 @@ export default defineComponent({
 <style scoped>
 .home {
   max-width: 1000px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -212,10 +281,11 @@ export default defineComponent({
 
 .sections-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
   padding: 0 0.5rem;
   box-sizing: border-box;
+  grid-auto-rows: 1fr;
 }
 
 .add-list-placeholder {
