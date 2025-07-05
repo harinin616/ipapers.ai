@@ -58,7 +58,24 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: false
     }
   },
-
+  {
+    path: '/terms-of-use',
+    name: 'terms',
+    component: () => import('../views/TermsView.vue'),
+    meta: {
+      title: 'Terms of Use - iPaper',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/privacy-policy',
+    name: 'privacy',
+    component: () => import('../views/PrivacyView.vue'),
+    meta: {
+      title: 'Privacy Policy - iPaper',
+      requiresAuth: false
+    }
+  },
   {
     path: '/share/:share_id',
     name: 'home-share',
