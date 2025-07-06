@@ -32,6 +32,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/monitor',
+    name: 'paper-monitor',
+    component: () => import('../views/MonitorView.vue'),
+    meta: {
+      title: 'Paper Monitor - iPaper',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/chat',
     name: 'chat',
     component: () => import('../views/ChatView.vue'),
