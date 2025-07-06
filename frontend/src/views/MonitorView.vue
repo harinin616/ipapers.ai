@@ -1,11 +1,6 @@
 <template>
   <div class="home">
     <div class="hero-section">
-      <SearchBox
-        v-model="searchQuery"
-        :is-loading="false"
-        @search="handleSearch"
-      />
     </div>
     
     <!-- Papers Sections Container -->
@@ -74,7 +69,7 @@ export default defineComponent({
       } catch (e) {
         console.error('Failed to load sections from localStorage:', e);
       }
-      return [reactive({ id: 1, title: '', papers: [], isLoading: false })];
+      return [reactive({ id: 1, title: 'Large Language Models', papers: [], isLoading: false })];
     };
     
     // Save sections to localStorage (only save id and title, not papers)
@@ -291,11 +286,12 @@ export default defineComponent({
 
 .sections-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 1.5rem;
   padding: 0 0.5rem;
   box-sizing: border-box;
   grid-auto-rows: 1fr;
+  font-size: 0.9rem;
 }
 .add-list-placeholder {
   background-color: #f8f9fa;
