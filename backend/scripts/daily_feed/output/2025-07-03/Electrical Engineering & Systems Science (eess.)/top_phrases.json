@@ -6,22 +6,6 @@
     "paper_count": 5,
     "contributing_papers": [
       {
-        "arxiv_id": "2503.19228",
-        "title": "Bridging the Sim-to-real Gap: A Control Framework for Imitation Learning of Model Predictive Control",
-        "authors": [
-          "Seungtaek Kim",
-          "Jonghyup Lee",
-          "Kyoungseok Han",
-          "Seibum B. Choi"
-        ],
-        "abstract": "To address the computational challenges of Model Predictive Control (MPC), recent research has studied using imitation learning to approximate the MPC to a computationally efficient Deep Neural Network (DNN). However, this introduces a common issue in learning-based control, the simulation-to-reality (sim-to-real) gap, and Domain Randomization (DR) has been widely used to mitigate this gap by introducing perturbations in the source domain. However, DR inevitably leads to low data collection efficiency and an overly conservative control strategy. This study proposes a new control framework that addresses this issue from a control perspective inspired by Robust Tube MPC. The framework ensures the DNN operates in the same environment as the source domain, handling the sim-to-real gap with great data collection efficiency. Moreover, a parameter governor is introduced to address the DNN's inability to adapt to variations in model parameters, enabling the system to satisfy MPC constraints more robustly under changing conditions. The proposed framework was validated through two case studies: cart-pole control and vehicle collision avoidance control, which analyzed the principles of the proposed framework in detail and demonstrated its application to a vehicle control case.",
-        "categories": [
-          "eess.SY"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2503.19228"
-      },
-      {
         "arxiv_id": "2507.02824",
         "title": "DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift",
         "authors": [
@@ -42,21 +26,18 @@
         "url": "https://arxiv.org/abs/2507.02824"
       },
       {
-        "arxiv_id": "2507.02562",
-        "title": "Multi-Utterance Speech Separation and Association Trained on Short Segments",
+        "arxiv_id": "2507.02427",
+        "title": "When Attention is Beneficial for Learning Wireless Resource Allocation Efficiently?",
         "authors": [
-          "Yuzhu Wang",
-          "Archontis Politis",
-          "Konstantinos Drossos",
-          "Tuomas Virtanen"
+          "Jia Guo",
+          "Chenyang Yang"
         ],
-        "abstract": "Current deep neural network (DNN) based speech separation faces a fundamental challenge -- while the models need to be trained on short segments due to computational constraints, real-world applications typically require processing significantly longer recordings with multiple utterances per speaker than seen during training. In this paper, we investigate how existing approaches perform in this challenging scenario and propose a frequency-temporal recurrent neural network (FTRNN) that effectively bridges this gap. Our FTRNN employs a full-band module to model frequency dependencies within each time frame and a sub-band module that models temporal patterns in each frequency band. Despite being trained on short fixed-length segments of 10 s, our model demonstrates robust separation when processing signals significantly longer than training segments (21-121 s) and preserves speaker association across utterance gaps exceeding those seen during training. Unlike the conventional segment-separation-stitch paradigm, our lightweight approach (0.9 M parameters) performs inference on long audio without segmentation, eliminating segment boundary distortions while simplifying deployment. Experimental results demonstrate the generalization ability of FTRNN for multi-utterance speech separation and speaker association.",
+        "abstract": "Owing to the use of attention mechanism to leverage the dependency across tokens, Transformers are efficient for natural language processing. By harnessing permutation properties broadly exist in resource allocation policies, each mapping measurable environmental parameters (e.g., channel matrix) to optimized variables (e.g., precoding matrix), graph neural networks (GNNs) are promising for learning these policies efficiently in terms of scalability and generalizability. To reap the benefits of both architectures, there is a recent trend of incorporating attention mechanism with GNNs for learning wireless policies. Nevertheless, is the attention mechanism really needed for resource allocation? In this paper, we strive to answer this question by analyzing the structures of functions defined on sets and numerical algorithms, given that the permutation properties of wireless policies are induced by the involved sets (say user set). In particular, we prove that the permutation equivariant functions on a single set can be recursively expressed by two types of functions: one involves attention, and the other does not. We proceed to re-express the numerical algorithms for optimizing several representative resource allocation problems in recursive forms. We find that when interference (say multi-user or inter-data stream interference) is not reflected in the measurable parameters of a policy, attention needs to be used to model the interference. With the insight, we establish a framework of designing GNNs by aligning with the structures. By taking reconfigurable intelligent surface-aided hybrid precoding as an example, the learning efficiency of the proposed GNN is validated via simulations.",
         "categories": [
-          "eess.AS",
-          "cs.SD"
+          "eess.SP"
         ],
         "published": "",
-        "url": "https://arxiv.org/abs/2507.02562"
+        "url": "https://arxiv.org/abs/2507.02427"
       },
       {
         "arxiv_id": "2506.20589",
@@ -86,18 +67,37 @@
         "url": "https://arxiv.org/abs/2506.20589"
       },
       {
-        "arxiv_id": "2507.02427",
-        "title": "When Attention is Beneficial for Learning Wireless Resource Allocation Efficiently?",
+        "arxiv_id": "2503.19228",
+        "title": "Bridging the Sim-to-real Gap: A Control Framework for Imitation Learning of Model Predictive Control",
         "authors": [
-          "Jia Guo",
-          "Chenyang Yang"
+          "Seungtaek Kim",
+          "Jonghyup Lee",
+          "Kyoungseok Han",
+          "Seibum B. Choi"
         ],
-        "abstract": "Owing to the use of attention mechanism to leverage the dependency across tokens, Transformers are efficient for natural language processing. By harnessing permutation properties broadly exist in resource allocation policies, each mapping measurable environmental parameters (e.g., channel matrix) to optimized variables (e.g., precoding matrix), graph neural networks (GNNs) are promising for learning these policies efficiently in terms of scalability and generalizability. To reap the benefits of both architectures, there is a recent trend of incorporating attention mechanism with GNNs for learning wireless policies. Nevertheless, is the attention mechanism really needed for resource allocation? In this paper, we strive to answer this question by analyzing the structures of functions defined on sets and numerical algorithms, given that the permutation properties of wireless policies are induced by the involved sets (say user set). In particular, we prove that the permutation equivariant functions on a single set can be recursively expressed by two types of functions: one involves attention, and the other does not. We proceed to re-express the numerical algorithms for optimizing several representative resource allocation problems in recursive forms. We find that when interference (say multi-user or inter-data stream interference) is not reflected in the measurable parameters of a policy, attention needs to be used to model the interference. With the insight, we establish a framework of designing GNNs by aligning with the structures. By taking reconfigurable intelligent surface-aided hybrid precoding as an example, the learning efficiency of the proposed GNN is validated via simulations.",
+        "abstract": "To address the computational challenges of Model Predictive Control (MPC), recent research has studied using imitation learning to approximate the MPC to a computationally efficient Deep Neural Network (DNN). However, this introduces a common issue in learning-based control, the simulation-to-reality (sim-to-real) gap, and Domain Randomization (DR) has been widely used to mitigate this gap by introducing perturbations in the source domain. However, DR inevitably leads to low data collection efficiency and an overly conservative control strategy. This study proposes a new control framework that addresses this issue from a control perspective inspired by Robust Tube MPC. The framework ensures the DNN operates in the same environment as the source domain, handling the sim-to-real gap with great data collection efficiency. Moreover, a parameter governor is introduced to address the DNN's inability to adapt to variations in model parameters, enabling the system to satisfy MPC constraints more robustly under changing conditions. The proposed framework was validated through two case studies: cart-pole control and vehicle collision avoidance control, which analyzed the principles of the proposed framework in detail and demonstrated its application to a vehicle control case.",
         "categories": [
-          "eess.SP"
+          "eess.SY"
         ],
         "published": "",
-        "url": "https://arxiv.org/abs/2507.02427"
+        "url": "https://arxiv.org/abs/2503.19228"
+      },
+      {
+        "arxiv_id": "2507.02562",
+        "title": "Multi-Utterance Speech Separation and Association Trained on Short Segments",
+        "authors": [
+          "Yuzhu Wang",
+          "Archontis Politis",
+          "Konstantinos Drossos",
+          "Tuomas Virtanen"
+        ],
+        "abstract": "Current deep neural network (DNN) based speech separation faces a fundamental challenge -- while the models need to be trained on short segments due to computational constraints, real-world applications typically require processing significantly longer recordings with multiple utterances per speaker than seen during training. In this paper, we investigate how existing approaches perform in this challenging scenario and propose a frequency-temporal recurrent neural network (FTRNN) that effectively bridges this gap. Our FTRNN employs a full-band module to model frequency dependencies within each time frame and a sub-band module that models temporal patterns in each frequency band. Despite being trained on short fixed-length segments of 10 s, our model demonstrates robust separation when processing signals significantly longer than training segments (21-121 s) and preserves speaker association across utterance gaps exceeding those seen during training. Unlike the conventional segment-separation-stitch paradigm, our lightweight approach (0.9 M parameters) performs inference on long audio without segmentation, eliminating segment boundary distortions while simplifying deployment. Experimental results demonstrate the generalization ability of FTRNN for multi-utterance speech separation and speaker association.",
+        "categories": [
+          "eess.AS",
+          "cs.SD"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02562"
       }
     ],
     "contexts": [
@@ -114,6 +114,23 @@
     "frequency": 5,
     "paper_count": 5,
     "contributing_papers": [
+      {
+        "arxiv_id": "2507.02325",
+        "title": "Grid-Connected, Data-Driven Inverter Control, Theory to Hardware",
+        "authors": [
+          "Sebastian Graf",
+          "Keith Moffat",
+          "Anurag Mohapatra",
+          "Alessandro Chiuso",
+          "Florian Dörfler"
+        ],
+        "abstract": "Grid-connected inverter control is challenging to implement due to the difficulty of obtaining and maintaining an accurate grid model. Direct Data-Driven Predictive Control provides a model-free alternative to traditional model-based control methods. This paper describes how the recently-proposed Transient Predictive Control (TPC) can be used for real-world, plug-and-play inverter control. The following hypotheses were tested: 1) The TPC algorithm can be run online using standard hardware, and 2) TPC, which is derived using Linear Time-Invariant assumptions, is effective for grid-connected inverter control, which is a nonlinear and time-varying system. Experiments conducted on a two-converter benchtop setup and at the CoSES Laboratory on a 25 kVA converter connected to the Munich grid support these hypotheses.",
+        "categories": [
+          "eess.SY"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02325"
+      },
       {
         "arxiv_id": "2507.02584",
         "title": "Observer-Based Distributed Model Predictive Control for String-Stable Multi-vehicle Systems with Markovian Switching Topology",
@@ -154,21 +171,6 @@
         "url": "https://arxiv.org/abs/2507.02374"
       },
       {
-        "arxiv_id": "2507.02468",
-        "title": "The Bias of Subspace-based Data-Driven Predictive Control",
-        "authors": [
-          "Keith Moffat",
-          "Florian Dörfler",
-          "Alessandro Chiuso"
-        ],
-        "abstract": "This paper quantifies and addresses the bias of subspace-based Data-Driven Predictive Control (DDPC) for linear, time-invariant (LTI) systems. The primary focus is the bias that arises when the training data is gathered with a feedback controller in closed-loop with the system. First, the closed-loop bias of Subspace Predictive Control is quantified using the training data innovations. Next, the bias of direct, subspace-based DDPC methods DeePC and $γ$-DDPC is shown to consist of two parts--the Subspace Bias, which arises from closed-loop data, and an Optimism Bias, which arises from DeePC/$γ$-DDPC's \"optimistic\" adjustment of the output trajectory. We show that, unlike subspace-based DDPC methods, Transient Predictive Control does not suffer from Subspace Bias or Optimism Bias. Double integrator experiments demonstrate that Subspace and Optimism Bias are responsible for poor reference tracking by the subspace-based DDPC methods.",
-        "categories": [
-          "eess.SY"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2507.02468"
-      },
-      {
         "arxiv_id": "2503.19228",
         "title": "Bridging the Sim-to-real Gap: A Control Framework for Imitation Learning of Model Predictive Control",
         "authors": [
@@ -185,21 +187,19 @@
         "url": "https://arxiv.org/abs/2503.19228"
       },
       {
-        "arxiv_id": "2507.02325",
-        "title": "Grid-Connected, Data-Driven Inverter Control, Theory to Hardware",
+        "arxiv_id": "2507.02468",
+        "title": "The Bias of Subspace-based Data-Driven Predictive Control",
         "authors": [
-          "Sebastian Graf",
           "Keith Moffat",
-          "Anurag Mohapatra",
-          "Alessandro Chiuso",
-          "Florian Dörfler"
+          "Florian Dörfler",
+          "Alessandro Chiuso"
         ],
-        "abstract": "Grid-connected inverter control is challenging to implement due to the difficulty of obtaining and maintaining an accurate grid model. Direct Data-Driven Predictive Control provides a model-free alternative to traditional model-based control methods. This paper describes how the recently-proposed Transient Predictive Control (TPC) can be used for real-world, plug-and-play inverter control. The following hypotheses were tested: 1) The TPC algorithm can be run online using standard hardware, and 2) TPC, which is derived using Linear Time-Invariant assumptions, is effective for grid-connected inverter control, which is a nonlinear and time-varying system. Experiments conducted on a two-converter benchtop setup and at the CoSES Laboratory on a 25 kVA converter connected to the Munich grid support these hypotheses.",
+        "abstract": "This paper quantifies and addresses the bias of subspace-based Data-Driven Predictive Control (DDPC) for linear, time-invariant (LTI) systems. The primary focus is the bias that arises when the training data is gathered with a feedback controller in closed-loop with the system. First, the closed-loop bias of Subspace Predictive Control is quantified using the training data innovations. Next, the bias of direct, subspace-based DDPC methods DeePC and $γ$-DDPC is shown to consist of two parts--the Subspace Bias, which arises from closed-loop data, and an Optimism Bias, which arises from DeePC/$γ$-DDPC's \"optimistic\" adjustment of the output trajectory. We show that, unlike subspace-based DDPC methods, Transient Predictive Control does not suffer from Subspace Bias or Optimism Bias. Double integrator experiments demonstrate that Subspace and Optimism Bias are responsible for poor reference tracking by the subspace-based DDPC methods.",
         "categories": [
           "eess.SY"
         ],
         "published": "",
-        "url": "https://arxiv.org/abs/2507.02325"
+        "url": "https://arxiv.org/abs/2507.02468"
       }
     ],
     "contexts": [
@@ -217,24 +217,20 @@
     "paper_count": 4,
     "contributing_papers": [
       {
-        "arxiv_id": "2507.02824",
-        "title": "DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift",
+        "arxiv_id": "2502.16436",
+        "title": "Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems: Framework, Algorithm, and Analysis",
         "authors": [
-          "Po-Heng Chou",
-          "Ching-Wen Chen",
-          "Wan-Jen Huang",
-          "Walid Saad",
-          "Yu Tsao",
-          "Ronald Y. Chang"
+          "Shuhan Wang",
+          "Aimin Tang",
+          "Xudong Wang",
+          "Wenze Qu"
         ],
-        "abstract": "In this paper, the precoding design is investigated for maximizing the throughput of millimeter wave (mmWave) multiple-input multiple-output (MIMO) systems with obstructed direct communication paths. In particular, a reconfigurable intelligent surface (RIS) is employed to enhance MIMO transmissions, considering mmWave characteristics related to line-of-sight (LoS) and multipath effects. The traditional exhaustive search (ES) for optimal codewords in the continuous phase shift is computationally intensive and time-consuming. To reduce computational complexity, permuted discrete Fourier transform (DFT) vectors are used for finding codebook design, incorporating amplitude responses for practical or ideal RIS systems. However, even if the discrete phase shift is adopted in the ES, it results in significant computation and is time-consuming. Instead, the trained deep neural network (DNN) is developed to facilitate faster codeword selection. Simulation results show that the DNN maintains sub-optimal spectral efficiency even as the distance between the end-user and the RIS has variations in the testing phase. These results highlight the potential of DNN in advancing RIS-aided systems.",
+        "abstract": "Integrated sensing and communication (ISAC) has garnered significant attention in recent years. In this paper, we delve into the topic of sensing-assisted communication within ISAC systems. More specifically, a novel sensing-assisted channel estimation scheme is proposed for bistatic orthogonal-frequency-division-multiplexing (OFDM) ISAC systems. A framework of sensing-assisted channel estimator is first developed, integrating a tailored low-complexity sensing algorithm to facilitate real-time channel estimation and decoding. To address the potential sensing errors caused by low-complexity sensing algorithms, a sensing-assisted linear minimum mean square error (LMMSE) estimation algorithm is then developed. This algorithm incorporates tolerance factors designed to account for deviations between estimated and true channel parameters, enabling the construction of robust correlation matrices for LMMSE estimation. Additionally, we establish a systematic mechanism for determining these tolerance factors. A comprehensive analysis of the normalized mean square error (NMSE) performance and computational complexity is finally conducted, providing valuable insights into the selection of the estimator's parameters. The effectiveness of our proposed scheme is validated by extensive simulations. Compared to existing methods, our proposed scheme demonstrates superior performance, particularly in high signal-to-noise ratio (SNR) regions or with large bandwidths, while maintaining low computational complexity.",
         "categories": [
-          "eess.SP",
-          "cs.AI",
-          "cs.LG"
+          "eess.SP"
         ],
         "published": "",
-        "url": "https://arxiv.org/abs/2507.02824"
+        "url": "https://arxiv.org/abs/2502.16436"
       },
       {
         "arxiv_id": "2507.02374",
@@ -257,20 +253,24 @@
         "url": "https://arxiv.org/abs/2507.02374"
       },
       {
-        "arxiv_id": "2502.16436",
-        "title": "Sensing-Assisted Channel Estimation for Bistatic OFDM ISAC Systems: Framework, Algorithm, and Analysis",
+        "arxiv_id": "2507.02824",
+        "title": "DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift",
         "authors": [
-          "Shuhan Wang",
-          "Aimin Tang",
-          "Xudong Wang",
-          "Wenze Qu"
+          "Po-Heng Chou",
+          "Ching-Wen Chen",
+          "Wan-Jen Huang",
+          "Walid Saad",
+          "Yu Tsao",
+          "Ronald Y. Chang"
         ],
-        "abstract": "Integrated sensing and communication (ISAC) has garnered significant attention in recent years. In this paper, we delve into the topic of sensing-assisted communication within ISAC systems. More specifically, a novel sensing-assisted channel estimation scheme is proposed for bistatic orthogonal-frequency-division-multiplexing (OFDM) ISAC systems. A framework of sensing-assisted channel estimator is first developed, integrating a tailored low-complexity sensing algorithm to facilitate real-time channel estimation and decoding. To address the potential sensing errors caused by low-complexity sensing algorithms, a sensing-assisted linear minimum mean square error (LMMSE) estimation algorithm is then developed. This algorithm incorporates tolerance factors designed to account for deviations between estimated and true channel parameters, enabling the construction of robust correlation matrices for LMMSE estimation. Additionally, we establish a systematic mechanism for determining these tolerance factors. A comprehensive analysis of the normalized mean square error (NMSE) performance and computational complexity is finally conducted, providing valuable insights into the selection of the estimator's parameters. The effectiveness of our proposed scheme is validated by extensive simulations. Compared to existing methods, our proposed scheme demonstrates superior performance, particularly in high signal-to-noise ratio (SNR) regions or with large bandwidths, while maintaining low computational complexity.",
+        "abstract": "In this paper, the precoding design is investigated for maximizing the throughput of millimeter wave (mmWave) multiple-input multiple-output (MIMO) systems with obstructed direct communication paths. In particular, a reconfigurable intelligent surface (RIS) is employed to enhance MIMO transmissions, considering mmWave characteristics related to line-of-sight (LoS) and multipath effects. The traditional exhaustive search (ES) for optimal codewords in the continuous phase shift is computationally intensive and time-consuming. To reduce computational complexity, permuted discrete Fourier transform (DFT) vectors are used for finding codebook design, incorporating amplitude responses for practical or ideal RIS systems. However, even if the discrete phase shift is adopted in the ES, it results in significant computation and is time-consuming. Instead, the trained deep neural network (DNN) is developed to facilitate faster codeword selection. Simulation results show that the DNN maintains sub-optimal spectral efficiency even as the distance between the end-user and the RIS has variations in the testing phase. These results highlight the potential of DNN in advancing RIS-aided systems.",
         "categories": [
-          "eess.SP"
+          "eess.SP",
+          "cs.AI",
+          "cs.LG"
         ],
         "published": "",
-        "url": "https://arxiv.org/abs/2502.16436"
+        "url": "https://arxiv.org/abs/2507.02824"
       },
       {
         "arxiv_id": "2507.02755",
@@ -303,6 +303,22 @@
     "paper_count": 3,
     "contributing_papers": [
       {
+        "arxiv_id": "2503.19228",
+        "title": "Bridging the Sim-to-real Gap: A Control Framework for Imitation Learning of Model Predictive Control",
+        "authors": [
+          "Seungtaek Kim",
+          "Jonghyup Lee",
+          "Kyoungseok Han",
+          "Seibum B. Choi"
+        ],
+        "abstract": "To address the computational challenges of Model Predictive Control (MPC), recent research has studied using imitation learning to approximate the MPC to a computationally efficient Deep Neural Network (DNN). However, this introduces a common issue in learning-based control, the simulation-to-reality (sim-to-real) gap, and Domain Randomization (DR) has been widely used to mitigate this gap by introducing perturbations in the source domain. However, DR inevitably leads to low data collection efficiency and an overly conservative control strategy. This study proposes a new control framework that addresses this issue from a control perspective inspired by Robust Tube MPC. The framework ensures the DNN operates in the same environment as the source domain, handling the sim-to-real gap with great data collection efficiency. Moreover, a parameter governor is introduced to address the DNN's inability to adapt to variations in model parameters, enabling the system to satisfy MPC constraints more robustly under changing conditions. The proposed framework was validated through two case studies: cart-pole control and vehicle collision avoidance control, which analyzed the principles of the proposed framework in detail and demonstrated its application to a vehicle control case.",
+        "categories": [
+          "eess.SY"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2503.19228"
+      },
+      {
         "arxiv_id": "2507.02824",
         "title": "DNN-Based Precoding in RIS-Aided mmWave MIMO Systems With Practical Phase Shift",
         "authors": [
@@ -321,22 +337,6 @@
         ],
         "published": "",
         "url": "https://arxiv.org/abs/2507.02824"
-      },
-      {
-        "arxiv_id": "2503.19228",
-        "title": "Bridging the Sim-to-real Gap: A Control Framework for Imitation Learning of Model Predictive Control",
-        "authors": [
-          "Seungtaek Kim",
-          "Jonghyup Lee",
-          "Kyoungseok Han",
-          "Seibum B. Choi"
-        ],
-        "abstract": "To address the computational challenges of Model Predictive Control (MPC), recent research has studied using imitation learning to approximate the MPC to a computationally efficient Deep Neural Network (DNN). However, this introduces a common issue in learning-based control, the simulation-to-reality (sim-to-real) gap, and Domain Randomization (DR) has been widely used to mitigate this gap by introducing perturbations in the source domain. However, DR inevitably leads to low data collection efficiency and an overly conservative control strategy. This study proposes a new control framework that addresses this issue from a control perspective inspired by Robust Tube MPC. The framework ensures the DNN operates in the same environment as the source domain, handling the sim-to-real gap with great data collection efficiency. Moreover, a parameter governor is introduced to address the DNN's inability to adapt to variations in model parameters, enabling the system to satisfy MPC constraints more robustly under changing conditions. The proposed framework was validated through two case studies: cart-pole control and vehicle collision avoidance control, which analyzed the principles of the proposed framework in detail and demonstrated its application to a vehicle control case.",
-        "categories": [
-          "eess.SY"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2503.19228"
       },
       {
         "arxiv_id": "2507.02562",

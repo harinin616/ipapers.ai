@@ -12,15 +12,15 @@ TOP PHRASES (Displayed)
 ========================
 
 labor market                   | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02511
+  Papers: 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 investment decision            | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02439
+  Papers: 2507.02439, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 percentage point               | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02511
+  Papers: 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 TOP WORDS (Displayed)
@@ -31,7 +31,7 @@ reasoning                      | Freq:  12 | Papers:   1
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 information                    | Freq:  11 | Papers:   3
-  Papers: 2507.02560, 2506.19737, 2307.07015
+  Papers: 2307.07015, 2506.19737, 2507.02560
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 identity                       | Freq:   9 | Papers:   1
@@ -63,7 +63,7 @@ model                          | Freq:   6 | Papers:   1
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 game                           | Freq:   6 | Papers:   3
-  Papers: 2507.02511, 2507.02439, 2506.19737
+  Papers: 2507.02439, 2507.02511, 2506.19737
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 advertiser                     | Freq:   6 | Papers:   1
@@ -71,7 +71,7 @@ advertiser                     | Freq:   6 | Papers:   1
   Context: Advertiser Learning in Direct Advertising Markets Advertiser Learning in Direct Advertising Markets ...
 
 education                      | Freq:   6 | Papers:   3
-  Papers: 2507.02560, 2507.02511, 2411.06285
+  Papers: 2411.06285, 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 immigrant                      | Freq:   6 | Papers:   1
@@ -83,11 +83,11 @@ consumer                       | Freq:   6 | Papers:   2
   Context: Green Ammonia A Techno-Economic Supply Chain Optimization Green Ammonia A Techno-Economic Supply Cha...
 
 treatment                      | Freq:   5 | Papers:   2
-  Papers: 2507.02560, 2411.03208
+  Papers: 2411.03208, 2507.02560
   Context: Randomly Assigned First Differences Randomly Assigned First Differences We consider treatment-effect...
 
 effect                         | Freq:   5 | Papers:   2
-  Papers: 2507.02560, 2411.03208
+  Papers: 2411.03208, 2507.02560
   Context: Randomly Assigned First Differences Randomly Assigned First Differences We consider treatment-effect...
 
 regression                     | Freq:   5 | Papers:   1
@@ -107,15 +107,15 @@ markov                         | Freq:   5 | Papers:   1
   Context: Asymptotic Properties of the Maximum Likelihood Estimator for Markov-switching Observation-driven Mo...
 
 difference                     | Freq:   4 | Papers:   2
-  Papers: 2507.02511, 2411.03208
+  Papers: 2411.03208, 2507.02511
   Context: Randomly Assigned First Differences Randomly Assigned First Differences We consider treatment-effect...
 
 evolution                      | Freq:   4 | Papers:   2
-  Papers: 2411.03208, 2507.02439
+  Papers: 2507.02439, 2411.03208
   Context: Randomly Assigned First Differences Randomly Assigned First Differences We consider treatment-effect...
 
 gain                           | Freq:   4 | Papers:   2
-  Papers: 2507.02560, 2307.07015
+  Papers: 2307.07015, 2507.02560
   Context: Advertiser Learning in Direct Advertising Markets Advertiser Learning in Direct Advertising Markets ...
 
 aid                            | Freq:   4 | Papers:   1
@@ -127,7 +127,7 @@ native                         | Freq:   4 | Papers:   1
   Context: Identity and Cooperation in Multicultural Societies An Experimental Investigation Identity and Coope...
 
 good                           | Freq:   4 | Papers:   2
-  Papers: 2507.02511, 2411.06285
+  Papers: 2411.06285, 2507.02511
   Context: Identity and Cooperation in Multicultural Societies An Experimental Investigation Identity and Coope...
 
 economic                       | Freq:   4 | Papers:   2
@@ -147,7 +147,7 @@ cost                           | Freq:   4 | Papers:   1
   Context: Green Ammonia A Techno-Economic Supply Chain Optimization Green Ammonia A Techno-Economic Supply Cha...
 
 distribution                   | Freq:   4 | Papers:   3
-  Papers: 2411.06285, 2507.02412, 2412.19555
+  Papers: 2412.19555, 2411.06285, 2507.02412
   Context: Green Ammonia A Techno-Economic Supply Chain Optimization Green Ammonia A Techno-Economic Supply Cha...
 
 likelihood                     | Freq:   4 | Papers:   1
@@ -167,7 +167,7 @@ import                         | Freq:   3 | Papers:   2
   Context: Randomly Assigned First Differences Randomly Assigned First Differences We consider treatment-effect...
 
 decision                       | Freq:   3 | Papers:   3
-  Papers: 2507.02560, 2507.02439, 2506.19737
+  Papers: 2507.02439, 2506.19737, 2507.02560
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 belief                         | Freq:   3 | Papers:   1
@@ -175,7 +175,7 @@ belief                         | Freq:   3 | Papers:   1
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 market                         | Freq:   3 | Papers:   3
-  Papers: 2507.02560, 2507.02511, 2506.19737
+  Papers: 2507.02511, 2506.19737, 2507.02560
   Context: Reasoning about Bounded Reasoning Reasoning about Bounded Reasoning Interactive decision-making reli...
 
 learning                       | Freq:   3 | Papers:   2
@@ -211,11 +211,11 @@ society                        | Freq:   3 | Papers:   1
   Context: Identity and Cooperation in Multicultural Societies An Experimental Investigation Identity and Coope...
 
 country                        | Freq:   3 | Papers:   2
-  Papers: 2507.02511, 2507.02439
+  Papers: 2507.02439, 2507.02511
   Context: Identity and Cooperation in Multicultural Societies An Experimental Investigation Identity and Coope...
 
 models                         | Freq:   3 | Papers:   2
-  Papers: 2507.02439, 2412.19555
+  Papers: 2412.19555, 2507.02439
   Context: Introducing a New Brexit-Related Uncertainty Index Its Evolution and Economic Consequences Introduci...
 
 green                          | Freq:   3 | Papers:   1
@@ -303,7 +303,7 @@ evidence                       | Freq:   2 | Papers:   1
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 investment                     | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02439
+  Papers: 2507.02439, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 college                        | Freq:   2 | Papers:   1
@@ -311,19 +311,19 @@ college                        | Freq:   2 | Papers:   1
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 field                          | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02511
+  Papers: 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 labor                          | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02511
+  Papers: 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 percentage                     | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02511
+  Papers: 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 point                          | Freq:   2 | Papers:   2
-  Papers: 2507.02560, 2507.02511
+  Papers: 2507.02511, 2507.02560
   Context: Tertiary Education Completion and Financial Aid Assistance Evidence from an Information Experiment T...
 
 multicultural                  | Freq:   2 | Papers:   1

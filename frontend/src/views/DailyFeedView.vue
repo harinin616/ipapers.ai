@@ -2,6 +2,18 @@
   <div class="daily-feed-page">
     <h1>Daily Feed</h1>
     <p class="subtitle">Explore trending papers across different disciplines</p>
+    
+    <!-- Display Control -->
+    <div class="display-controls">
+      <label for="summaries-limit">Show summaries per category:</label>
+      <select id="summaries-limit" v-model="maxSummaries" class="summaries-select">
+        <option value="1">1 summary</option>
+        <option value="2">2 summaries</option>
+        <option value="3">3 summaries</option>
+        <option value="4">4 summaries</option>
+        <option value="5">5 summaries</option>
+      </select>
+    </div>
 
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
@@ -47,7 +59,7 @@
             <h3 class="summaries-title">Recent Trends</h3>
             <div v-if="category.summaries && category.summaries.length > 0" class="summaries-list">
               <div 
-                v-for="(summary, index) in category.summaries" 
+                v-for="(summary, index) in category.summaries.slice(0, maxSummaries)" 
                 :key="index"
                 class="summary-accordion-item"
               >
@@ -94,6 +106,7 @@ import { ref, onMounted } from 'vue'
 // Reactive data
 const loading = ref(true)
 const error = ref<string | null>(null)
+const maxSummaries = ref(3) // 🎯 Control how many summaries to show per category
 const dailyFeedData = ref<{
   categories: Array<{
     category: string
@@ -140,12 +153,56 @@ const handleImageError = (event: Event) => {
 const renderMarkdown = (text: string): string => {
   if (!text) return ''
   
-  // Basic markdown parsing
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/\n/g, '<br>')
+  // Enhanced markdown parsing with better feature support
+  let html = text
+    
+  // Handle headers (# ## ###)
+  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>')
+  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>')
+  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>')
+  
+  // Handle bold and italic text
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
+  
+  // Handle code blocks and inline code
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+  html = html.replace(/`(.*?)`/g, '<code>$1</code>')
+  
+  // Handle links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+  
+  // Handle unordered lists (- or *)
+  html = html.replace(/^[\s]*[-\*]\s+(.*$)/gm, '<li>$1</li>')
+  html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+  
+  // Handle ordered lists (1. 2. etc.)
+  html = html.replace(/^[\s]*\d+\.\s+(.*$)/gm, '<li>$1</li>')
+  html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
+    // Only wrap with <ol> if it's not already wrapped with <ul>
+    if (match.includes('<ul>')) {
+      return match;
+    }
+    return '<ol>' + match + '</ol>';
+  })
+  
+  // Handle blockquotes (> text)
+  html = html.replace(/^>\s+(.*$)/gm, '<blockquote>$1</blockquote>')
+  
+  // Handle line breaks and paragraphs
+  // Split by double newlines for paragraphs
+  const paragraphs = html.split(/\n\s*\n/);
+  html = paragraphs.map(paragraph => {
+    // Don't wrap headers, lists, blockquotes, or code blocks in <p> tags
+    if (paragraph.match(/^<(h[1-6]|ul|ol|blockquote|pre|div)/)) {
+      return paragraph;
+    }
+    // Replace single newlines with <br> within paragraphs
+    paragraph = paragraph.replace(/\n/g, '<br>');
+    return paragraph.trim() ? `<p>${paragraph}</p>` : '';
+  }).join('\n');
+  
+  return html
 }
 
 // Format date
@@ -215,7 +272,45 @@ onMounted(() => {
   text-align: center;
   font-size: 1.1rem;
   color: #666;
+  margin-bottom: 1rem;
+}
+
+.display-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 2rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.display-controls label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.summaries-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.summaries-select:hover {
+  border-color: #3f51b5;
+}
+
+.summaries-select:focus {
+  outline: none;
+  border-color: #3f51b5;
+  box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
 }
 
 .loading {
@@ -431,6 +526,71 @@ onMounted(() => {
   border-radius: 4px;
   font-family: 'Courier New', monospace;
   font-size: 0.9em;
+}
+
+.summary-content pre {
+  background: #f5f5f5;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 4px solid #3f51b5;
+  margin: 1rem 0;
+}
+
+.summary-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+  color: #333;
+}
+
+.summary-content a {
+  color: #3f51b5;
+  text-decoration: none;
+  border-bottom: 1px solid #3f51b5;
+  transition: all 0.2s ease;
+}
+
+.summary-content a:hover {
+  color: #2c3e9e;
+  border-bottom-color: #2c3e9e;
+  background: rgba(63, 81, 181, 0.1);
+}
+
+.summary-content ul, .summary-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.summary-content li {
+  margin-bottom: 0.5rem;
+}
+
+.summary-content blockquote {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-left: 4px solid #3f51b5;
+  font-style: italic;
+  color: #555;
+}
+
+.summary-content h2 {
+  color: #3f51b5;
+  font-size: 1.3rem;
+  margin: 1.5rem 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.summary-content h3 {
+  color: #333;
+  font-size: 1.1rem;
+  margin: 1rem 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.summary-content p {
+  margin: 1rem 0;
 }
 
 /* Remove the h1 title from content since it's shown in the header */

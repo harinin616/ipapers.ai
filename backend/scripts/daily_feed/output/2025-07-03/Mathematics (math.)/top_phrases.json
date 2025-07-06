@@ -76,19 +76,6 @@
     "paper_count": 4,
     "contributing_papers": [
       {
-        "arxiv_id": "2507.02720",
-        "title": "On Some New Congruences For Biregular Overpartitions",
-        "authors": [
-          "Anakha V"
-        ],
-        "abstract": "Inspired by the recent work by Nadji, Ahmia and Ramírez, we examined the arithmetic properties of $\\bar{B}_{l_1,l_2} (n)$, the number of overpartitions of n whose parts are neither divisible by $l_1$ nor divisible by $l_2$. In particular, we establish some congruences modulo k in {4, 8, 6, 12} satisfied by $\\bar{B}_{l_1,l_2} (n)$ where $l_1$ and $l_2$ take values as arbitrary powers of 2 and 3. Moreover, we extend certain results proved in [26] and [15] for $l_1$ and $l_2$ with random powers of 2 and 3. Generating functions, dissection formulas, and theta functions are used to prove our main findings.",
-        "categories": [
-          "math.NT"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2507.02720"
-      },
-      {
         "arxiv_id": "2507.02421",
         "title": "Characterizing circle graphs with binomial partial Petrial polynomials",
         "authors": [
@@ -130,6 +117,19 @@
         ],
         "published": "",
         "url": "https://arxiv.org/abs/2503.10890"
+      },
+      {
+        "arxiv_id": "2507.02720",
+        "title": "On Some New Congruences For Biregular Overpartitions",
+        "authors": [
+          "Anakha V"
+        ],
+        "abstract": "Inspired by the recent work by Nadji, Ahmia and Ramírez, we examined the arithmetic properties of $\\bar{B}_{l_1,l_2} (n)$, the number of overpartitions of n whose parts are neither divisible by $l_1$ nor divisible by $l_2$. In particular, we establish some congruences modulo k in {4, 8, 6, 12} satisfied by $\\bar{B}_{l_1,l_2} (n)$ where $l_1$ and $l_2$ take values as arbitrary powers of 2 and 3. Moreover, we extend certain results proved in [26] and [15] for $l_1$ and $l_2$ with random powers of 2 and 3. Generating functions, dissection formulas, and theta functions are used to prove our main findings.",
+        "categories": [
+          "math.NT"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02720"
       }
     ],
     "contexts": [
@@ -145,36 +145,6 @@
     "frequency": 4,
     "paper_count": 4,
     "contributing_papers": [
-      {
-        "arxiv_id": "2405.20394",
-        "title": "Monodromy groups and exceptional Hodge classes, I: Fermat Jacobians",
-        "authors": [
-          "Andrea Gallese",
-          "Heidi Goodson",
-          "Davide Lombardo"
-        ],
-        "abstract": "Denote by $J_m$ the Jacobian variety of the hyperelliptic curve defined by the affine equation $y^2=x^m+1$ over $\\mathbb{Q}$, where $m \\geq 3$ is a fixed positive integer. We compute several interesting arithmetic invariants of $J_m$: its decomposition up to isogeny into simple abelian varieties, the minimal field $\\mathbb{Q}(\\operatorname{End}(J_m))$ over which its endomorphisms are defined, and its connected monodromy field $\\mathbb{Q}(\\varepsilon_{J_m})$. Currently, there is no general algorithm that computes the last invariant. For large enough values of $m$, the abelian varieties $J_m$ provide non-trivial examples of high-dimensional phenomena, such as degeneracy and the non-triviality of the extension $\\mathbb{Q}(\\varepsilon_{J_m})/\\mathbb{Q}(\\operatorname{End}(J_m))$.",
-        "categories": [
-          "math.NT",
-          "math.AG"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2405.20394"
-      },
-      {
-        "arxiv_id": "2507.02426",
-        "title": "The Classification of the Stable Marked Reduction of Genus 2 Curves in Residue Characteristic 2",
-        "authors": [
-          "Tim Gehrunger"
-        ],
-        "abstract": "Consider a hyperelliptic curve of genus $2$ over a field $K$ of characteristic zero. After extending $K$ we can view it as a marked curve with its $6$ Weierstrass points. We classify the structure of the stable reduction of such curves for a valuation of residue characteristic~$2$ over a finite extension of~$K$. We implement this classification into a computer algebra system and compute it for all curves defined over $\\BQ$ with conductor at most $2^{20}$.",
-        "categories": [
-          "math.AG",
-          "math.NT"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2507.02426"
-      },
       {
         "arxiv_id": "2504.01967",
         "title": "Effective Darmon's program for the generalised Fermat equation",
@@ -203,6 +173,36 @@
         ],
         "published": "",
         "url": "https://arxiv.org/abs/2507.02535"
+      },
+      {
+        "arxiv_id": "2507.02426",
+        "title": "The Classification of the Stable Marked Reduction of Genus 2 Curves in Residue Characteristic 2",
+        "authors": [
+          "Tim Gehrunger"
+        ],
+        "abstract": "Consider a hyperelliptic curve of genus $2$ over a field $K$ of characteristic zero. After extending $K$ we can view it as a marked curve with its $6$ Weierstrass points. We classify the structure of the stable reduction of such curves for a valuation of residue characteristic~$2$ over a finite extension of~$K$. We implement this classification into a computer algebra system and compute it for all curves defined over $\\BQ$ with conductor at most $2^{20}$.",
+        "categories": [
+          "math.AG",
+          "math.NT"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02426"
+      },
+      {
+        "arxiv_id": "2405.20394",
+        "title": "Monodromy groups and exceptional Hodge classes, I: Fermat Jacobians",
+        "authors": [
+          "Andrea Gallese",
+          "Heidi Goodson",
+          "Davide Lombardo"
+        ],
+        "abstract": "Denote by $J_m$ the Jacobian variety of the hyperelliptic curve defined by the affine equation $y^2=x^m+1$ over $\\mathbb{Q}$, where $m \\geq 3$ is a fixed positive integer. We compute several interesting arithmetic invariants of $J_m$: its decomposition up to isogeny into simple abelian varieties, the minimal field $\\mathbb{Q}(\\operatorname{End}(J_m))$ over which its endomorphisms are defined, and its connected monodromy field $\\mathbb{Q}(\\varepsilon_{J_m})$. Currently, there is no general algorithm that computes the last invariant. For large enough values of $m$, the abelian varieties $J_m$ provide non-trivial examples of high-dimensional phenomena, such as degeneracy and the non-triviality of the extension $\\mathbb{Q}(\\varepsilon_{J_m})/\\mathbb{Q}(\\operatorname{End}(J_m))$.",
+        "categories": [
+          "math.NT",
+          "math.AG"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2405.20394"
       }
     ],
     "contexts": [
@@ -233,21 +233,6 @@
         "url": "https://arxiv.org/abs/2507.02340"
       },
       {
-        "arxiv_id": "2507.02809",
-        "title": "Block triangular preconditioning for inverse source problems in time-space fractional diffusion equations",
-        "authors": [
-          "Monoswini Majumdar",
-          "Stefano Serra-Capizzano",
-          "Rosita L. Sormani"
-        ],
-        "abstract": "The current work investigates the effectiveness of block triangular preconditioners in accelerating and stabilizing the numerical solution of inverse source problems governed by time-space fractional diffusion equations (TSFDEs). We focus on the recovery of an unknown spatial source function in a multi-dimensional TSFDE, incorporating Caputo time-fractional derivatives and the fractional Laplacian. The inherent ill-posedness is addressed via a quasi-boundary value regularization, followed by a finite difference discretization that leads to large, structured linear systems. We develop and analyze a block triangular preconditioning strategy that mimics the coefficient matrix, while simplifying its structure for computational efficiency. Numerical experiments using the GMRES solver demonstrate that the proposed preconditioner significantly improve convergence rates, robustness, and accuracy, making it well-suited for large-scale, real-world inverse problems involving fractional modeling.",
-        "categories": [
-          "math.NA"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2507.02809"
-      },
-      {
         "arxiv_id": "2507.02518",
         "title": "Exponential Ergodicity in Relative Entropy and $L^2$-Wasserstein Distance for non-equilibrium partially dissipative Kinetic SDEs",
         "authors": [
@@ -261,6 +246,21 @@
         ],
         "published": "",
         "url": "https://arxiv.org/abs/2507.02518"
+      },
+      {
+        "arxiv_id": "2507.02809",
+        "title": "Block triangular preconditioning for inverse source problems in time-space fractional diffusion equations",
+        "authors": [
+          "Monoswini Majumdar",
+          "Stefano Serra-Capizzano",
+          "Rosita L. Sormani"
+        ],
+        "abstract": "The current work investigates the effectiveness of block triangular preconditioners in accelerating and stabilizing the numerical solution of inverse source problems governed by time-space fractional diffusion equations (TSFDEs). We focus on the recovery of an unknown spatial source function in a multi-dimensional TSFDE, incorporating Caputo time-fractional derivatives and the fractional Laplacian. The inherent ill-posedness is addressed via a quasi-boundary value regularization, followed by a finite difference discretization that leads to large, structured linear systems. We develop and analyze a block triangular preconditioning strategy that mimics the coefficient matrix, while simplifying its structure for computational efficiency. Numerical experiments using the GMRES solver demonstrate that the proposed preconditioner significantly improve convergence rates, robustness, and accuracy, making it well-suited for large-scale, real-world inverse problems involving fractional modeling.",
+        "categories": [
+          "math.NA"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02809"
       }
     ],
     "contexts": [
@@ -271,37 +271,23 @@
   },
   {
     "rank": 5,
-    "phrase": "stokes equations",
+    "phrase": "initial velocity",
     "frequency": 3,
     "paper_count": 3,
     "contributing_papers": [
       {
-        "arxiv_id": "2507.02497",
-        "title": "Long-time Existence and Incompressible Limit of Weak and Classical Solutions to the Cauchy Problem for Compressible Navier-Stokes Equations with Large Bulk Viscosity Coefficient and Large Initial Data",
+        "arxiv_id": "2507.02775",
+        "title": "On the two-dimensional Navier-Stokes equations with horizontal viscosity",
         "authors": [
-          "Qinghao Lei",
-          "Chengfeng Xiong"
+          "Chongsheng Cao",
+          "Yanqiu Guo"
         ],
-        "abstract": "This paper investigates the Cauchy problem for the barotropic compressible Navier-Stokes equations in $\\mathbb{R}^2$ with the constant state as far field, which could be vacuum or nonvacuum. Under the assumption of a sufficiently large bulk viscosity coefficient, we establish the long-time existence of weak, strong, and classical solutions, without imposing any extra restrictions on the initial velocity divergence. Moreover, we demonstrate that the solutions of the compressible Navier-Stokes equations converge to solutions of the inhomogeneous incompressible Navier-Stokes equations, as the bulk viscosity coefficient tends to infinity. The incompressible limit of the weak solutions holds even without requiring the initial velocity to be divergence-free. The key obstacle in the Cauchy problem is the failure of the Poincaré's inequality. This could be resolved by introducing a time-dependent Poincaré's type inequality, but it needs imposing weighted-integrability conditions on the initial density.",
+        "abstract": "This paper is concerned with a 2D channel flow that is periodic horizontally but bounded above and below by hard walls. We assume the presence of horizontal viscosity only. We study the well-posedness, large-time behavior, and stability of solutions. For global well-posedness, we aim to assume less differentiability on initial velocity $(u_0, v_0)$: in particular, we assume $u_0,v_0\\in L^2(Ω)$ and $\\partial_y u_0 \\in L^2(Ω)$.",
         "categories": [
           "math.AP"
         ],
         "published": "",
-        "url": "https://arxiv.org/abs/2507.02497"
-      },
-      {
-        "arxiv_id": "2507.02462",
-        "title": "Global Existence and Incompressible Limit for Compressible Navier-Stokes Equations in Bounded Domains with Large Bulk Viscosity Coefficient and Large Initial Data",
-        "authors": [
-          "Qinghao Lei",
-          "Chengfeng Xiong"
-        ],
-        "abstract": "We investigate the barotropic compressible Navier-Stokes equations with the Navier-slip boundary conditions in a general two-dimensional bounded simply connected domain. For initial density that is allowed to vanish, we establish the global existence and exponential decay of weak, strong, and classical solutions when the bulk viscosity coefficient is suitably large, without any restrictions on the size of the initial data. Furthermore, we prove that when the bulk viscosity coefficient tends to infinity, the solutions of the compressible Navier-Stokes equations converge to those of the inhomogeneous incompressible Navier-Stokes equations. The key idea is to utilize the logarithmic interpolation inequality on general bounded domains and apply the compensated compactness lemma.",
-        "categories": [
-          "math.AP"
-        ],
-        "published": "",
-        "url": "https://arxiv.org/abs/2507.02462"
+        "url": "https://arxiv.org/abs/2507.02775"
       },
       {
         "arxiv_id": "2507.02794",
@@ -316,12 +302,26 @@
         ],
         "published": "",
         "url": "https://arxiv.org/abs/2507.02794"
+      },
+      {
+        "arxiv_id": "2507.02497",
+        "title": "Long-time Existence and Incompressible Limit of Weak and Classical Solutions to the Cauchy Problem for Compressible Navier-Stokes Equations with Large Bulk Viscosity Coefficient and Large Initial Data",
+        "authors": [
+          "Qinghao Lei",
+          "Chengfeng Xiong"
+        ],
+        "abstract": "This paper investigates the Cauchy problem for the barotropic compressible Navier-Stokes equations in $\\mathbb{R}^2$ with the constant state as far field, which could be vacuum or nonvacuum. Under the assumption of a sufficiently large bulk viscosity coefficient, we establish the long-time existence of weak, strong, and classical solutions, without imposing any extra restrictions on the initial velocity divergence. Moreover, we demonstrate that the solutions of the compressible Navier-Stokes equations converge to solutions of the inhomogeneous incompressible Navier-Stokes equations, as the bulk viscosity coefficient tends to infinity. The incompressible limit of the weak solutions holds even without requiring the initial velocity to be divergence-free. The key obstacle in the Cauchy problem is the failure of the Poincaré's inequality. This could be resolved by introducing a time-dependent Poincaré's type inequality, but it needs imposing weighted-integrability conditions on the initial density.",
+        "categories": [
+          "math.AP"
+        ],
+        "published": "",
+        "url": "https://arxiv.org/abs/2507.02497"
       }
     ],
     "contexts": [
       "Vanishing Vertical Viscosity in Two-Dimensional Anisotropic Navier-Stokes Equations with No-Slip Boundary Conditions An L p result Vanishing Vertical Viscosity in Two-Dimensional Anisotropic Navier-St",
-      "Long-time Existence and Incompressible Limit of Weak and Classical Solutions to the Cauchy Problem for Compressible Navier-Stokes Equations with Large Bulk Viscosity Coefficient and Large Initial Data",
-      "Global Existence and Incompressible Limit for Compressible Navier-Stokes Equations in Bounded Domains with Large Bulk Viscosity Coefficient and Large Initial Data Global Existence and Incompressible L"
+      "On the two-dimensional Navier-Stokes equations with horizontal viscosity On the two-dimensional Navier-Stokes equations with horizontal viscosity This paper is concerned with a 2D channel flow that is",
+      "Long-time Existence and Incompressible Limit of Weak and Classical Solutions to the Cauchy Problem for Compressible Navier-Stokes Equations with Large Bulk Viscosity Coefficient and Large Initial Data"
     ]
   }
 ]

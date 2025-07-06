@@ -12,8 +12,8 @@
     ],
     "total_papers": 926,
     "total_terms": 11315,
-    "total_top_phrases": 26,
-    "processing_time": 56.527716875076294,
+    "total_top_phrases": 35,
+    "processing_time": 60.260812759399414,
     "average_papers_per_category": 132.28571428571428,
     "average_terms_per_category": 1616.4285714285713
   },
@@ -24,15 +24,15 @@
       "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Computer Science (cs.)/wordcloud.png",
       "analysis_path": "output/2025-07-03/Computer Science (cs.)/term_analysis.txt",
-      "processing_time": 22.11611318588257
+      "processing_time": 23.8069429397583
     },
     "Economics (econ.)": {
       "papers_count": 9,
       "terms_count": 239,
-      "top_phrases_count": 3,
+      "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Economics (econ.)/wordcloud.png",
       "analysis_path": "output/2025-07-03/Economics (econ.)/term_analysis.txt",
-      "processing_time": 1.9615399837493896
+      "processing_time": 2.0198137760162354
     },
     "Electrical Engineering & Systems Science (eess.)": {
       "papers_count": 40,
@@ -40,7 +40,7 @@
       "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Electrical Engineering & Systems Science (eess.)/wordcloud.png",
       "analysis_path": "output/2025-07-03/Electrical Engineering & Systems Science (eess.)/term_analysis.txt",
-      "processing_time": 3.6519479751586914
+      "processing_time": 3.8441011905670166
     },
     "Mathematics (math.)": {
       "papers_count": 173,
@@ -48,23 +48,23 @@
       "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Mathematics (math.)/wordcloud.png",
       "analysis_path": "output/2025-07-03/Mathematics (math.)/term_analysis.txt",
-      "processing_time": 7.363872051239014
+      "processing_time": 7.8279128074646
     },
     "Statistics (stat.)": {
       "papers_count": 15,
       "terms_count": 342,
-      "top_phrases_count": 2,
+      "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Statistics (stat.)/wordcloud.png",
       "analysis_path": "output/2025-07-03/Statistics (stat.)/term_analysis.txt",
-      "processing_time": 2.324125051498413
+      "processing_time": 2.5158212184906006
     },
     "Quantitative Biology (q-bio.)": {
       "papers_count": 14,
       "terms_count": 378,
-      "top_phrases_count": 1,
+      "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Quantitative Biology (q-bio.)/wordcloud.png",
       "analysis_path": "output/2025-07-03/Quantitative Biology (q-bio.)/term_analysis.txt",
-      "processing_time": 2.2094316482543945
+      "processing_time": 2.3660130500793457
     },
     "Physics": {
       "papers_count": 290,
@@ -72,7 +72,7 @@
       "top_phrases_count": 5,
       "wordcloud_path": "output/2025-07-03/Physics/wordcloud.png",
       "analysis_path": "output/2025-07-03/Physics/term_analysis.txt",
-      "processing_time": 16.900686979293823
+      "processing_time": 17.880207777023315
     }
   }
 }

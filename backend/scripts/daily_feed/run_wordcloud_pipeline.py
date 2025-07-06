@@ -37,6 +37,11 @@ def main():
         default=80,
         help='Maximum terms per word cloud (default: 80)'
     )
+    parser.add_argument(
+        '--top-phrases', type=int,
+        default=5,
+        help='Number of top phrases to extract per category (default: 5)'
+    )
     
     args = parser.parse_args()
     
@@ -51,7 +56,8 @@ def main():
         )
         
         # Process the data
-        results = pipeline.process_date_range(args.date, max_terms=args.max_terms)
+        results = pipeline.process_date_range(args.date, max_terms=args.max_terms, 
+                                            top_phrases_count=args.top_phrases)
         
         if results:
             print("\n🎉 Test completed successfully!")

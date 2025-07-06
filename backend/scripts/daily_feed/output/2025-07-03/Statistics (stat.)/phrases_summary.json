@@ -14,6 +14,24 @@
       "phrase": "ridge regression",
       "frequency": 2,
       "paper_count": 2
+    },
+    {
+      "rank": 3,
+      "phrase": "model",
+      "frequency": 22,
+      "paper_count": 8
+    },
+    {
+      "rank": 4,
+      "phrase": "effect",
+      "frequency": 15,
+      "paper_count": 6
+    },
+    {
+      "rank": 5,
+      "phrase": "regression",
+      "frequency": 14,
+      "paper_count": 5
     }
   ]
 }

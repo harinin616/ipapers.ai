@@ -12,222 +12,222 @@ TOP PHRASES (Displayed)
 ========================
 
 field theory                   | Freq:  12 | Papers:  12
-  Papers: 2507.02786, 2305.11697, 2507.02418, 2507.02692, 2507.02669
+  Papers: 1906.11843, 2507.02692, 2305.11697, 2507.02669, 2507.02418
   Context: Dynamical group approach to conformal field theory Dynamical group approach to conformal field theor...
 
 dark matter                    | Freq:  11 | Papers:  11
-  Papers: 2412.06889, 2507.02610, 2507.02563, 2507.02410, 2507.02821
+  Papers: 2507.02610, 2507.02811, 2507.02566, 2507.02653, 2507.02563
   Context: Relativistic accretion and burdened primordial black holes Relativistic accretion and burdened primo...
 
 quantum computing              | Freq:   9 | Papers:   9
-  Papers: 2507.02622, 2412.21171, 2507.02420, 2504.16718, 2507.02333
+  Papers: 2507.02499, 2507.02622, 2507.02832, 2412.21171, 2504.16718
   Context: LCQNN Linear Combination of Quantum Neural Networks LCQNN Linear Combination of Quantum Neural Netwo...
 
 quantum state                  | Freq:   7 | Papers:   7
-  Papers: 2507.02849, 2507.02623, 2504.16718, 2503.05465, 2507.02540
+  Papers: 2503.05465, 2507.02623, 2504.16718, 2507.02540, 2507.02644
   Context: Three-qubit W state tomography via full and marginal state reconstructions on ibm_osaka Three-qubit ...
 
 parameter space                | Freq:   7 | Papers:   7
-  Papers: 2412.06889, 2507.02455, 2507.02746, 2507.02410, 2507.02821
+  Papers: 2507.02455, 2503.09678, 2412.06889, 2507.02410, 2507.02821
   Context: Probing the ringdown perturbation in binary black hole coalescences with an improved quasi-normal mo...
 
 quantum system                 | Freq:   7 | Papers:   7
-  Papers: 2507.02386, 2201.11223, 2507.02557, 2507.02736, 2502.18630
+  Papers: 2408.11217, 2507.02501, 2507.02736, 2201.11223, 2502.18630
   Context: Stability and quasi-Periodicity of Many-Body Localized Dynamics Stability and quasi-Periodicity of M...
 
 machine learning               | Freq:   7 | Papers:   7
-  Papers: 2501.03383, 2507.02752, 2507.02817, 2507.02520, 2506.18435
+  Papers: 2507.02752, 2507.02520, 2507.02480, 2501.03383, 2505.22502
   Context: ML-based muon identification using a FNAL-NICADD scintillator chamber for the MID subsystem of ALICE...
 
 quantum algorithms             | Freq:   7 | Papers:   7
-  Papers: 2507.01199, 2504.16718, 2503.05465, 2507.02653, 2507.02577
+  Papers: 2503.05465, 2507.02653, 2507.01199, 2504.16718, 2505.22502
   Context: Coupled Cluster Downfolding Theory in Simulations of Chemical Systems on Quantum Hardware Coupled Cl...
 
 gauge theory                   | Freq:   7 | Papers:   7
-  Papers: 2412.07844, 2412.20067, 2505.02913, 2506.15778, 2311.18302
+  Papers: 2412.20067, 2507.02362, 2311.18302, 2506.15778, 2407.11129
   Context: Topological 5d mathcal N 2 Gauge Theory Novel Floer Homologies their Dualities and an A_infty -categ...
 
 body system                    | Freq:   6 | Papers:   6
-  Papers: 2507.02386, 2308.09699, 2409.18954, 2507.02853, 2507.02644
+  Papers: 2409.18954, 2507.02853, 2308.09699, 2411.13638, 2507.02644
   Context: Imprints of information scrambling on eigenstates of a quantum chaotic system Imprints of informatio...
 
 quantum systems                | Freq:   6 | Papers:   6
-  Papers: 2507.02386, 2507.02557, 2507.02853, 2507.02736, 2507.02644
+  Papers: 2507.02736, 2507.02853, 2502.04383, 2507.02557, 2507.02644
   Context: Kapitza's Pendulum as a Classical Prelude to Floquet-Magnus Theory Kapitza's Pendulum as a Classical...
 
 density matrix                 | Freq:   6 | Papers:   6
-  Papers: 2507.02849, 2507.02448, 2507.02793, 2507.02499, 2411.03748
+  Papers: 2507.02499, 2411.06854, 2507.02793, 2507.02448, 2507.02849
   Context: Ultrafast optical excitation of magnons in 2D antiferromagnets via spin torque exerted by photocurre...
 
 black hole                     | Freq:   6 | Papers:   6
-  Papers: 2504.14018, 2507.02583, 2507.02716, 2503.09678, 2507.02362
+  Papers: 2504.14018, 2507.02583, 2503.09678, 2507.02362, 2412.06946
   Context: Probing the ringdown perturbation in binary black hole coalescences with an improved quasi-normal mo...
 
 quantum algorithm              | Freq:   6 | Papers:   6
-  Papers: 2507.01199, 2504.16718, 2503.05465, 2407.02989, 2505.22502
+  Papers: 2407.02989, 2503.05465, 2507.01199, 2504.16718, 2505.22502
   Context: Coupled Cluster Downfolding Theory in Simulations of Chemical Systems on Quantum Hardware Coupled Cl...
 
 hubbard model                  | Freq:   6 | Papers:   6
-  Papers: 2502.12305, 2502.19584, 2507.02753, 2507.02644, 2411.03748
+  Papers: 2502.12305, 2411.06854, 2502.19584, 2507.02753, 2507.02644
   Context: Diffusive charge transport in the gapped 1D Hubbard model at all finite temperatures Diffusive charg...
 
 ground state                   | Freq:   6 | Papers:   6
-  Papers: 2411.03419, 2507.02653, 2507.02625, 2507.02644, 2507.02615
+  Papers: 2411.03419, 2411.03748, 2507.02625, 2507.02653, 2507.02644
   Context: First order Quantum Hall to Wigner crystal phase transition on a triangular lattice an iDMRG study F...
 
 monte carlo                    | Freq:   6 | Papers:   6
-  Papers: 2507.02455, 2507.02418, 2311.02157, 2507.02384, 2502.05050
+  Papers: 2507.02418, 2507.02455, 2507.02509, 2507.02384, 2311.02157
   Context: Using the W as a Standard Candle to Reach the Top Calibrating Energy Correlator Based Top Mass Measu...
 
-gravitational waves            | Freq:   5 | Papers:   5
-  Papers: 2507.02335, 2507.02733, 2507.02653, 2503.09678, 2507.02611
+perturbation theory            | Freq:   5 | Papers:   5
+  Papers: 2507.02692, 2507.02418, 2201.11223, 2503.09678, 2507.02502
   Context: Probing the ringdown perturbation in binary black hole coalescences with an improved quasi-normal mo...
 
-perturbation theory            | Freq:   5 | Papers:   5
-  Papers: 2507.02418, 2507.02692, 2201.11223, 2503.09678, 2507.02502
+gravitational waves            | Freq:   5 | Papers:   5
+  Papers: 2503.09678, 2507.02653, 2507.02733, 2507.02335, 2507.02611
   Context: Probing the ringdown perturbation in binary black hole coalescences with an improved quasi-normal mo...
 
 hole pbh                       | Freq:   5 | Papers:   5
-  Papers: 2412.06889, 2505.17514, 2507.02821, 2507.02396, 2507.02651
+  Papers: 2507.02396, 2412.06889, 2507.02821, 2505.17514, 2507.02651
   Context: Are single-field models of inflation and PBH production ruled out by ACT observations Are single-fie...
 
 quantum circuit                | Freq:   5 | Papers:   5
-  Papers: 2506.23925, 2504.16718, 2407.02989, 2507.02472, 2501.05007
+  Papers: 2407.02989, 2504.16718, 2507.02472, 2506.23925, 2501.05007
   Context: Will it glue On short-depth designs beyond the unitary group Will it glue On short-depth designs bey...
 
 good agreement                 | Freq:   5 | Papers:   5
-  Papers: 2507.02795, 2507.02525, 2507.02632, 2507.02629, 2507.02612
+  Papers: 2507.02525, 2507.02629, 2507.02612, 2507.02632, 2507.02795
   Context: Boosting the NOx production in microwave air plasma A synergy of chemistry and vibrational kinetics ...
 
 laser pulse                    | Freq:   5 | Papers:   5
-  Papers: 2507.02561, 2507.02587, 2507.02793, 2507.02673, 2507.02543
+  Papers: 2507.02587, 2507.02561, 2507.02793, 2507.02673, 2507.02543
   Context: Ultrafast optical excitation of magnons in 2D antiferromagnets via spin torque exerted by photocurre...
 
 black holes                    | Freq:   5 | Papers:   5
-  Papers: 2412.06889, 2507.02583, 2411.00909, 2507.02362, 2507.02716
+  Papers: 2507.02583, 2507.02362, 2412.06889, 2507.02716, 2411.00909
   Context: A Note on Chaos in Hayward Black Holes with String Fluids A Note on Chaos in Hayward Black Holes wit...
 
 quantum states                 | Freq:   5 | Papers:   5
-  Papers: 2507.02531, 2504.16718, 2503.05465, 2507.02587, 2507.02644
+  Papers: 2503.05465, 2507.02587, 2507.02531, 2504.16718, 2507.02644
   Context: Solving the Hubbard model with Neural Quantum States Solving the Hubbard model with Neural Quantum S...
-
-quantum mechanic               | Freq:   4 | Papers:   4
-  Papers: 2507.02622, 2311.18302, 2506.18549, 2507.02845
-  Context: Enhancement of the effects due to the Schrödinger-Newton equation Enhancement of the effects due to ...
 
 schrödinger equation           | Freq:   4 | Papers:   4
   Papers: 2502.12305, 2407.02989, 2507.02845, 2507.02653
   Context: Enhancement of the effects due to the Schrödinger-Newton equation Enhancement of the effects due to ...
 
+quantum mechanic               | Freq:   4 | Papers:   4
+  Papers: 2311.18302, 2506.18549, 2507.02845, 2507.02622
+  Context: Enhancement of the effects due to the Schrödinger-Newton equation Enhancement of the effects due to ...
+
 circuit depth                  | Freq:   4 | Papers:   4
-  Papers: 2507.02828, 2506.23925, 2507.02542, 2507.01199
+  Papers: 2507.02542, 2507.02828, 2507.01199, 2506.23925
   Context: Designs from magic-augmented Clifford circuits Designs from magic-augmented Clifford circuits We int...
 
 primordial black holes         | Freq:   4 | Papers:   4
-  Papers: 2507.02490, 2412.06889, 2507.02651, 2507.02821
+  Papers: 2507.02821, 2412.06889, 2507.02490, 2507.02651
   Context: Relativistic accretion and burdened primordial black holes Relativistic accretion and burdened primo...
 
 valuable insights              | Freq:   4 | Papers:   4
-  Papers: 2507.02725, 2507.02812, 2411.06854, 2502.04383
+  Papers: 2502.04383, 2411.06854, 2507.02725, 2507.02812
   Context: Fluid dynamics of a liquid mirror space telescope Fluid dynamics of a liquid mirror space telescope ...
 
 other hand                     | Freq:   4 | Papers:   4
-  Papers: 2506.16715, 2507.02569, 2507.02417, 2507.02806
+  Papers: 2507.02806, 2506.16715, 2507.02569, 2507.02417
   Context: GRB 240825A Early Reverse Shock and Its Physical Implications GRB 240825A Early Reverse Shock and It...
 
-quantum computer               | Freq:   4 | Papers:   4
-  Papers: 2507.02472, 2507.01199, 2505.22502, 2507.02542
+quantum hardware               | Freq:   4 | Papers:   4
+  Papers: 2507.02577, 2504.16718, 2412.07844, 2507.01199
   Context: Coupled Cluster Downfolding Theory in Simulations of Chemical Systems on Quantum Hardware Coupled Cl...
 
-quantum hardware               | Freq:   4 | Papers:   4
-  Papers: 2507.01199, 2507.02577, 2504.16718, 2412.07844
+quantum computer               | Freq:   4 | Papers:   4
+  Papers: 2507.02472, 2507.02542, 2505.22502, 2507.01199
   Context: Coupled Cluster Downfolding Theory in Simulations of Chemical Systems on Quantum Hardware Coupled Cl...
 
 string theory                  | Freq:   4 | Papers:   4
-  Papers: 2507.02787, 2311.18302, 2504.05392, 2501.15892
+  Papers: 2501.15892, 2507.02787, 2504.05392, 2311.18302
   Context: Stability of non-supersymmetric vacua from calibrations Stability of non-supersymmetric vacua from c...
 
 magnetic fields                | Freq:   4 | Papers:   4
-  Papers: 2503.14387, 2504.10216, 2507.02384, 2507.02777
+  Papers: 2504.10216, 2507.02384, 2503.14387, 2507.02777
   Context: Advanced techniques of searching for flares of ultra-high-energy photons from point sources Advanced...
 
 domain wall                    | Freq:   4 | Papers:   4
-  Papers: 2507.02324, 2408.11217, 2411.03419, 2505.09497
+  Papers: 2411.03419, 2408.11217, 2505.09497, 2507.02324
   Context: Stable singular fractional skyrmion spin texture from the quantum Kelvin-Helmholtz instability Stabl...
 
 nucleus agn                    | Freq:   4 | Papers:   4
-  Papers: 2507.02718, 2507.02475, 2507.02621, 2507.02326
+  Papers: 2507.02475, 2507.02621, 2507.02326, 2507.02718
   Context: Hadronic origin of the very high-energy gamma-ray emission from the low-luminosity AGN in NGC 4278 H...
 
 energy density                 | Freq:   4 | Papers:   4
-  Papers: 2507.02448, 2505.00911, 2507.02704, 2505.15976
+  Papers: 2505.00911, 2507.02704, 2505.15976, 2507.02448
   Context: Super high capacity of silicon carbon anode over 6500 mAh g-1 for lithium battery Super high capacit...
 
 phase transition               | Freq:   4 | Papers:   4
-  Papers: 2507.02669, 2507.02697, 2411.03748, 2507.02623
+  Papers: 2507.02697, 2507.02623, 2507.02669, 2411.03748
   Context: The θ -term effects on isospin asymmetric hot and dense quark matter The θ -term effects on isospin ...
 
 gauge field                    | Freq:   4 | Papers:   4
-  Papers: 2507.02685, 2507.02611, 2507.02563, 2507.02370
+  Papers: 2507.02611, 2507.02370, 2507.02563, 2507.02685
   Context: Axion USR Inflation Axion USR Inflation We consider a model of inflation in which the inflaton field...
 
 exchange interaction           | Freq:   4 | Papers:   4
-  Papers: 2507.02615, 2507.02623, 2507.02448, 2503.14146
+  Papers: 2503.14146, 2507.02623, 2507.02448, 2507.02615
   Context: Interplay of frustration and quantum fluctuations in a spin-1 2 anisotropic square lattice Interplay...
 
 brillouin zone                 | Freq:   4 | Papers:   4
-  Papers: 2507.02329, 2504.10216, 2507.02508, 2507.02371
+  Papers: 2507.02371, 2504.10216, 2507.02508, 2507.02329
   Context: Orbital orders under magnetic fields in cubic PrIr _2 Zn _ 20 Orbital orders under magnetic fields i...
 
 orbit coupling                 | Freq:   4 | Papers:   4
-  Papers: 2507.02505, 2502.01016, 2507.02516, 2503.14146
+  Papers: 2507.02505, 2507.02516, 2503.14146, 2502.01016
   Context: Magnetic octupole Hall effect in heavy transition metals Magnetic octupole Hall effect in heavy tran...
 
 correlation function           | Freq:   4 | Papers:   4
-  Papers: 2310.10428, 2412.15932, 2502.19584, 2507.02515
+  Papers: 2502.19584, 2412.15932, 2507.02515, 2310.10428
   Context: Angular correlation functions of bright Lyman-break galaxies at mathbf 3 lesssim z lesssim 5 Angular...
 
 energy distribution            | Freq:   4 | Papers:   4
-  Papers: 2405.09749, 2507.02384, 2507.02507, 2507.02515
+  Papers: 2507.02507, 2507.02384, 2405.09749, 2507.02515
   Context: Angular correlation functions of bright Lyman-break galaxies at mathbf 3 lesssim z lesssim 5 Angular...
 
 mode qnms                      | Freq:   3 | Papers:   3
   Papers: 2503.09678, 2507.02784, 2507.02749
 
 quantum mechanics              | Freq:   3 | Papers:   3
-  Papers: 2507.02622, 2506.18549, 2507.02845
+  Papers: 2506.18549, 2507.02845, 2507.02622
   Context: Enhancement of the effects due to the Schrödinger-Newton equation Enhancement of the effects due to ...
-
-charge density                 | Freq:   3 | Papers:   3
-  Papers: 2507.02579, 2507.02673, 2407.20528
-  Context: Optical effects in unmagnetized cold plasmas by a chiral axion factor Optical effects in unmagnetize...
 
 maxwell equation               | Freq:   3 | Papers:   3
   Papers: 2503.14387, 2502.01016, 2407.20528
   Context: Optical effects in unmagnetized cold plasmas by a chiral axion factor Optical effects in unmagnetize...
 
 dispersion relation            | Freq:   3 | Papers:   3
-  Papers: 2507.02386, 2407.20528, 2507.02543
+  Papers: 2407.20528, 2507.02543, 2507.02386
   Context: Optical effects in unmagnetized cold plasmas by a chiral axion factor Optical effects in unmagnetize...
 
-field strength                 | Freq:   3 | Papers:   3
-  Papers: 2507.02830, 2507.02362, 2507.02397
-  Context: Electric Field Induced Superconductivity in Bilayer Octagraphene Electric Field Induced Superconduct...
+charge density                 | Freq:   3 | Papers:   3
+  Papers: 2507.02579, 2507.02673, 2407.20528
+  Context: Optical effects in unmagnetized cold plasmas by a chiral axion factor Optical effects in unmagnetize...
 
 electric field                 | Freq:   3 | Papers:   3
-  Papers: 2507.02615, 2507.02603, 2507.02830
+  Papers: 2507.02603, 2507.02830, 2507.02615
+  Context: Electric Field Induced Superconductivity in Bilayer Octagraphene Electric Field Induced Superconduct...
+
+field strength                 | Freq:   3 | Papers:   3
+  Papers: 2507.02397, 2507.02362, 2507.02830
   Context: Electric Field Induced Superconductivity in Bilayer Octagraphene Electric Field Induced Superconduct...
 
 early universe                 | Freq:   3 | Papers:   3
-  Papers: 2507.02621, 2507.02651, 2501.05732
+  Papers: 2507.02621, 2501.05732, 2507.02651
   Context: Relativistic magnetohydrodynamics in the early Universe Relativistic magnetohydrodynamics in the ear...
 
 quantum computation            | Freq:   3 | Papers:   3
-  Papers: 2507.02540, 2507.02531, 2412.21171
+  Papers: 2507.02531, 2507.02540, 2412.21171
   Context: Quantum Error Correction near the Coding Theoretical Bound Quantum Error Correction near the Coding ...
 
 primordial black holes pbhs    | Freq:   3 | Papers:   3
-  Papers: 2412.06889, 2507.02651, 2507.02821
+  Papers: 2507.02821, 2412.06889, 2507.02651
   Context: Relativistic accretion and burdened primordial black holes Relativistic accretion and burdened primo...
 
 hadron collider                | Freq:   3 | Papers:   3
@@ -235,46 +235,46 @@ hadron collider                | Freq:   3 | Papers:   3
   Context: ML-based muon identification using a FNAL-NICADD scintillator chamber for the MID subsystem of ALICE...
 
 phys rev                       | Freq:   3 | Papers:   3
-  Papers: 2507.02341, 2507.02623, 2507.02816
+  Papers: 2507.02816, 2507.02623, 2507.02341
   Context: Helicons in tilted-Weyl semimetals Helicons in tilted-Weyl semimetals Helicons are transverse electr...
 
 two models                     | Freq:   3 | Papers:   3
   Papers: 2507.02490, 2507.00266, 2507.02474
 
 fundamental physics            | Freq:   3 | Papers:   3
-  Papers: 2507.02520, 2507.02811, 2507.02653
+  Papers: 2507.02520, 2507.02653, 2507.02811
   Context: Bayesian frequency estimation at the fundamental quantum limit Bayesian frequency estimation at the ...
-
-density functional theory      | Freq:   3 | Papers:   3
-  Papers: 2507.02629, 2507.02805, 2410.04813
-  Context: Tailoring the Electronic Properties of Monoclinic InxAl1-x 2O3 Alloys via Substitutional Donors and ...
 
 chemical potential             | Freq:   3 | Papers:   3
   Papers: 2507.02697, 2507.02805, 2507.02753
   Context: Tailoring the Electronic Properties of Monoclinic InxAl1-x 2O3 Alloys via Substitutional Donors and ...
 
+density functional theory      | Freq:   3 | Papers:   3
+  Papers: 2507.02805, 2507.02629, 2410.04813
+  Context: Tailoring the Electronic Properties of Monoclinic InxAl1-x 2O3 Alloys via Substitutional Donors and ...
+
 van der                        | Freq:   3 | Papers:   3
-  Papers: 2507.02793, 2507.02629, 2507.02633
+  Papers: 2507.02629, 2507.02633, 2507.02793
   Context: Ultrafast optical excitation of magnons in 2D antiferromagnets via spin torque exerted by photocurre...
 
 quantum technologies           | Freq:   3 | Papers:   3
-  Papers: 2507.01199, 2507.02557, 2507.02587
+  Papers: 2507.02557, 2507.02587, 2507.01199
   Context: Coupled Cluster Downfolding Theory in Simulations of Chemical Systems on Quantum Hardware Coupled Cl...
 
 quantum field theory           | Freq:   3 | Papers:   3
-  Papers: 2507.02786, 2305.11697, 2507.02362
+  Papers: 2305.11697, 2507.02362, 2507.02786
   Context: Dynamical group approach to conformal field theory Dynamical group approach to conformal field theor...
 
 matter interaction             | Freq:   3 | Papers:   3
-  Papers: 2507.02784, 2507.02471, 2411.11042
+  Papers: 2507.02471, 2507.02784, 2411.11042
   Context: Quasinormal modes of Floquet media slabs Quasinormal modes of Floquet media slabs Exploiting non-Her...
 
 air shower                     | Freq:   3 | Papers:   3
-  Papers: 2507.02326, 2507.02777, 2507.02558
+  Papers: 2507.02558, 2507.02777, 2507.02326
   Context: Advanced techniques of searching for flares of ultra-high-energy photons from point sources Advanced...
 
 distribution function          | Freq:   3 | Papers:   3
-  Papers: 2504.00126, 2311.02157, 2507.02777
+  Papers: 2311.02157, 2507.02777, 2504.00126
   Context: Advanced techniques of searching for flares of ultra-high-energy photons from point sources Advanced...
 
 ray emission                   | Freq:   3 | Papers:   3
@@ -282,43 +282,43 @@ ray emission                   | Freq:   3 | Papers:   3
   Context: A Leptonic Interpretation of the UHE Gamma-ray Emission from V4641 Sgr A Leptonic Interpretation of ...
 
 neutron star                   | Freq:   3 | Papers:   3
-  Papers: 2507.02669, 2507.02448, 2507.02749
+  Papers: 2507.02749, 2507.02448, 2507.02669
   Context: Neutron stars in degenerate higher-order scalar-tensor theories Axial perturbations Neutron stars in...
 
 neutron stars                  | Freq:   3 | Papers:   3
-  Papers: 2507.02669, 2507.02448, 2507.02749
+  Papers: 2507.02749, 2507.02448, 2507.02669
   Context: Neutron stars in degenerate higher-order scalar-tensor theories Axial perturbations Neutron stars in...
 
 ion collision                  | Freq:   3 | Papers:   3
-  Papers: 2308.09699, 2507.02448, 2504.00126
+  Papers: 2308.09699, 2504.00126, 2507.02448
   Context: Emergent interaction-driven elliptic flow of few fermionic atoms Emergent interaction-driven ellipti...
 
 wave function                  | Freq:   3 | Papers:   3
-  Papers: 2507.02495, 2409.18954, 2310.10428
+  Papers: 2409.18954, 2507.02495, 2310.10428
   Context: Magnifying the Wave Function of Interacting Fermionic Atoms Magnifying the Wave Function of Interact...
 
 energy loss                    | Freq:   3 | Papers:   3
-  Papers: 2507.02725, 2507.02423, 2507.02545
+  Papers: 2507.02545, 2507.02423, 2507.02725
   Context: Constraining color-charge effects of partonic energy loss with jet axis-based inclusive jet substruc...
 
 active galactic nuclei         | Freq:   3 | Papers:   3
-  Papers: 2507.02718, 2507.02475, 2507.02621
+  Papers: 2507.02475, 2507.02621, 2507.02718
   Context: A Systematic Search for Spectral Hardening in Blazar Flares with the Fermi-Large Area Telescope A Sy...
 
 matter field                   | Freq:   3 | Papers:   3
-  Papers: 2507.02362, 2407.11129, 2507.02716
+  Papers: 2407.11129, 2507.02362, 2507.02716
   Context: A Note on Chaos in Hayward Black Holes with String Fluids A Note on Chaos in Hayward Black Holes wit...
 
 phase space                    | Freq:   3 | Papers:   3
-  Papers: 2507.02692, 2507.02370, 2507.02716
+  Papers: 2507.02370, 2507.02692, 2507.02716
   Context: A Note on Chaos in Hayward Black Holes with String Fluids A Note on Chaos in Hayward Black Holes wit...
 
 emission line                  | Freq:   3 | Papers:   3
-  Papers: 2506.13522, 2507.02465, 2503.01990
+  Papers: 2507.02465, 2503.01990, 2506.13522
   Context: A New Determination of the Mass of NGC 3603-A1 the Most Massive Binary Known A New Determination of ...
 
 spontaneous symmetry           | Freq:   3 | Papers:   3
-  Papers: 2507.02697, 2507.02324, 2503.14146
+  Papers: 2507.02697, 2503.14146, 2507.02324
   Context: The θ -term effects on isospin asymmetric hot and dense quark matter The θ -term effects on isospin ...
 
 finite temperature             | Freq:   3 | Papers:   3
@@ -326,6 +326,6 @@ finite temperature             | Freq:   3 | Papers:   3
   Context: The θ -term effects on isospin asymmetric hot and dense quark matter The θ -term effects on isospin ...
 
 power spectrum                 | Freq:   3 | Papers:   3
-  Papers: 2507.02685, 2507.02651, 2507.02355
+  Papers: 2507.02651, 2507.02355, 2507.02685
   Context: Axion USR Inflation Axion USR Inflation We consider a model of inflation in which the inflaton field...
 

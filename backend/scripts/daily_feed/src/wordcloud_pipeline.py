@@ -144,17 +144,34 @@ class WordCloudPipeline:
         Returns:
             List of dictionaries with phrase data and contributing papers
         """
-        # Filter for phrases only (terms with spaces)
+        # First, try to get multi-word phrases (terms with spaces)
         phrases = {k: v for k, v in terms_info.items() if ' ' in k}
         
-        if not phrases:
-            print("    ⚠️  No phrases found")
-            return []
+        # Sort multi-word phrases by frequency
+        sorted_phrases = sorted(phrases.items(), key=lambda x: x[1].frequency, reverse=True)
         
-        # Sort by frequency and take top phrases
-        top_phrases = dict(sorted(phrases.items(), 
-                                 key=lambda x: x[1].frequency, 
-                                 reverse=True)[:top_count])
+        # If we don't have enough multi-word phrases, include single-word terms
+        if len(sorted_phrases) < top_count:
+            print(f"    📝 Only {len(sorted_phrases)} multi-word phrases found, adding single-word terms to reach {top_count}")
+            
+            # Get single-word terms (excluding those already in phrases)
+            single_words = {k: v for k, v in terms_info.items() 
+                          if ' ' not in k and len(k) > 2}  # Exclude very short terms
+            
+            # Sort single-word terms by frequency
+            sorted_single_words = sorted(single_words.items(), 
+                                       key=lambda x: x[1].frequency, reverse=True)
+            
+            # Combine phrases and single words to reach top_count
+            needed_terms = top_count - len(sorted_phrases)
+            sorted_phrases.extend(sorted_single_words[:needed_terms])
+        
+        # Take only the top_count terms
+        top_phrases = dict(sorted_phrases[:top_count])
+        
+        if not top_phrases:
+            print("    ⚠️  No terms found")
+            return []
         
         # Create paper lookup for efficiency
         papers_dict = {paper.get('arxiv_id', f'paper_{i}'): paper 

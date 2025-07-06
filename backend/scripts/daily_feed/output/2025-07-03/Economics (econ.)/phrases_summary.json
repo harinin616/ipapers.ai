@@ -20,6 +20,18 @@
       "phrase": "percentage point",
       "frequency": 2,
       "paper_count": 2
+    },
+    {
+      "rank": 4,
+      "phrase": "reasoning",
+      "frequency": 12,
+      "paper_count": 1
+    },
+    {
+      "rank": 5,
+      "phrase": "information",
+      "frequency": 11,
+      "paper_count": 3
     }
   ]
 }
