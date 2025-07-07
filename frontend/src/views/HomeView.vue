@@ -88,7 +88,7 @@ export default defineComponent({
     const loadPapers = async () => {
       try {
         isLoading.value = true;
-        papers.value = await api.getRecentPapers(limit.value, 0);
+        papers.value = await api.getRecentPapers(limit.value, null, 0);
         offset.value = papers.value.length;
         paperCount.value = await api.countPapers();
         hasMorePapers.value = papers.value.length < (paperCount.value || 0);
@@ -100,7 +100,7 @@ export default defineComponent({
     const loadMoreRecent = async () => {
       try {
         isLoadingMoreRecent.value = true;
-        const morePapers = await api.getRecentPapers(limit.value, offset.value);
+        const morePapers = await api.getRecentPapers(limit.value,null, offset.value);
         papers.value = [...papers.value, ...morePapers];
         offset.value += morePapers.length;
         hasMorePapers.value = morePapers.length === limit.value;

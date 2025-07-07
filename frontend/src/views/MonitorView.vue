@@ -108,7 +108,7 @@ export default defineComponent({
       try {
         section.isLoading = true;
         const keyword = section.title.trim() || '';
-        const papers = await api.getRecentPapers(limit.value, keyword);
+        const papers = await api.getRecentPapers(limit.value, keyword, 0);
         section.papers = papers;
       } catch (error) {
         console.error(`Error loading papers for section "${section.title}":`, error);

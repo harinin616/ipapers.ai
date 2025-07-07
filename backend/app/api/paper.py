@@ -13,12 +13,13 @@ router = APIRouter()
 @router.get("/", response_model=List[Paper])
 async def get_papers(
     limit: int = Query(30, ge=1, le=100),
-    keyword: str = Query(None)
+    keyword: str = Query(None),
+    offset: int = Query(0, ge=0)
 ):
     """
     Get recent papers from database
     """
-    papers_1 = await db_service.get_recent_papers(limit=10, keyword=keyword)
+    papers_1 = await db_service.get_recent_papers(limit=10, keyword=keyword, offset=offset)
     paper_ids_2 = await vector_search_service.vector_search(keyword, 10)
     
     # Convert paper_ids to Paper objects

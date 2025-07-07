@@ -307,7 +307,7 @@ class DBService:
         
         return papers
     
-    async def get_recent_papers(self, limit: int = 30, keyword: str = None) -> List[Paper]:
+    async def get_recent_papers(self, limit: int = 30, keyword: str = None, offset: int = 0) -> List[Paper]:
         """
         get recent papers from database
         """
@@ -318,7 +318,7 @@ class DBService:
             query = select(DBPaper).options(
                 selectinload(DBPaper.authors),
                 selectinload(DBPaper.categories)
-            ).order_by(DBPaper.published_date.desc()).limit(limit)
+            ).order_by(DBPaper.published_date.desc()).limit(limit).offset(offset)
             
             # Add keyword filter if provided
             if keyword:
