@@ -178,8 +178,8 @@ class WordCloudGenerator:
         ax.axis('off')
         
         # Add title
-        title = f"{category_name} - {date}"
-        ax.set_title(title, fontsize=20, fontweight='bold', pad=20)
+        # title = f"{category_name} - {date}"
+        # ax.set_title(title, fontsize=20, fontweight='bold', pad=20)
         
         # Add metadata text
         total_papers = len(set().union(*[info.papers for info in terms_info.values()]))

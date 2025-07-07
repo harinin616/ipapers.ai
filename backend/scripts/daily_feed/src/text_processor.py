@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Text preprocessing module for extracting meaningful words and phrases from arXiv papers.
-Handles stopword removal, phrase extraction, and term frequency analysis.
+Handles stopword removal, phrase extraction, term frequency analysis, and phrase clustering.
 """
 
 import re
@@ -35,7 +35,71 @@ class TextProcessor:
         
         # Extended stopwords for academic papers
         self.stopwords = self._get_academic_stopwords()
+        
+        # Phrase clustering configuration - synonymous phrases will be merged
+        self.phrase_clusters = self._get_phrase_clusters()
+        
         print("✅ Text processor initialized")
+    
+    def _get_phrase_clusters(self) -> Dict[str, List[str]]:
+        """
+        Define phrase clusters where synonymous phrases should be merged.
+        
+        Returns:
+            Dictionary mapping canonical phrase to list of variant phrases.
+            The canonical phrase (key) will be used as the replacement for all variants.
+        """
+        return {
+            # Large Language Models cluster
+            "large language models": [
+                "language model",
+                "language models", 
+                "large language",  # incomplete variant
+                "llm",
+                "llms",
+                "large language model"
+            ],
+            
+            # Add more phrase clusters here as needed
+            # Example:
+            # "neural networks": [
+            #     "neural network",
+            #     "artificial neural networks",
+            #     "artificial neural network"
+            # ],
+        }
+    
+    def _normalize_term(self, term: str) -> str:
+        """
+        Normalize a term by replacing it with its canonical form if it belongs to a phrase cluster.
+        
+        Args:
+            term: The original term to normalize
+            
+        Returns:
+            The normalized (canonical) term
+        """
+        term_lower = term.lower().strip()
+        
+        # Check if this term is in any phrase cluster
+        for canonical_phrase, variants in self.phrase_clusters.items():
+            if term_lower == canonical_phrase.lower():
+                return canonical_phrase  # Already canonical
+            elif term_lower in [v.lower() for v in variants]:
+                return canonical_phrase  # Replace with canonical form
+        
+        return term  # No clustering needed, return original
+    
+    def add_phrase_cluster(self, canonical_phrase: str, variants: List[str]):
+        """
+        Add a new phrase cluster for future processing.
+        
+        Args:
+            canonical_phrase: The canonical form to use for all variants
+            variants: List of variant phrases to be replaced with canonical form
+        """
+        self.phrase_clusters[canonical_phrase] = variants
+        print(f"✅ Added phrase cluster: '{canonical_phrase}' with {len(variants)} variants")
     
     def _get_academic_stopwords(self) -> Set[str]:
         """Get comprehensive stopwords for academic papers."""
@@ -262,8 +326,6 @@ class TextProcessor:
         
         return entities
     
-
-    
     def process_papers(self, papers: List[Dict[str, Any]]) -> Dict[str, TermInfo]:
         """
         Process a list of papers and extract terms with their metadata.
@@ -296,24 +358,27 @@ class TextProcessor:
             words = self.extract_single_words(clean_text)
             phrases = self.extract_phrases(clean_text)
             
-            # Process all terms
+            # Process all terms and apply normalization
             all_terms = words + phrases
             paper_terms = set()  # Track unique terms per paper
             
-            for term in all_terms:
-                if term not in paper_terms:  # Count each term only once per paper
-                    term_papers[term].append(arxiv_id)
-                    paper_terms.add(term)
+            for original_term in all_terms:
+                # Normalize the term (apply phrase clustering)
+                normalized_term = self._normalize_term(original_term)
                 
-                term_frequencies[term] += 1
+                if normalized_term not in paper_terms:  # Count each term only once per paper
+                    term_papers[normalized_term].append(arxiv_id)
+                    paper_terms.add(normalized_term)
                 
-                # Add context (sentence containing the term)
+                term_frequencies[normalized_term] += 1
+                
+                # Add context (sentence containing the original term)
                 sentences = clean_text.split('.')
                 for sentence in sentences:
-                    if term in sentence.lower():
+                    if original_term in sentence.lower():
                         context = sentence.strip()[:200]  # Limit context length
                         if context:
-                            term_contexts[term].append(context)
+                            term_contexts[normalized_term].append(context)
                         break
         
         # Create TermInfo objects
@@ -329,6 +394,14 @@ class TextProcessor:
                 papers=list(set(term_papers[term])),  # Remove duplicates
                 contexts=term_contexts[term][:5]  # Keep top 5 contexts
             )
+        
+        # Log phrase clustering results
+        clustered_phrases = [term for term in terms_info.keys() if term in self.phrase_clusters.keys()]
+        if clustered_phrases:
+            print(f"🔗 Applied phrase clustering:")
+            for phrase in clustered_phrases:
+                variants = self.phrase_clusters[phrase]
+                print(f"   - '{phrase}' (merged from {len(variants)} variants)")
         
         print(f"✅ Extracted {len(terms_info)} unique terms")
         print(f"   - Single words: {len([t for t in terms_info if ' ' not in t])}")
