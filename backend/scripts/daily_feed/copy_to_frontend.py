@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 import glob
+import re
 
 def get_frontend_public_dir():
     """Get the path to the frontend's public directory."""
@@ -32,9 +33,72 @@ def get_pipeline_output_dir(date: str):
     output_dir = script_dir / "output" / date
     return output_dir
 
-def read_summary_files(summaries_dir: Path):
-    """Read all markdown summary files and return their contents."""
+def load_pipeline_summary(date: str):
+    """Load the pipeline summary JSON with paper counts."""
+    pipeline_output_dir = get_pipeline_output_dir(date)
+    summary_file = pipeline_output_dir / "pipeline_summary.json"
+    
+    if not summary_file.exists():
+        print(f"  ⚠️  Pipeline summary file not found: {summary_file}")
+        return None
+    
+    try:
+        with open(summary_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"  ⚠️  Error reading pipeline summary: {e}")
+        return None
+
+def load_phrases_summary(category_dir: Path):
+    """Load the phrases summary JSON with paper counts for phrase clusters."""
+    phrases_file = category_dir / "phrases_summary.json"
+    
+    if not phrases_file.exists():
+        print(f"  ⚠️  Phrases summary file not found: {phrases_file}")
+        return None
+    
+    try:
+        with open(phrases_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"  ⚠️  Error reading phrases summary: {e}")
+        return None
+
+def extract_summary_title_and_phrase(markdown_content: str, filename: str):
+    """Extract title from markdown content and determine the corresponding phrase."""
+    if not markdown_content:
+        return 'Summary', None
+    
+    # Extract H1 title from markdown
+    h1_match = re.search(r'^#\s+(.+)', markdown_content, re.MULTILINE)
+    if h1_match:
+        # Clean up the title by removing extra text after colons
+        title = h1_match.group(1).strip()
+        # Remove patterns like ": A Tsunami of Innovation..." or similar
+        title = re.sub(r':\s*.+$', '', title)
+        
+        # Extract phrase from filename (format: rank_phrase.md)
+        filename_match = re.match(r'^\d+_(.+)\.md$', filename)
+        if filename_match:
+            phrase = filename_match.group(1).replace('_', ' ')
+            return title, phrase
+        
+        return title, None
+    
+    return 'Summary', None
+
+def read_summary_files_with_metadata(summaries_dir: Path, phrases_summary_data):
+    """Read all markdown summary files and return their contents with paper counts."""
     summaries = []
+    phrase_paper_counts = {}
+    
+    # Create a mapping from phrase to paper count
+    if phrases_summary_data and 'phrases_summary' in phrases_summary_data:
+        for phrase_info in phrases_summary_data['phrases_summary']:
+            # Normalize phrase for matching
+            normalized_phrase = phrase_info['phrase'].replace(' ', '_')
+            phrase_paper_counts[normalized_phrase] = phrase_info['paper_count']
+    
     if summaries_dir.exists():
         md_files = sorted(summaries_dir.glob("*.md"))
         for md_file in md_files:
@@ -42,9 +106,25 @@ def read_summary_files(summaries_dir: Path):
                 with open(md_file, 'r', encoding='utf-8') as f:
                     content = f.read().strip()
                     if content:
-                        summaries.append(content)
+                        title, phrase = extract_summary_title_and_phrase(content, md_file.name)
+                        
+                        # Get paper count for this phrase
+                        paper_count = None
+                        if phrase:
+                            normalized_phrase = phrase.replace(' ', '_')
+                            paper_count = phrase_paper_counts.get(normalized_phrase)
+                        
+                        summary_data = {
+                            'content': content,
+                            'title': title,
+                            'phrase': phrase,
+                            'paper_count': paper_count
+                        }
+                        summaries.append(summary_data)
+                        
             except Exception as e:
                 print(f"  ⚠️  Error reading summary file {md_file}: {e}")
+    
     return summaries
 
 def copy_images_to_frontend(source_dir: Path, target_dir: Path, category_name: str):
@@ -70,6 +150,12 @@ def generate_daily_feed_json(date: str):
         print(f"❌ Pipeline output directory not found: {pipeline_output_dir}")
         return False
     
+    # Load pipeline summary for paper counts
+    pipeline_summary = load_pipeline_summary(date)
+    if not pipeline_summary:
+        print(f"❌ Could not load pipeline summary for date {date}")
+        return False
+    
     # Create daily_feed directory in frontend public folder
     daily_feed_dir = frontend_public_dir / "daily_feed"
     daily_feed_dir.mkdir(parents=True, exist_ok=True)
@@ -90,9 +176,19 @@ def generate_daily_feed_json(date: str):
         
         print(f"📂 Processing category: {category_name}")
         
-        # Read summaries
+        # Get paper count for this category
+        category_paper_count = None
+        if pipeline_summary and 'categories' in pipeline_summary:
+            category_info = pipeline_summary['categories'].get(category_name)
+            if category_info:
+                category_paper_count = category_info.get('papers_count')
+        
+        # Load phrases summary for this category
+        phrases_summary_data = load_phrases_summary(source_category_dir)
+        
+        # Read summaries with metadata
         summaries_dir = source_category_dir / "summaries"
-        summaries = read_summary_files(summaries_dir)
+        summaries = read_summary_files_with_metadata(summaries_dir, phrases_summary_data)
         
         # Copy word cloud image
         word_cloud_url = copy_images_to_frontend(source_category_dir, daily_feed_dir, category_name.replace(' ', '_').replace('(', '').replace(')', '').replace('.', ''))
@@ -101,18 +197,25 @@ def generate_daily_feed_json(date: str):
         category_data = {
             "category": category_name.lower().replace(' ', '_').replace('(', '').replace(')', '').replace('.', ''),
             "display_name": category_name,
+            "paper_count": category_paper_count,
             "word_cloud_url": word_cloud_url,
             "summaries": summaries
         }
         
         categories_data.append(category_data)
-        print(f"  ✅ Added {len(summaries)} summaries, image: {'Yes' if word_cloud_url else 'No'}")
+        print(f"  ✅ Added {len(summaries)} summaries, papers: {category_paper_count}, image: {'Yes' if word_cloud_url else 'No'}")
+    
+    # Get total papers from pipeline summary
+    total_papers = None
+    if pipeline_summary and 'summary' in pipeline_summary:
+        total_papers = pipeline_summary['summary'].get('total_papers')
     
     # Generate the final JSON structure
     daily_feed_data = {
+        "date": date,
+        "total_papers": total_papers,
         "categories": categories_data,
         "last_updated": datetime.now().isoformat(),
-        "date": date,
         "total_categories": len(categories_data),
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }

@@ -57,7 +57,11 @@ class TextProcessor:
                 "large language",  # incomplete variant
                 "llm",
                 "llms",
-                "large language model"
+                "large language model",
+                "model llms",
+                "model llm",
+                "model llms",
+                "model llm",
             ],
             
             # Add more phrase clusters here as needed

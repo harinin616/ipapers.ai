@@ -1,6 +1,6 @@
 <template>
   <div class="daily-feed-page">
-    <h1>Daily Feed</h1>
+    <h1>{{ getPageTitle() }}</h1>
     <p class="subtitle">Explore trending papers across different disciplines</p>
     
     <!-- Display Control -->
@@ -25,32 +25,22 @@
       <button @click="loadDailyFeed" class="retry-btn">Retry</button>
     </div>
 
-    <div v-else class="feed-content">
-      <div class="categories-grid">
-        <div 
-          v-for="category in dailyFeedData.categories" 
-          :key="category.category"
-          class="category-card"
-        >
-          <h2 class="category-title">{{ category.display_name }}</h2>
-          
+    <div v-else class="daily-feed-content">
+      <div v-for="category in dailyFeedData.categories" :key="category.category" class="category-section">
+        <div class="category-content">
           <!-- Word Cloud Section -->
-          <div class="word-cloud-section">
-            <div v-if="category.word_cloud_url" class="word-cloud-container">
+          <div class="wordcloud-section">
+            <h2 class="category-title">{{ getCategoryTitle(category) }}</h2>
+            <div v-if="category.word_cloud_url" class="wordcloud-container">
               <img 
                 :src="category.word_cloud_url" 
-                :alt="`Word cloud for ${category.display_name}`"
-                class="word-cloud-image"
+                :alt="`${category.display_name} Word Cloud`"
+                class="wordcloud-image"
                 @error="handleImageError"
               />
             </div>
-            <div v-else class="no-word-cloud">
-              <div class="placeholder-cloud">
-                <svg viewBox="0 0 24 24" class="cloud-icon">
-                  <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
-                </svg>
-                <p>Word cloud coming soon</p>
-              </div>
+            <div v-else class="no-wordcloud">
+              <p>Word cloud not available</p>
             </div>
           </div>
 
@@ -68,7 +58,7 @@
                   @click="toggleSummary(category.category, index)"
                   :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
                 >
-                  <h4 class="summary-title">{{ extractSummaryTitle(summary) }}</h4>
+                  <h4 class="summary-title">{{ getSummaryTitle(summary) }}</h4>
                   <div class="toggle-icon">
                     <svg 
                       viewBox="0 0 24 24" 
@@ -82,7 +72,7 @@
                   class="summary-content-wrapper"
                   :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
                 >
-                  <div class="summary-content" v-html="renderMarkdown(summary)"></div>
+                  <div class="summary-content" v-html="renderMarkdown(getSummaryContent(summary))"></div>
                 </div>
               </div>
             </div>
@@ -103,24 +93,77 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+// Enhanced type definitions for the new data structure
+interface SummaryData {
+  content: string
+  title: string
+  phrase?: string
+  paper_count?: number
+}
+
+interface CategoryData {
+  category: string
+  display_name: string
+  paper_count?: number
+  word_cloud_url?: string
+  summaries: SummaryData[]
+}
+
+interface DailyFeedData {
+  date?: string
+  total_papers?: number
+  categories: CategoryData[]
+  last_updated?: string
+}
+
 // Reactive data
 const loading = ref(true)
 const error = ref<string | null>(null)
 const maxSummaries = ref(3) // 🎯 Control how many summaries to show per category
-const dailyFeedData = ref<{
-  categories: Array<{
-    category: string
-    display_name: string
-    word_cloud_url?: string
-    summaries: string[]
-  }>
-  last_updated?: string
-}>({
+const dailyFeedData = ref<DailyFeedData>({
   categories: []
 })
 
 // Track expanded summaries: { categoryId: { summaryIndex: boolean } }
 const expandedSummaries = ref<Record<string, Record<number, boolean>>>({})
+
+// Get page title with date and total papers
+const getPageTitle = (): string => {
+  if (dailyFeedData.value.date && dailyFeedData.value.total_papers !== undefined) {
+    return `${dailyFeedData.value.date} Daily Feed (${dailyFeedData.value.total_papers} papers)`
+  }
+  return 'Daily Feed'
+}
+
+// Get category title with paper count
+const getCategoryTitle = (category: CategoryData): string => {
+  if (category.paper_count !== undefined) {
+    return `${category.display_name} (${category.paper_count} papers)`
+  }
+  return category.display_name
+}
+
+// Get summary title with paper count
+const getSummaryTitle = (summary: SummaryData | string): string => {
+  if (typeof summary === 'string') {
+    // Legacy format - extract title from markdown
+    return extractSummaryTitle(summary)
+  }
+  
+  // New format with metadata
+  if (summary.paper_count !== undefined) {
+    return `${summary.title} (${summary.paper_count} papers)`
+  }
+  return summary.title
+}
+
+// Get summary content (handles both old and new formats)
+const getSummaryContent = (summary: SummaryData | string): string => {
+  if (typeof summary === 'string') {
+    return summary
+  }
+  return summary.content
+}
 
 // Load daily feed data from static JSON file
 const loadDailyFeed = async () => {
@@ -217,7 +260,7 @@ const formatDate = (dateString: string): string => {
   })
 }
 
-// Extract title from markdown content
+// Extract title from markdown content (for backward compatibility)
 const extractSummaryTitle = (markdownContent: string): string => {
   if (!markdownContent) return 'Summary'
   
@@ -356,14 +399,18 @@ onMounted(() => {
   background-color: #2c3e9e;
 }
 
-.categories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
-  gap: 2rem;
+.daily-feed-content {
   margin-bottom: 2rem;
 }
 
-.category-card {
+.category-section {
+  margin-bottom: 3rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.category-content {
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
@@ -371,7 +418,7 @@ onMounted(() => {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.category-card:hover {
+.category-content:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
@@ -386,25 +433,26 @@ onMounted(() => {
   padding-bottom: 0.5rem;
 }
 
-.word-cloud-section {
+.wordcloud-section {
   margin-bottom: 1.5rem;
 }
 
-.word-cloud-container {
+.wordcloud-container {
   text-align: center;
   margin-bottom: 1rem;
 }
 
-.word-cloud-image {
+.wordcloud-image {
   max-width: 100%;
   height: auto;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.no-word-cloud {
+.no-wordcloud {
   text-align: center;
   padding: 2rem 0;
+  color: #6c757d;
 }
 
 .placeholder-cloud {
@@ -619,17 +667,21 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .categories-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  .category-section {
+    margin-bottom: 2rem;
   }
   
   .daily-feed-page h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
   
-  .category-card {
+  .category-content {
     padding: 1rem;
+  }
+  
+  .display-controls {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }
 </style> 
