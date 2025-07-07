@@ -19,8 +19,13 @@ async def get_papers(
     """
     Get recent papers from database
     """
-    papers_1 = await db_service.get_recent_papers(limit=10, keyword=keyword, offset=offset)
-    paper_ids_2 = await vector_search_service.vector_search(keyword, 10)
+    if keyword:
+        papers_1 = await db_service.get_recent_papers(limit=10, keyword=keyword, offset=offset)
+        paper_ids_2 = await vector_search_service.vector_search(keyword, 10)
+    else:
+        print("No keyword")
+        papers_1 = await db_service.get_recent_papers(limit=30, keyword=keyword, offset=offset)
+        paper_ids_2 = None
     
     # Convert paper_ids to Paper objects
     papers_2 = []
