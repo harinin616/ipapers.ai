@@ -83,8 +83,8 @@ def main():
     parser.add_argument('--date', type=str, 
                        default=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
                        help='Date to process in YYYY-MM-DD format (default: yesterday)')
-    parser.add_argument('--top-n', type=int, default=3,
-                       help='Number of top phrases to process per discipline (default: 3)')
+    parser.add_argument('--top-n', type=int, default=5,
+                       help='Number of top phrases to process per discipline (default: 5)')
     parser.add_argument('--max-terms', type=int, default=80,
                        help='Maximum terms per word cloud (default: 80)')
     parser.add_argument('--min-papers', type=int, default=1,

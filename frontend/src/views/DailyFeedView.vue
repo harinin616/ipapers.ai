@@ -26,7 +26,7 @@
     </div>
 
     <div v-else class="daily-feed-content">
-      <div v-for="category in dailyFeedData.categories" :key="category.category" class="category-section">
+      <div v-for="category in getAllCategories()" :key="category.category" class="category-section">
         <div class="category-content">
           <!-- Word Cloud Section -->
           <div class="wordcloud-section">
@@ -77,15 +77,13 @@
               </div>
             </div>
             <div v-else class="no-summaries">
-              <p>There is no new paper for today. Check back later for the latest trends!</p>
+              <p>There is no new paper for this category today.</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="dailyFeedData.last_updated" class="last-updated">
-        <p>Last updated: {{ formatDate(dailyFeedData.last_updated) }}</p>
-      </div>
+
     </div>
   </div>
 </template>
@@ -130,7 +128,8 @@ const expandedSummaries = ref<Record<string, Record<number, boolean>>>({})
 // Get page title with date and total papers
 const getPageTitle = (): string => {
   if (dailyFeedData.value.date && dailyFeedData.value.total_papers !== undefined) {
-    return `${dailyFeedData.value.date} Daily Feed (${dailyFeedData.value.total_papers} papers)`
+    const paperText = dailyFeedData.value.total_papers === 1 ? 'paper' : 'papers'
+    return `${dailyFeedData.value.date} Daily Feed (${dailyFeedData.value.total_papers} ${paperText})`
   }
   return 'Daily Feed'
 }
@@ -138,7 +137,8 @@ const getPageTitle = (): string => {
 // Get category title with paper count
 const getCategoryTitle = (category: CategoryData): string => {
   if (category.paper_count !== undefined) {
-    return `${category.display_name} (${category.paper_count} papers)`
+    const paperText = category.paper_count === 1 ? 'paper' : 'papers'
+    return `${category.display_name} (${category.paper_count} ${paperText})`
   }
   return category.display_name
 }
@@ -152,7 +152,8 @@ const getSummaryTitle = (summary: SummaryData | string): string => {
   
   // New format with metadata
   if (summary.paper_count !== undefined) {
-    return `${summary.title} (${summary.paper_count} papers)`
+    const paperText = summary.paper_count === 1 ? 'paper' : 'papers'
+    return `${summary.title} (${summary.paper_count} ${paperText})`
   }
   return summary.title
 }
@@ -163,6 +164,50 @@ const getSummaryContent = (summary: SummaryData | string): string => {
     return summary
   }
   return summary.content
+}
+
+// Define expected categories
+const expectedCategories = [
+  { key: 'computer_science_cs', name: 'Computer Science' },
+  { key: 'economics_econ', name: 'Economics' },
+  { key: 'electrical_engineering_&_systems_science_eess', name: 'Electrical Engineering & Systems Science' },
+  { key: 'mathematics_math', name: 'Mathematics' },
+  { key: 'physics', name: 'Physics' },
+  { key: 'quantitative_biology_q-bio', name: 'Quantitative Biology' },
+  { key: 'quantitative_finance_q-fin', name: 'Quantitative Finance' },
+  { key: 'statistics_stat', name: 'Statistics' }
+]
+
+// Get all categories (actual + missing) with placeholder data for missing ones
+const getAllCategories = (): CategoryData[] => {
+  const actualCategories = dailyFeedData.value.categories || []
+  const actualCategoryKeys = new Set(actualCategories.map(cat => cat.category))
+  
+  const allCategories: CategoryData[] = []
+  
+  // Add all expected categories
+  for (const expectedCat of expectedCategories) {
+    const actualCategory = actualCategories.find(cat => cat.category === expectedCat.key)
+    
+    if (actualCategory) {
+      // Use actual category data but override display name to remove abbreviations
+      allCategories.push({
+        ...actualCategory,
+        display_name: expectedCat.name
+      })
+    } else {
+      // Create placeholder for missing category
+      allCategories.push({
+        category: expectedCat.key,
+        display_name: expectedCat.name,
+        paper_count: 0,
+        word_cloud_url: undefined,
+        summaries: []
+      })
+    }
+  }
+  
+  return allCategories
 }
 
 // Load daily feed data from static JSON file
@@ -400,14 +445,18 @@ onMounted(() => {
 }
 
 .daily-feed-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  gap: 2rem;
   margin-bottom: 2rem;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .category-section {
-  margin-bottom: 3rem;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .category-content {
@@ -656,19 +705,12 @@ onMounted(() => {
   border: 2px dashed #ddd;
 }
 
-.last-updated {
-  text-align: center;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-  color: #666;
-  font-size: 0.9rem;
-}
+
 
 @media (max-width: 768px) {
-  .category-section {
-    margin-bottom: 2rem;
+  .daily-feed-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
   
   .daily-feed-page h1 {
