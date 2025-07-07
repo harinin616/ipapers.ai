@@ -22,6 +22,20 @@ BATCH_DELAY = 3
 MAX_RESULTS_PER_BATCH = 10000
 
 
+def save_paper_ids(paper_ids, data_dir):
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        file_path = os.path.join(data_dir, 'latest_paper_ids.txt')
+        with open(file_path, 'w', encoding='utf-8') as f:
+            for paper_id in paper_ids:
+                f.write(f"{paper_id}\n")
+        
+        logger.info(f"Saved {len(paper_ids)} total paper IDs to {file_path}")
+        
+    except Exception as e:
+        logger.error(f"Failed to save paper IDs to file: {e}", exc_info=True)
+
+
 async def fetch_papers_batch(start_date, end_date):
     logger.info(f"Fetching papers from {start_date} to {end_date}...")
     try:
@@ -43,6 +57,10 @@ async def fetch_papers(days=None):
     today = date.today()
     earliest_date = today - timedelta(days=days)
     
+    # Setup data directory path (relative to script location)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(script_dir, '..', 'data')
+    
     logger.info(f"Starting paper fetch task")
     logger.info(f"Fetching papers from {earliest_date} to {today} ({days} days total)")
     logger.info(f"Using {BATCH_DAYS}-day batches with max {MAX_RESULTS_PER_BATCH} results per batch")
@@ -50,6 +68,7 @@ async def fetch_papers(days=None):
     total_fetched = 0
     total_added_db = 0
     batch_num = 1
+    all_fetched_paper_ids = []  # Accumulate all paper IDs from all batches
     
     try:
         current_end_date = today
@@ -64,7 +83,10 @@ async def fetch_papers(days=None):
             
             if not batch_papers:
                 logger.info(f"Batch did not return any papers, continuing to next batch.")
-
+            else:
+                batch_paper_ids = [paper.paper_id for paper in batch_papers]
+                all_fetched_paper_ids.extend(batch_paper_ids)
+                logger.info(f"Batch {batch_num}: Accumulated {len(batch_paper_ids)} paper IDs (total so far: {len(all_fetched_paper_ids)})")
                 
             total_fetched += len(batch_papers)
                 
@@ -86,8 +108,18 @@ async def fetch_papers(days=None):
             
         logger.info(f"Total fetched: {total_fetched} papers, added to DB: {total_added_db} new papers.")
         
+        # Save all accumulated paper IDs at the end of program execution
+        if all_fetched_paper_ids:
+            save_paper_ids(all_fetched_paper_ids, data_dir)
+        else:
+            logger.info("No paper IDs to save - no papers were fetched.")
+        
     except Exception as e:
         logger.error(f"Error occurred during fetch_papers task: {e}", exc_info=True)
+        # Save accumulated paper IDs even if there was an error
+        if all_fetched_paper_ids:
+            logger.info("Saving accumulated paper IDs despite error...")
+            save_paper_ids(all_fetched_paper_ids, data_dir)
 
 
 async def main():
@@ -96,7 +128,7 @@ async def main():
     parser = argparse.ArgumentParser(description='Fetch papers from arXiv')
     parser.add_argument('--days', type=int, default=None)
     args = parser.parse_args()
-    
+    logger.info(f"args: {args.days}")
     logger.info("=" * 80)
     logger.info("Starting paper fetch script")
     logger.info(f"Configuration: Batch days={BATCH_DAYS}, Default days={DEFAULT_DAYS}, Batch delay={BATCH_DELAY} seconds")
