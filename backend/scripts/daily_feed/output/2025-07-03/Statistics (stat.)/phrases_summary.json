@@ -1,0 +1,37 @@
+{
+  "category": "Statistics (stat.)",
+  "date": "2025-07-03",
+  "total_papers": 15,
+  "phrases_summary": [
+    {
+      "rank": 1,
+      "phrase": "valuable insights",
+      "frequency": 2,
+      "paper_count": 2
+    },
+    {
+      "rank": 2,
+      "phrase": "ridge regression",
+      "frequency": 2,
+      "paper_count": 2
+    },
+    {
+      "rank": 3,
+      "phrase": "model",
+      "frequency": 22,
+      "paper_count": 8
+    },
+    {
+      "rank": 4,
+      "phrase": "effect",
+      "frequency": 15,
+      "paper_count": 6
+    },
+    {
+      "rank": 5,
+      "phrase": "regression",
+      "frequency": 14,
+      "paper_count": 5
+    }
+  ]
+}

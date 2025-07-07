@@ -59,6 +59,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/daily-feed',
+    name: 'daily-feed',
+    component: () => import('@/views/DailyFeedView.vue'),
+    meta: {
+      title: 'Daily Feed - iPaper',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/contact',
     name: 'Contact',
     component: () => import('@/views/ContactView.vue'),

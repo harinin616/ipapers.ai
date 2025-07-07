@@ -1,0 +1,37 @@
+{
+  "category": "Computer Science (cs.)",
+  "date": "2025-07-03",
+  "total_papers": 385,
+  "phrases_summary": [
+    {
+      "rank": 1,
+      "phrase": "language model",
+      "frequency": 66,
+      "paper_count": 66
+    },
+    {
+      "rank": 2,
+      "phrase": "large language models",
+      "frequency": 42,
+      "paper_count": 42
+    },
+    {
+      "rank": 3,
+      "phrase": "language models",
+      "frequency": 35,
+      "paper_count": 35
+    },
+    {
+      "rank": 4,
+      "phrase": "large language",
+      "frequency": 25,
+      "paper_count": 25
+    },
+    {
+      "rank": 5,
+      "phrase": "diffusion model",
+      "frequency": 24,
+      "paper_count": 24
+    }
+  ]
+}
