@@ -248,6 +248,27 @@ class ChatService:
     async def generate_response(self, user_id: str, session_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
         self.add_message(user_id, session_id, "user", query)
         chat_data = self.active_chats[user_id]
+
+        chat_file_names = []
+        if chat_data.get("files"):
+            for f in chat_data["files"]:
+                if f.get("selected"):
+                    chat_file_names.append(f.get("filename", "Unknown file"))
+
+        if not chat_file_names:
+            # 直接返回预设答复
+            preset = "Please attach at least one file before I can answer questions about it. \n[Go to Home]l(https://ipapers.ai/) to add papers to your file list, then select them in the file list and try again."
+            # 将预设答复写入历史
+            self.add_message(user_id, session_id, "assistant", preset)
+            await db_service.add_message(
+                session_id,
+                preset,
+                "assistant",
+                datetime.now()
+            )
+            # yield 文本，并标记为结束
+            yield preset, True
+            return
         
         try:
             relevant_chunks = []

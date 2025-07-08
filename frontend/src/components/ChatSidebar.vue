@@ -140,7 +140,7 @@ const emit = defineEmits([
 ])
 
 // Collapsed state
-const isCollapsed = ref(false)
+const isCollapsed = ref(true)
 
 // Edit state
 const editingSessionId = ref(null)
