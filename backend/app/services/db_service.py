@@ -449,6 +449,38 @@ class DBService:
         
         return None
 
+    async def get_subscribed_users(self) -> List[dict]:
+        """
+        Get all users who are subscribed to receive emails
+        Returns list of user dictionaries with user_id, name, and email
+        """
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBUser).where(DBUser.subscribed == True)
+                )
+                users = result.scalars().all()
+                
+                user_list = []
+                for user in users:
+                    user_list.append({
+                        "user_id": user.user_id,
+                        "name": user.name,
+                        "email": user.email
+                    })
+                
+                logger.info(f"Found {len(user_list)} subscribed users")
+                return user_list
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting subscribed users: {str(e)}")
+                return []
+            except Exception as e:
+                logger.error(f"Unexpected error when getting subscribed users: {str(e)}", exc_info=True)
+                return []
+        
+        return []
+
     async def add_session(self, session_id: str, user_id: int, session_time: datetime, title: str = "untitled") -> bool:
         """
         Create a new chat session for a user

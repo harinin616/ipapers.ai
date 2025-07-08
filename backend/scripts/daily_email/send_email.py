@@ -140,14 +140,28 @@ def send_email_with_attachments(sender_email, sender_password, recipient_email, 
         print(f"邮件发送失败：{e}")
         return False
 
-def send_daily_summary():
+def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=False):
     """
     发送每日论文摘要邮件，包含论文数量和嵌入式词云图
+    
+    参数：
+    recipient_email: 收件人邮箱，如果为None则使用默认邮箱
+    recipient_name: 收件人姓名，用于个性化邮件内容
+    test_mode: 如果为True，则只打印信息而不实际发送邮件
+    
+    返回：
+    dict: 包含发送状态信息的字典
     """
     # Configuration
-    SENDER_EMAIL = "ipapers.ai@gmail.com"
-    SENDER_PASSWORD = "dqutyjsibzzzgups"
-    RECIPIENT_EMAIL = "orrinnj@gmail.com"
+    SENDER_EMAIL = os.getenv("SENDER_EMAIL", "ipapers.ai@gmail.com")
+    SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "dqutyjsibzzzgups")
+    RECIPIENT_EMAIL = recipient_email or "orrinnj@gmail.com"
+    
+    if test_mode:
+        print(f"TEST MODE: Would send daily summary to {RECIPIENT_EMAIL}")
+        if recipient_name:
+            print(f"  Recipient name: {recipient_name}")
+        return {"success": True, "message": "Test mode - no email sent", "test_mode": True}
     
     # Read daily data
     daily_feed_path = "../../../frontend/public/daily_feed/daily_feed.json"
@@ -156,11 +170,13 @@ def send_daily_summary():
         with open(daily_feed_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except FileNotFoundError:
-        print(f"Error: Could not find daily feed file at {daily_feed_path}")
-        return False
+        error_msg = f"Could not find daily feed file at {daily_feed_path}"
+        print(f"Error: {error_msg}")
+        return {"success": False, "message": error_msg, "error_type": "file_not_found"}
     except json.JSONDecodeError:
-        print("Error: Could not parse daily feed JSON file")
-        return False
+        error_msg = "Could not parse daily feed JSON file"
+        print(f"Error: {error_msg}")
+        return {"success": False, "message": error_msg, "error_type": "json_decode_error"}
     
     # Extract information
     date = data.get('date', 'Unknown')
@@ -375,7 +391,24 @@ def send_daily_summary():
             image_data_list
         )
         
-        return success
+        if success:
+            return {
+                "success": True, 
+                "message": f"Daily summary sent successfully to {RECIPIENT_EMAIL}",
+                "recipient_email": RECIPIENT_EMAIL,
+                "recipient_name": recipient_name,
+                "date": date,
+                "total_papers": total_papers,
+                "categories_count": len(categories),
+                "images_embedded": len(image_data_list)
+            }
+        else:
+            return {
+                "success": False, 
+                "message": f"Failed to send daily summary to {RECIPIENT_EMAIL}",
+                "recipient_email": RECIPIENT_EMAIL,
+                "error_type": "email_send_failed"
+            }
         
     finally:
         # Clean up temporary files
@@ -404,9 +437,11 @@ def send_email(sender_email, sender_password, recipient_email, subject, body, at
 # Example usage
 if __name__ == "__main__":
     # Send daily summary
-    success = send_daily_summary()
+    result = send_daily_summary()
     
-    if success:
+    if result["success"]:
         print("Daily summary sent successfully!")
+        print(f"Details: {result['message']}")
     else:
         print("Failed to send daily summary.")
+        print(f"Error: {result['message']}")
