@@ -39,7 +39,7 @@
               <!-- Add from Filelist Button -->
               <div class="upload-button add-from-list" @click="openFileSelectionDialog">
                 <div class="upload-icon">📁</div>
-                <div class="upload-text">Add from Filelist</div>
+                <div class="upload-text">Add from File List</div>
               </div>
             </div>
           
@@ -458,15 +458,15 @@
     <!-- File Selection Dialog -->
     <div v-if="fileSelectionDialog" class="dialog-overlay" @click="fileSelectionDialog = false">
       <div class="dialog-content file-selection-dialog" @click.stop>
-        <h3>Add Files from Filelist</h3>
+        <h3>Add from File List</h3>
         <div class="dialog-field">
           <div v-if="loadingGlobalFiles" class="loading-files">
             <div class="spinner"></div>
             <p>Loading files...</p>
           </div>
           <div v-else-if="globalFileList.length === 0" class="no-files">
-            <p>No files available in your global filelist.</p>
-            <p class="hint">Upload files in the Chat section first to add them here.</p>
+            <p>No files available in your File List.</p>
+            <!-- <p class="hint">Upload files in the Chat section first to add them here.</p> -->
           </div>
           <div v-else class="file-list">
             <div class="file-list-header">
