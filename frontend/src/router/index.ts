@@ -14,6 +14,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: "/chat",
+    name: "chat",
+    component: () => import("../views/ChatView.vue"),
+    meta: {
+      title: 'Chat - iPaper',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/search',
     name: 'search',
     component: () => import('../views/SearchView.vue'),
