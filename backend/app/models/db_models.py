@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Optional
-from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignKey, ARRAY, Text, Date,BigInteger
+from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignKey, ARRAY, Text, Date,BigInteger, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
@@ -92,7 +92,7 @@ class DBUser(Base):
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
-    
+    subscribed = Column(Boolean, nullable=False, default=True)
     files   = relationship(
       'DBUserFile',
       back_populates='user',
