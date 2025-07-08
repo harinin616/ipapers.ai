@@ -8,5 +8,4 @@ backend/logs/
 backend/arxiv_search_page.html
 backend/scripts/daily_feed/data/
 backend/scripts/daily_feed/output/
-frontend/public/
 backend/arxiv_search_page.html

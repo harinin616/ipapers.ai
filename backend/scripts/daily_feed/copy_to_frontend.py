@@ -125,6 +125,9 @@ def read_summary_files_with_metadata(summaries_dir: Path, phrases_summary_data):
             except Exception as e:
                 print(f"  ⚠️  Error reading summary file {md_file}: {e}")
     
+    # Sort summaries by paper count in descending order (largest to smallest)
+    summaries.sort(key=lambda x: x['paper_count'] or 0, reverse=True)
+    
     return summaries
 
 def copy_images_to_frontend(source_dir: Path, target_dir: Path, category_name: str):
@@ -203,7 +206,12 @@ def generate_daily_feed_json(date: str):
         }
         
         categories_data.append(category_data)
-        print(f"  ✅ Added {len(summaries)} summaries, papers: {category_paper_count}, image: {'Yes' if word_cloud_url else 'No'}")
+        print(f"  ✅ Added {len(summaries)} summaries (sorted by paper count), papers: {category_paper_count}, image: {'Yes' if word_cloud_url else 'No'}")
+    
+    # Sort categories by paper count in descending order (largest to smallest)
+    categories_data.sort(key=lambda x: x['paper_count'] or 0, reverse=True)
+    print(f"📊 Categories sorted by paper count (largest to smallest)")
+    print(f"📊 Summaries within each category also sorted by paper count (largest to smallest)")
     
     # Get total papers from pipeline summary
     total_papers = None

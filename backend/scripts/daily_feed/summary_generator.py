@@ -137,21 +137,39 @@ Write an exciting news article that captures the momentum and significance of th
             return f"# Latest Breakthroughs in {cluster_data.get('phrase', 'Unknown').title()}\n\nError generating summary: {str(e)}"
     
     def convert_citations_to_links(self, summary: str, papers: List[Dict[str, Any]]) -> str:
-        """Convert [1], [2] citations to hyperlinks."""
+        """Convert [1], [2] and [1, 2] citations to hyperlinks."""
         def replace_citation(match):
-            citation_num = int(match.group(1))
-            if 1 <= citation_num <= len(papers):
-                paper = papers[citation_num - 1]
-                arxiv_id = paper.get('arxiv_id', '')
-                title = paper.get('title', 'Unknown Title')
-                if arxiv_id:
-                    return f"[{title}](https://arxiv.org/abs/{arxiv_id})"
-                else:
-                    return f"[{title}]"
-            return match.group(0)  # Return original if invalid citation
+            citation_text = match.group(1)
+            # Split by comma and strip whitespace from each number
+            citation_nums = [num.strip() for num in citation_text.split(',')]
+            
+            links = []
+            for num_str in citation_nums:
+                try:
+                    citation_num = int(num_str)
+                    if 1 <= citation_num <= len(papers):
+                        paper = papers[citation_num - 1]
+                        arxiv_id = paper.get('arxiv_id', '')
+                        title = paper.get('title', 'Unknown Title')
+                        if arxiv_id:
+                            links.append(f"[{title}](https://arxiv.org/abs/{arxiv_id})")
+                        else:
+                            links.append(f"[{title}]")
+                    else:
+                        # Invalid citation number, keep original
+                        links.append(f"[{num_str}]")
+                except ValueError:
+                    # Invalid number format, keep original
+                    links.append(f"[{num_str}]")
+            
+            if len(links) == 1:
+                return f"[{links[0]}]"
+            else:
+                # Multiple citations: wrap in square brackets and join with commas
+                return f"[{', '.join(links)}]"
         
-        # Pattern to match [1], [2], [3], etc.
-        citation_pattern = r'\[(\d+)\]'
+        # Pattern to match [1], [2], [1, 2], [2, 3, 4], etc.
+        citation_pattern = r'\[(\d+(?:,\s*\d+)*)\]'
         return re.sub(citation_pattern, replace_citation, summary)
     
     def process_discipline(self, discipline_path: Path, discipline_name: str, date: str, top_n: int) -> Dict[str, Any]:
