@@ -21,14 +21,14 @@
           </svg>
         </div>
         
-        <h1>Be the first to know - subscribe to receive iPapers daily feed emails.</h1>
+        <h1>Subscribe to receive Daily Feed emails.</h1>
         
         <div class="description">
           <p>Emails from iPapers is the best way to find out about the latest research trends, curated papers, and other information that may be of interest to you.</p>
           
-          <p>Enter your email address to receive email and other commercial electronic messages from iPapers. You can unsubscribe at any time.</p>
+          <p>Enter your email address to receive daily feed email from iPapers. You can unsubscribe at any time.</p>
           
-          <p>Please refer to <router-link to="/privacy-policy" class="link">Your Privacy Rights</router-link> or <router-link to="/contact" class="link">contact us</router-link> for more details.</p>
+          <p>Please refer to <router-link to="/privacy-policy" class="link">Privacy Policy</router-link> or <router-link to="/contact" class="link">contact us</router-link> for more details.</p>
         </div>
       </div>
 
