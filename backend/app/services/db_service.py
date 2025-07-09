@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBUserTopic
 from app.db.database import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -923,6 +923,92 @@ class DBService:
                 logger.error(f"Unexpected error when updating subscription for user {user_id}: {str(e)}", exc_info=True)
                 return False
         
+        return False
+    
+    async def add_topic_to_user(self, user_id: int, topic: str) -> bool:
+        """
+        给用户添加一个 topic；若已存在则直接返回 True。
+        """
+        if not user_id or not topic:
+            logger.warning("invalid user_id or topic")
+            return False
+
+        async for db in get_async_db():
+            try:
+                # 确认用户存在
+                user_exists = await db.scalar(select(DBUser.user_id).where(DBUser.user_id == user_id))
+                if not user_exists:
+                    logger.info(f"user {user_id} not found")
+                    return False
+
+                # 若已存在该 (user_id, topic) 组合，直接返回 True
+                exists_stmt = select(DBUserTopic).where(
+                    DBUserTopic.user_id == user_id,
+                    DBUserTopic.topic   == topic
+                )
+                if await db.scalar(exists_stmt):
+                    logger.info(f"topic '{topic}' already linked to user {user_id}")
+                    return True
+
+                # 插入
+                db.add(DBUserTopic(user_id=user_id, topic=topic))
+                await db.commit()
+                logger.info(f"added topic '{topic}' to user {user_id}")
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error adding topic '{topic}' to user {user_id}: {e}")
+                return False
+
+        return False
+    async def get_topics_by_user(self, user_id: int) -> list[str]:
+        """
+        返回用户所有 topic 字符串列表（升序）。
+        """
+        if not user_id:
+            return []
+
+        async for db in get_async_db():
+            rows = await db.execute(
+                select(DBUserTopic.topic)
+                .where(DBUserTopic.user_id == user_id)
+                .order_by(DBUserTopic.topic.asc())
+            )
+            return rows.scalars().all()
+
+        return []
+
+    async def remove_topic_from_user(self, user_id: int, topic: str) -> bool:
+        """
+        删除用户的指定 topic；若不存在返回 False。
+        """
+        if not user_id or not topic:
+            logger.warning("invalid user_id or topic")
+            return False
+
+        async for db in get_async_db():
+            try:
+                stmt = (
+                    delete(DBUserTopic)
+                    .where(DBUserTopic.user_id == user_id,
+                           DBUserTopic.topic   == topic)
+                )
+                result = await db.execute(stmt)
+                await db.commit()
+
+                if result.rowcount and result.rowcount > 0:
+                    logger.info(f"removed topic '{topic}' from user {user_id}")
+                    return True
+                else:
+                    logger.info(f"topic '{topic}' not found for user {user_id}")
+                    return False
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error deleting topic '{topic}' for user {user_id}: {e}")
+                return False
+
         return False
 
 # Create a global instance

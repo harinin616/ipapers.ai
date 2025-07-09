@@ -99,10 +99,24 @@ class DBUser(Base):
       cascade='all, delete-orphan',
       order_by='DBUserFile.added_at'
     )
+    topics = relationship(
+        'DBUserTopic',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        passive_deletes=True,
+        order_by='DBUserTopic.topic'
+    )
     sessions = relationship("DBSession", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User {self.user_id}: {self.name}>"
+
+class DBUserTopic(Base):
+    __tablename__ = "user_topics"
+    user_id = Column(Integer, ForeignKey('users.user_id', ondelete='CASCADE'), primary_key=True)
+    topic   = Column(String,  primary_key=True, index=True)
+
+    user = relationship('DBUser', back_populates='topics')
 
 class DBSession(Base):
     """Chat session database model"""
@@ -152,3 +166,13 @@ class DBFeedback(Base):
     email      = Column(String(100), nullable=True)           # 100 字以内
     user_id    = Column(Integer, ForeignKey('users.user_id', ondelete='SET NULL'), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class DBEmailList(Base):
+    """A standalone table that stores unique email addresses only."""
+    __tablename__ = "email_list"
+
+    email = Column(String(320), primary_key=True, unique=True, index=True)  # RFC 5321 max length
+
+    def __repr__(self):
+        return f"<Email {self.email}>"

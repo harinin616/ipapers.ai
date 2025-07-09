@@ -51,25 +51,25 @@ export default defineComponent({
     const STORAGE_KEY = 'paper-sections';
     
     // Load sections from localStorage or use default
-    const loadSections = () => {
+    const sections = ref([])  
+    const loadSections = async () => {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            // Ensure each section has the required properties and is reactive
-            return parsed.map(section => reactive({
-              id: section.id || Date.now(),
-              title: section.title || '',
+        const topics = await api.getUserTopics()      // 👈 拉取当前用户的 topic 列表
+        if (Array.isArray(topics) && topics.length) {
+          return topics.map((t, i) =>
+            reactive({
+              id:    Date.now() + i,                  // 简单生成唯一 id
+              title: t,
               papers: [],
               isLoading: false
-            }));
-          }
+            })
+          )
         }
-      } catch (e) {
-        console.error('Failed to load sections from localStorage:', e);
+      } catch (err) {
+        console.error('Failed to load topics from server:', err)
       }
-      return [reactive({ id: 1, title: 'Large Language Models', papers: [], isLoading: false })];
+      // Fallback：服务器无数据时给一个默认卡片
+      return [reactive({ id: 1, title: 'Large Language Models', papers: [], isLoading: false })]
     };
     
     // Save sections to localStorage (only save id and title, not papers)
@@ -85,7 +85,7 @@ export default defineComponent({
       }
     };
     
-    const sections = ref(loadSections());
+     
     
     // Watch sections for changes and save automatically
     watch(sections, (newSections) => {
@@ -130,32 +130,29 @@ export default defineComponent({
         console.error('Error loading paper count:', error);
       }
     };
+    
+    async function addSection () {
+      const title = window.prompt('Enter list keyword:')?.trim()
+      if (title == null) return
+      await api.addUserTopic(title)           // 3️⃣ 同步到后端
 
-    const removeSection = (index) => {
-      sections.value.splice(index, 1);
-    };
+      const sec = reactive({ id:Date.now(), title, papers:[], isLoading:true })
+      sections.value.push(sec)
+      await loadSectionPapers(sec)
+    }
 
-    const addSection = async () => {
-      const input = window.prompt('Enter list keyword:');
-      if (input === null) return; // user cancelled
-      const title = input.trim();
-      
-      // Allow empty title - it will show recent papers without keyword filter
-      const newSection = reactive({ 
-        id: Date.now(), 
-        title, 
-        papers: [], 
-        isLoading: true  // Start with loading state
-      });
-      
-      sections.value.push(newSection);
-      
-      // Load papers for the new section
-      await loadSectionPapers(newSection);
-    };
+    async function removeSection (idx) {
+      const removed = sections.value.splice(idx,1)[0]
+      if (removed) await api.deleteUserTopic(removed.title)   // 3️⃣
+    }
 
-    onMounted(() => {
-      loadPapersForAllSections();
+    onMounted(async () => {
+      sections.value = await loadSections()
+
+  // 2️⃣  watch 放这里，确保写入的是数组
+      watch(sections, newVal => saveSections(newVal), { deep:true })
+
+      await loadPapersForAllSections()
     });
     
     // return all refs and methods
