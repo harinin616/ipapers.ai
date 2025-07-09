@@ -52,7 +52,7 @@ async def send_to_all_subscribers(test_mode=False):
         # Send emails to all subscribers
         successful_sends = 0
         failed_sends = 0
-        
+        print(f"\nSending daily summary emails to {subscription_emails} subscribers...\n")
         for email in subscription_emails:
             logger.info(f"Sending daily summary to {email}")
             

@@ -1058,7 +1058,7 @@ class DBService:
         async for db in get_async_db():
             try:
                 result = await db.execute(
-                    select(DBEmailList.email).order_by(DBEmailList.created_at)
+                    select(DBEmailList.email)
                 )
                 emails = result.scalars().all()
                 
