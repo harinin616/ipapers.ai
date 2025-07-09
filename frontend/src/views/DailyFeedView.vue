@@ -1,16 +1,15 @@
 <template>
   <div class="daily-feed-page">
-    <!-- Subscription Management Button - Upper Right Corner -->
-    <router-link to="/subscription" class="subscription-manage-btn">
-      <svg viewBox="0 0 24 24" fill="none" class="manage-icon">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2"/>
-        <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2"/>
-      </svg>
-      <span>Manage Subscription</span>
-    </router-link>
-    
     <div class="header-section">
       <h1>{{ getPageTitle() }}</h1>
+      <!-- Subscription Management Button - Under Title -->
+      <router-link to="/subscription" class="subscription-manage-btn">
+        <svg viewBox="0 0 24 24" fill="none" class="manage-icon">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2"/>
+          <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span>Manage Subscription</span>
+      </router-link>
     </div>
     <p class="subtitle">Explore trending papers across different disciplines</p>
     
@@ -361,14 +360,10 @@ onMounted(() => {
   max-width: 1400px;
   margin: 2rem auto;
   padding: 0 1.5rem;
-  position: relative;
 }
 
 .subscription-manage-btn {
-  position: absolute;
-  top: -1rem;
-  right: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
@@ -380,7 +375,7 @@ onMounted(() => {
   font-weight: 600;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(63, 81, 181, 0.2);
-  z-index: 10;
+  margin-top: 1rem;
 }
 
 .subscription-manage-btn:hover {
@@ -780,22 +775,14 @@ onMounted(() => {
   }
   
   .subscription-manage-btn {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
     padding: 0.6rem 1rem;
     font-size: 0.8rem;
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
-  }
-  
-  .subscription-manage-btn span {
-    display: none;
   }
   
   .manage-icon {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
   }
 }
 </style> 
