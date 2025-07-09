@@ -3,7 +3,7 @@
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models.db_models import DBUser
+from app.models.db_models import DBEmailList
 
 # 1) 用字符串保存你的数据库连接 URL
 DATABASE_URL = 'postgresql://postgres:1@localhost:5432/dlmonitor'
@@ -15,9 +15,9 @@ def main():
     session = Session()
 
     # 3) 查询并打印所有用户
-    users = session.query(DBUser).all()
+    users = session.query(DBEmailList).all()
     for u in users:
-        print(f"user_id={u.user_id} | name={u.name!r} | email={u.email!r}")
+        print(f"email={u.email!r}")
 
 if __name__ == "__main__":
     main()

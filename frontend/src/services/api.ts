@@ -59,6 +59,12 @@ export interface IApiService {
   clear_target_paper(session_id: string): Promise<any>;
 
   submitFeedback(payload: { question: string; email?: string }): Promise<{ id: number; created_at: string }>;
+
+  getUserTopics(): Promise<string[]>;
+  /** 新增一个 topic */
+  addUserTopic(topic: string): Promise<void>;
+  /** 删除一个 topic */
+  deleteUserTopic(topic: string): Promise<boolean>;
 }
 /**
  * API Service implementation
@@ -576,7 +582,36 @@ class ApiService implements IApiService {
       throw error;
     }
   }
+ async getUserTopics(): Promise<string[]> {
+    try {
+      const resp = await this.api.get('/api/topics');
+      return resp.data?.topics ?? [];
+    } catch (err) {
+      console.error('Failed to get user topics:', err);
+      throw err;
+    }
+  }
 
+  /** POST /api/topics  body: { topic } */
+  async addUserTopic(topic: string): Promise<void> {
+    try {
+      await this.api.post('/api/topics', { topic });
+    } catch (err) {
+      console.error(`Failed to add topic "${topic}":`, err);
+      throw err;
+    }
+  }
+
+  /** DELETE /api/topics/{topic} → 后端返回 { ok: boolean } */
+  async deleteUserTopic(topic: string): Promise<boolean> {
+    try {
+      const resp = await this.api.delete(`/api/topics/${encodeURIComponent(topic)}`);
+      return resp.data?.ok ?? true;          // 默认返回 true 视为成功
+    } catch (err) {
+      console.error(`Failed to delete topic "${topic}":`, err);
+      return false;
+    }
+  }
 }
 
 // Export singleton instance
