@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList
 from app.db.database import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -850,80 +850,144 @@ class DBService:
 
         return False
 
-    async def get_user_subscription_status(self, user_id: int) -> Optional[bool]:
-        """
-        Get user's subscription status
-        Returns True if subscribed, False if not subscribed, None if user not found
-        """
-        if not user_id:
-            logger.warning("Attempted to get subscription status with empty user_id")
-            return None
-            
-        async for db in get_async_db():
-            try:
-                result = await db.execute(
-                    select(DBUser.subscribed).where(DBUser.user_id == user_id)
-                )
-                subscribed = result.scalar_one_or_none()
-                
-                if subscribed is None:
-                    logger.info(f"User with ID {user_id} not found")
-                    return None
-                
-                return subscribed
-                
-            except SQLAlchemyError as e:
-                logger.error(f"Database error when getting subscription status for user {user_id}: {str(e)}")
-                return None
-            except Exception as e:
-                logger.error(f"Unexpected error when getting subscription status for user {user_id}: {str(e)}", exc_info=True)
-                return None
-        
-        return None
 
-    async def update_user_subscription(self, user_id: int, subscribed: bool) -> bool:
+
+    # ============= EMAIL LIST MANAGEMENT =============
+    
+    async def add_email_to_list(self, email: str) -> bool:
         """
-        Update user's subscription status
-        Returns True if successful, False otherwise
+        Add email to the subscription list
+        Returns True if successful (either newly added or already exists), False otherwise
         """
-        if not user_id:
-            logger.warning("Attempted to update subscription with empty user_id")
+        if not email or not email.strip():
+            logger.warning("Attempted to add empty email to subscription list")
+            return False
+            
+        email = email.strip().lower()  # Normalize email
+        
+        # Basic email validation
+        if '@' not in email or '.' not in email.split('@')[-1]:
+            logger.warning(f"Invalid email format: {email}")
             return False
             
         async for db in get_async_db():
             try:
-                # Check if user exists
+                # Check if email already exists
                 result = await db.execute(
-                    select(DBUser).where(DBUser.user_id == user_id)
+                    select(DBEmailList).where(DBEmailList.email == email)
                 )
-                user = result.scalars().first()
+                existing_email = result.scalars().first()
                 
-                if not user:
-                    logger.warning(f"User with ID {user_id} not found")
-                    return False
+                if existing_email:
+                    logger.info(f"Email {email} already in subscription list")
+                    return True
                 
-                # Update subscription status
-                await db.execute(
-                    update(DBUser)
-                    .where(DBUser.user_id == user_id)
-                    .values(subscribed=subscribed)
-                )
+                # Add new email
+                new_email = DBEmailList(email=email)
+                db.add(new_email)
                 await db.commit()
                 
-                status_text = "subscribed" if subscribed else "unsubscribed"
-                logger.info(f"Successfully updated user {user_id} subscription status to {status_text}")
+                logger.info(f"Successfully added email {email} to subscription list")
                 return True
                 
             except SQLAlchemyError as e:
                 await db.rollback()
-                logger.error(f"Database error when updating subscription for user {user_id}: {str(e)}")
+                logger.error(f"Database error when adding email {email}: {str(e)}")
                 return False
             except Exception as e:
                 await db.rollback()
-                logger.error(f"Unexpected error when updating subscription for user {user_id}: {str(e)}", exc_info=True)
+                logger.error(f"Unexpected error when adding email {email}: {str(e)}", exc_info=True)
                 return False
         
         return False
+    
+    async def remove_email_from_list(self, email: str) -> bool:
+        """
+        Remove email from the subscription list
+        Returns True if successfully removed, False if not found or error
+        """
+        if not email or not email.strip():
+            logger.warning("Attempted to remove empty email from subscription list")
+            return False
+            
+        email = email.strip().lower()  # Normalize email
+        
+        async for db in get_async_db():
+            try:
+                # Execute DELETE
+                result = await db.execute(
+                    delete(DBEmailList).where(DBEmailList.email == email)
+                )
+                await db.commit()
+                
+                if result.rowcount and result.rowcount > 0:
+                    logger.info(f"Successfully removed email {email} from subscription list")
+                    return True
+                else:
+                    logger.info(f"Email {email} not found in subscription list")
+                    return False
+                    
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when removing email {email}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when removing email {email}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+    
+    async def check_email_in_list(self, email: str) -> bool:
+        """
+        Check if email exists in the subscription list
+        Returns True if email is subscribed, False otherwise
+        """
+        if not email or not email.strip():
+            return False
+            
+        email = email.strip().lower()  # Normalize email
+        
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBEmailList).where(DBEmailList.email == email)
+                )
+                email_record = result.scalars().first()
+                return email_record is not None
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when checking email {email}: {str(e)}")
+                return False
+            except Exception as e:
+                logger.error(f"Unexpected error when checking email {email}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+    
+    async def get_all_subscription_emails(self) -> List[str]:
+        """
+        Get all emails from the subscription list
+        Returns list of email strings
+        """
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBEmailList.email).order_by(DBEmailList.created_at)
+                )
+                emails = result.scalars().all()
+                
+                logger.info(f"Retrieved {len(emails)} emails from subscription list")
+                return list(emails)
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting subscription emails: {str(e)}")
+                return []
+            except Exception as e:
+                logger.error(f"Unexpected error when getting subscription emails: {str(e)}", exc_info=True)
+                return []
+        
+        return []
 
 # Create a global instance
 db_service = DBService() 

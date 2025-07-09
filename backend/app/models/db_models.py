@@ -92,7 +92,6 @@ class DBUser(Base):
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
-    subscribed = Column(Boolean, nullable=False, default=True)
     files   = relationship(
       'DBUserFile',
       back_populates='user',
@@ -152,3 +151,13 @@ class DBFeedback(Base):
     email      = Column(String(100), nullable=True)           # 100 字以内
     user_id    = Column(Integer, ForeignKey('users.user_id', ondelete='SET NULL'), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+class DBEmailList(Base):
+    """A standalone table that stores unique email addresses for daily feed subscriptions."""
+    __tablename__ = "email_list"
+
+    email = Column(String(320), primary_key=True, unique=True, index=True)  # RFC 5321 max length
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Email {self.email}>"
