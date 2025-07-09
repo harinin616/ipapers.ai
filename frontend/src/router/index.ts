@@ -77,6 +77,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/subscription',
+    name: 'subscription',
+    component: () => import('@/views/SubscriptionView.vue'),
+    meta: {
+      title: 'Email Subscription - iPapers',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/contact',
     name: 'Contact',
     component: () => import('@/views/ContactView.vue'),
