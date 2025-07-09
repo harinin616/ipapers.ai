@@ -92,7 +92,6 @@ class DBUser(Base):
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
-    subscribed = Column(Boolean, nullable=False, default=True)
     files   = relationship(
       'DBUserFile',
       back_populates='user',

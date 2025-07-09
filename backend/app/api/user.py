@@ -16,47 +16,35 @@ async def generate_user_id():
     return str(user_id)
 
 @router.get("/subscription-status")
-async def get_subscription_status(request: Request):
+async def get_subscription_status(email: str = None):
     """
-    Get user's subscription status for daily feed emails.
-    Requires authentication.
+    Get subscription status for an email address.
+    
+    Query parameters:
+    - email: email address to check
     """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email parameter is required")
     
-    try:
-        user_id = int(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID")
-    
-    subscription_status = await db_service.get_user_subscription_status(user_id)
-    
-    if subscription_status is None:
-        raise HTTPException(status_code=404, detail="User not found")
+    is_subscribed = await db_service.check_email_in_list(email)
     
     return {
-        "user_id": user_id,
-        "subscribed": subscription_status
+        "email": email,
+        "subscribed": is_subscribed
     }
 
 @router.post("/subscription")
-async def update_subscription(request: Request, data: dict = Body(...)):
+async def update_subscription(data: dict = Body(...)):
     """
-    Update user's subscription status for daily feed emails.
-    Requires authentication.
+    Update email subscription status for daily feed emails.
     
     Body parameters:
+    - email: string - email address
     - subscribed: boolean - new subscription status
     """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    
-    try:
-        user_id = int(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID")
+    email = data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Missing 'email' parameter")
     
     subscribed = data.get("subscribed")
     if subscribed is None:
@@ -65,17 +53,28 @@ async def update_subscription(request: Request, data: dict = Body(...)):
     if not isinstance(subscribed, bool):
         raise HTTPException(status_code=400, detail="'subscribed' must be a boolean")
     
-    success = await db_service.update_user_subscription(user_id, subscribed)
+    # Basic email validation
+    email = email.strip().lower()
+    if not email or '@' not in email:
+        raise HTTPException(status_code=400, detail="Invalid email format")
+    
+    if subscribed:
+        # Subscribe: add email to list
+        success = await db_service.add_email_to_list(email)
+        action = "subscribed to"
+    else:
+        # Unsubscribe: remove email from list
+        success = await db_service.remove_email_from_list(email)
+        action = "unsubscribed from"
     
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to update subscription status")
+        raise HTTPException(status_code=500, detail=f"Failed to update subscription status")
     
-    status_text = "subscribed to" if subscribed else "unsubscribed from"
-    logger.info(f"User {user_id} successfully {status_text} daily feed")
+    logger.info(f"Email {email} successfully {action} daily feed")
     
     return {
         "success": True,
-        "user_id": user_id,
+        "email": email,
         "subscribed": subscribed,
-        "message": f"Successfully {status_text} daily feed"
+        "message": f"Successfully {action} daily feed"
     }
