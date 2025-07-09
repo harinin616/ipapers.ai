@@ -9,7 +9,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'home',
     component: HomeView,
     meta: {
-      title: 'Home - iPaper',
+      title: 'Home - iPapers',
       requiresAuth: false
     }
   },
@@ -18,7 +18,7 @@ const routes: Array<RouteRecordRaw> = [
     name: "chat",
     component: () => import("../views/ChatView.vue"),
     meta: {
-      title: 'Chat - iPaper',
+      title: 'Chat - iPapers',
       requiresAuth: false
     }
   },
@@ -27,7 +27,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'search',
     component: () => import('../views/SearchView.vue'),
     meta: {
-      title: 'Search Papers - iPaper',
+      title: 'Search Papers - iPapers',
       requiresAuth: false
     }
   },
@@ -36,7 +36,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'paper-detail',
     component: () => import('../views/PaperDetailView.vue'),
     meta: {
-      title: 'Paper Details - iPaper',
+      title: 'Paper Details - iPapers',
       requiresAuth: false
     }
   },
@@ -45,7 +45,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'paper-monitor',
     component: () => import('../views/MonitorView.vue'),
     meta: {
-      title: 'Paper Monitor - iPaper',
+      title: 'Paper Monitor - iPapers',
       requiresAuth: false
     }
   },
@@ -54,7 +54,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'chat',
     component: () => import('../views/ChatView.vue'),
     meta: {
-      title: 'Chat - iPaper',
+      title: 'Chat - iPapers',
       requiresAuth: false
     }
   },
@@ -63,7 +63,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'review',
     component: () => import('../views/Review.vue'),
     meta: {
-      title: 'Review - iPaper',
+      title: 'Review - iPapers',
       requiresAuth: false
     }
   },
@@ -72,7 +72,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'daily-feed',
     component: () => import('@/views/DailyFeedView.vue'),
     meta: {
-      title: 'Daily Feed - iPaper',
+      title: 'Daily Feed - iPapers',
       requiresAuth: false
     }
   },
@@ -81,7 +81,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Contact',
     component: () => import('@/views/ContactView.vue'),
      meta: {
-      title: 'Contact Us - iPaper',
+      title: 'Contact Us - iPapers',
       requiresAuth: false
     }
   },
@@ -90,7 +90,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'terms',
     component: () => import('../views/TermsView.vue'),
     meta: {
-      title: 'Terms of Use - iPaper',
+      title: 'Terms of Use - iPapers',
       requiresAuth: false
     }
   },
@@ -99,7 +99,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'privacy',
     component: () => import('../views/PrivacyView.vue'),
     meta: {
-      title: 'Privacy Policy - iPaper',
+      title: 'Privacy Policy - iPapers',
       requiresAuth: false
     }
   },
@@ -110,7 +110,7 @@ const routes: Array<RouteRecordRaw> = [
     props: route => ({                // ← 可选：把 share_id 当 prop 传下去
       share_id: route.params.share_id
     }),
-    meta: { title: 'Home - iPaper', requiresAuth: false }
+    meta: { title: 'Home - iPapers', requiresAuth: false }
   },
   {
     // Catch all route (404)
@@ -118,7 +118,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue'),
     meta: {
-      title: '404 Not Found - iPaper',
+      title: '404 Not Found - iPapers',
       requiresAuth: false
     }
   },
@@ -127,7 +127,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'profile',
     component: () => import('../views/ProfileView.vue'),
     meta: {
-      title: 'User Profile - iPaper',
+      title: 'User Profile - iPapers',
       requiresAuth: false
     }
   }
@@ -158,8 +158,8 @@ const router = createRouter({
 // Global navigation guards
 router.beforeEach((to, from, next) => {
   // Update page title
-  document.title = to.meta.title as string || 'iPaper';
-  
+  document.title = to.meta.title as string || 'iPapers';
+
   // Continue navigation
   next();
 });

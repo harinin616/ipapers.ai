@@ -23,7 +23,10 @@
         <div v-else class="chat-section">
           <div class="chat-header">
             <div class="header-main">
-              <h2>AI Chat</h2>
+              <h2>iPapers Chat</h2>
+               <p class="header-subtitle">
+                Ask anything about the papers from the File List
+              </p>
             </div>
           </div>
 
@@ -520,6 +523,11 @@ watch(
   align-items: center;
   margin-bottom: 0.75rem;
 }
+.header-main {
+  flex-direction: column;    /* stack children vertically */
+  align-items: flex-start;   /* left-align them */
+  gap: 4px;                  /* optional spacing between h2 and p */
+}
 
 .header-main h2 {
   margin: 0;
@@ -726,6 +734,13 @@ button:disabled {
   width: 100%;
   transform: scaleX(0);
   transform-origin: 0 0;
+}
+
+.header-subtitle {
+  white-space: pre-line; /* 保留文本中的换行 */
+  margin: 0;
+  font-size: 1rem;
+  color: #555;
 }
 
 @keyframes processing-bar {
