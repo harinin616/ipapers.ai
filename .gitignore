@@ -9,3 +9,4 @@ backend/arxiv_search_page.html
 backend/scripts/daily_feed/data/
 backend/scripts/daily_feed/output/
 backend/arxiv_search_page.html
+.DS_Store

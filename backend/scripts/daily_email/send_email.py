@@ -211,6 +211,16 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
             text-align: center;
             margin-bottom: 30px;
         }}
+        .header-title {{
+            text-align: center;
+            margin-bottom: 10px;
+        }}
+        .favicon {{
+            width: 80px;
+            height: 80px;
+            vertical-align: middle;
+            margin-right: 20px;
+        }}
         .section {{
             margin: 30px 0;
             padding: 20px;
@@ -284,7 +294,9 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
         <tr>
             <td>
                 <div class="header">
-                    <h1>📊 iPapers Daily Feed</h1>
+                    <div class="header-title">
+                        <img src="cid:favicon" alt="iPapers Logo" class="favicon"><span style="font-size: 36px; font-weight: bold; vertical-align: middle;">iPapers Daily Feed</span>
+                    </div>
                     <h2>{date}</h2>
                     <p style="font-size: 20px; margin: 0;">Total Papers: <strong>{total_papers}</strong></p>
                 </div>
@@ -310,6 +322,17 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
     
     try:
         total_size = 0
+        
+        # Add favicon to email
+        favicon_path = "../../../frontend/data/favicon.png"
+        if os.path.exists(favicon_path):
+            favicon_content_id = "favicon"
+            image_data_list.append((favicon_path, favicon_content_id))
+            favicon_size = os.path.getsize(favicon_path)
+            total_size += favicon_size
+            print(f"Added favicon: {favicon_size / 1024:.1f}KB")
+        else:
+            print(f"Warning: Favicon not found at {favicon_path}")
         
         # Process each category's word cloud
         for i, category in enumerate(categories):
