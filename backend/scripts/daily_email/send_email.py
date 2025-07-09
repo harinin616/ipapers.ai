@@ -8,13 +8,7 @@ import os
 import json
 import tempfile
 import shutil
-import sys
-import asyncio
 from PIL import Image
-
-# Add the app directory to the Python path to import database modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from app.services.db_service import db_service
 
 def compress_image(input_path, output_path, quality=60, max_size=(800, 600)):
     """
@@ -146,24 +140,28 @@ def send_email_with_attachments(sender_email, sender_password, recipient_email, 
         print(f"邮件发送失败：{e}")
         return False
 
-async def send_daily_summary():
+def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=False):
     """
-    发送每日论文摘要邮件给所有订阅者，包含论文数量和嵌入式词云图
+    发送每日论文摘要邮件，包含论文数量和嵌入式词云图
+    
+    参数：
+    recipient_email: 收件人邮箱，如果为None则使用默认邮箱
+    recipient_name: 收件人姓名，用于个性化邮件内容
+    test_mode: 如果为True，则只打印信息而不实际发送邮件
+    
+    返回：
+    dict: 包含发送状态信息的字典
     """
     # Configuration
-    SENDER_EMAIL = "ipapers.ai@gmail.com"
-    SENDER_PASSWORD = "dqutyjsibzzzgups"
+    SENDER_EMAIL = os.getenv("SENDER_EMAIL", "ipapers.ai@gmail.com")
+    SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "dqutyjsibzzzgups")
+    RECIPIENT_EMAIL = recipient_email or "orrinnj@gmail.com"
     
-    # Get all subscription emails from database
-    try:
-        recipient_emails = await db_service.get_all_subscription_emails()
-        if not recipient_emails:
-            print("No subscribers found in the database")
-            return False
-        print(f"Found {len(recipient_emails)} subscribers")
-    except Exception as e:
-        print(f"Error getting subscription emails from database: {e}")
-        return False
+    if test_mode:
+        print(f"TEST MODE: Would send daily summary to {RECIPIENT_EMAIL}")
+        if recipient_name:
+            print(f"  Recipient name: {recipient_name}")
+        return {"success": True, "message": "Test mode - no email sent", "test_mode": True}
     
     # Read daily data
     daily_feed_path = "../../../frontend/public/daily_feed/daily_feed.json"
@@ -172,11 +170,13 @@ async def send_daily_summary():
         with open(daily_feed_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except FileNotFoundError:
-        print(f"Error: Could not find daily feed file at {daily_feed_path}")
-        return False
+        error_msg = f"Could not find daily feed file at {daily_feed_path}"
+        print(f"Error: {error_msg}")
+        return {"success": False, "message": error_msg, "error_type": "file_not_found"}
     except json.JSONDecodeError:
-        print("Error: Could not parse daily feed JSON file")
-        return False
+        error_msg = "Could not parse daily feed JSON file"
+        print(f"Error: {error_msg}")
+        return {"success": False, "message": error_msg, "error_type": "json_decode_error"}
     
     # Extract information
     date = data.get('date', 'Unknown')
@@ -352,20 +352,8 @@ async def send_daily_summary():
                 else:
                     print(f"Original file not found: {original_path}")
         
-        print(f"Total compressed size: {total_size / (1024*1024):.1f}MB")
-        print(f"Preparing to send daily summary for {date}")
-        print(f"Total papers: {total_papers}")
-        print(f"Categories: {len(categories)}")
-        print(f"Embedded images: {len(image_data_list)} (Total size: {total_size / (1024*1024):.1f}MB)")
-        
-        # Send email to all subscribers
-        successful_sends = 0
-        failed_sends = 0
-        
-        for recipient_email in recipient_emails:
-            try:
-                # Create personalized HTML body with unsubscribe link
-                personalized_html = html_body + f"""
+        # Add email footer
+        html_body += """
                 <div class="section">
                     <h2>🌐 Visit Our Website</h2>
                     <div class="website-link">
@@ -380,7 +368,7 @@ async def send_daily_summary():
                     <p><em>This is an automated daily summary. For questions or feedback, please contact us.</em></p>
                     <p><strong>iPapers - Your Gateway to Research Discovery</strong></p>
                     <p style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #555;">
-                        <a href="https://ipapers.ai/subscription?email={recipient_email}&action=unsubscribe" style="color: #3498db; text-decoration: underline;">
+                        <a href="https://ipapers.ai/subscription" style="color: #3498db; text-decoration: underline;">
                             Unsubscribe from Daily Feed
                         </a>
                     </p>
@@ -391,34 +379,41 @@ async def send_daily_summary():
 </body>
 </html>
 """
-                
-                # Send email to this recipient
-                success = send_email_with_embedded_images(
-                    SENDER_EMAIL, 
-                    SENDER_PASSWORD, 
-                    recipient_email, 
-                    subject, 
-                    personalized_html, 
-                    image_data_list
-                )
-                
-                if success:
-                    successful_sends += 1
-                    print(f"✓ Sent to {recipient_email}")
-                else:
-                    failed_sends += 1
-                    print(f"✗ Failed to send to {recipient_email}")
-                    
-            except Exception as e:
-                failed_sends += 1
-                print(f"✗ Error sending to {recipient_email}: {e}")
         
-        print(f"\nEmail sending summary:")
-        print(f"Total subscribers: {len(recipient_emails)}")
-        print(f"Successful sends: {successful_sends}")
-        print(f"Failed sends: {failed_sends}")
+        print(f"Total compressed size: {total_size / (1024*1024):.1f}MB")
+        print(f"Preparing to send daily summary for {date}")
+        print(f"Total papers: {total_papers}")
+        print(f"Categories: {len(categories)}")
+        print(f"Embedded images: {len(image_data_list)} (Total size: {total_size / (1024*1024):.1f}MB)")
         
-        return successful_sends > 0
+        # Send email
+        success = send_email_with_embedded_images(
+            SENDER_EMAIL, 
+            SENDER_PASSWORD, 
+            RECIPIENT_EMAIL, 
+            subject, 
+            html_body, 
+            image_data_list
+        )
+        
+        if success:
+            return {
+                "success": True, 
+                "message": f"Daily summary sent successfully to {RECIPIENT_EMAIL}",
+                "recipient_email": RECIPIENT_EMAIL,
+                "recipient_name": recipient_name,
+                "date": date,
+                "total_papers": total_papers,
+                "categories_count": len(categories),
+                "images_embedded": len(image_data_list)
+            }
+        else:
+            return {
+                "success": False, 
+                "message": f"Failed to send daily summary to {RECIPIENT_EMAIL}",
+                "recipient_email": RECIPIENT_EMAIL,
+                "error_type": "email_send_failed"
+            }
         
     finally:
         # Clean up temporary files
@@ -447,9 +442,11 @@ def send_email(sender_email, sender_password, recipient_email, subject, body, at
 # Example usage
 if __name__ == "__main__":
     # Send daily summary
-    success = asyncio.run(send_daily_summary())
+    result = send_daily_summary()
     
-    if success:
+    if result["success"]:
         print("Daily summary sent successfully!")
+        print(f"Details: {result['message']}")
     else:
         print("Failed to send daily summary.")
+        print(f"Error: {result['message']}")
