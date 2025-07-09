@@ -367,6 +367,11 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
                     <p>For detailed paper summaries, full abstracts, and in-depth analysis of today's research landscape.</p>
                     <p><em>This is an automated daily summary. For questions or feedback, please contact us.</em></p>
                     <p><strong>iPapers - Your Gateway to Research Discovery</strong></p>
+                    <p style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #555;">
+                        <a href="https://ipapers.ai/daily-feed" style="color: #3498db; text-decoration: underline;">
+                            Unsubscribe from Daily Feed
+                        </a>
+                    </p>
                 </div>
             </td>
         </tr>

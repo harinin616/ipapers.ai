@@ -1,6 +1,19 @@
 <template>
   <div class="daily-feed-page">
-    <h1>{{ getPageTitle() }}</h1>
+    <div class="header-section">
+      <h1>{{ getPageTitle() }}</h1>
+      <button 
+        v-if="!isSubscriptionLoading"
+        @click="toggleSubscription"
+        :class="['subscription-btn', subscriptionStatus ? 'subscribed' : 'unsubscribed']"
+        :disabled="isUpdatingSubscription"
+      >
+        <span v-if="isUpdatingSubscription" class="loading-spinner"></span>
+        <template v-else>
+          {{ subscriptionStatus ? 'Subscribed (click to unsubscribe)' : 'Subscribe to Daily Feed' }}
+        </template>
+      </button>
+    </div>
     <p class="subtitle">Explore trending papers across different disciplines</p>
     
     <!-- Display Control -->
@@ -122,6 +135,11 @@ const dailyFeedData = ref<DailyFeedData>({
   categories: []
 })
 
+// Subscription related reactive data
+const subscriptionStatus = ref<boolean>(false)
+const isSubscriptionLoading = ref(true)
+const isUpdatingSubscription = ref(false)
+
 // Track expanded summaries: { categoryId: { summaryIndex: boolean } }
 const expandedSummaries = ref<Record<string, Record<number, boolean>>>({})
 
@@ -237,6 +255,111 @@ const handleImageError = (event: Event) => {
   console.warn('Failed to load word cloud image:', img.src)
 }
 
+// Subscription management functions
+const getUser = () => {
+  const stored = localStorage.getItem('user')
+  if (stored) {
+    try {
+      return JSON.parse(stored)
+    } catch (e) {
+      console.error('Failed to parse user cache:', e)
+      return null
+    }
+  }
+  return null
+}
+
+const getUserId = () => {
+  return localStorage.getItem('X-User-ID')
+}
+
+const checkSubscriptionStatus = async () => {
+  const user = getUser()
+  const userId = getUserId()
+  
+  if (!user || !userId) {
+    isSubscriptionLoading.value = false
+    return
+  }
+  
+  try {
+    const response = await fetch('/api/user/subscription-status', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-ID': userId
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      subscriptionStatus.value = data.subscribed
+    } else {
+      console.error('Failed to get subscription status:', response.statusText)
+    }
+  } catch (err) {
+    console.error('Error checking subscription status:', err)
+  } finally {
+    isSubscriptionLoading.value = false
+  }
+}
+
+const updateSubscriptionStatus = async (subscribed: boolean) => {
+  const user = getUser()
+  const userId = getUserId()
+  
+  if (!user || !userId) {
+    alert('Please login to manage your subscription.')
+    return false
+  }
+  
+  isUpdatingSubscription.value = true
+  
+  try {
+    const response = await fetch('/api/user/subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-ID': userId
+      },
+      body: JSON.stringify({ subscribed })
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      subscriptionStatus.value = data.subscribed
+      const statusText = subscribed ? 'subscribed to' : 'unsubscribed from'
+      const message = subscribed 
+        ? 'You have successfully subscribed to the daily feed! You will receive email updates.' 
+        : 'You have successfully unsubscribed from the daily feed. You will no longer receive email updates.'
+      alert(message)
+      return true
+    } else {
+      const errorData = await response.json()
+      alert(`Failed to update subscription: ${errorData.detail || 'Unknown error'}`)
+      return false
+    }
+  } catch (err) {
+    console.error('Error updating subscription:', err)
+    alert('Failed to update subscription. Please try again.')
+    return false
+  } finally {
+    isUpdatingSubscription.value = false
+  }
+}
+
+const toggleSubscription = async () => {
+  const user = getUser()
+  
+  if (!user) {
+    alert('Please login to manage your subscription to the daily feed.')
+    return
+  }
+  
+  const newStatus = !subscriptionStatus.value
+  await updateSubscriptionStatus(newStatus)
+}
+
 // Simple markdown rendering function
 const renderMarkdown = (text: string): string => {
   if (!text) return ''
@@ -338,6 +461,7 @@ const isSummaryExpanded = (categoryId: string, summaryIndex: number): boolean =>
 // Load data on component mount
 onMounted(() => {
   loadDailyFeed()
+  checkSubscriptionStatus()
 })
 </script>
 
@@ -348,12 +472,92 @@ onMounted(() => {
   padding: 0 1.5rem;
 }
 
+.header-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .daily-feed-page h1 {
   font-size: 2.5rem;
   font-weight: 700;
   text-align: center;
   color: #3f51b5;
-  margin-bottom: 0.5rem;
+  margin: 0;
+}
+
+.subscription-btn {
+  position: relative;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 220px;
+  justify-content: center;
+}
+
+.subscription-btn.subscribed {
+  background-color: #4caf50;
+  color: white;
+}
+
+.subscription-btn.subscribed:hover {
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.subscription-btn.unsubscribed {
+  background-color: #3f51b5;
+  color: white;
+}
+
+.subscription-btn.unsubscribed:hover {
+  background-color: #2c3e9e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
+}
+
+.subscription-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .header-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .daily-feed-page h1 {
+    font-size: 2rem;
+  }
+  
+  .subscription-btn {
+    min-width: 200px;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
 }
 
 .subtitle {

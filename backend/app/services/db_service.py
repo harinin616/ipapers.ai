@@ -882,5 +882,80 @@ class DBService:
 
         return False
 
+    async def get_user_subscription_status(self, user_id: int) -> Optional[bool]:
+        """
+        Get user's subscription status
+        Returns True if subscribed, False if not subscribed, None if user not found
+        """
+        if not user_id:
+            logger.warning("Attempted to get subscription status with empty user_id")
+            return None
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBUser.subscribed).where(DBUser.user_id == user_id)
+                )
+                subscribed = result.scalar_one_or_none()
+                
+                if subscribed is None:
+                    logger.info(f"User with ID {user_id} not found")
+                    return None
+                
+                return subscribed
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting subscription status for user {user_id}: {str(e)}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error when getting subscription status for user {user_id}: {str(e)}", exc_info=True)
+                return None
+        
+        return None
+
+    async def update_user_subscription(self, user_id: int, subscribed: bool) -> bool:
+        """
+        Update user's subscription status
+        Returns True if successful, False otherwise
+        """
+        if not user_id:
+            logger.warning("Attempted to update subscription with empty user_id")
+            return False
+            
+        async for db in get_async_db():
+            try:
+                # Check if user exists
+                result = await db.execute(
+                    select(DBUser).where(DBUser.user_id == user_id)
+                )
+                user = result.scalars().first()
+                
+                if not user:
+                    logger.warning(f"User with ID {user_id} not found")
+                    return False
+                
+                # Update subscription status
+                await db.execute(
+                    update(DBUser)
+                    .where(DBUser.user_id == user_id)
+                    .values(subscribed=subscribed)
+                )
+                await db.commit()
+                
+                status_text = "subscribed" if subscribed else "unsubscribed"
+                logger.info(f"Successfully updated user {user_id} subscription status to {status_text}")
+                return True
+                
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when updating subscription for user {user_id}: {str(e)}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when updating subscription for user {user_id}: {str(e)}", exc_info=True)
+                return False
+        
+        return False
+
 # Create a global instance
 db_service = DBService() 
