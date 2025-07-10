@@ -25,6 +25,43 @@
       </select>
     </div>
 
+    <!-- Text-to-Speech Global Controls -->
+    <div class="tts-global-controls" v-if="speechSupported">
+      <div class="tts-settings">
+        <div class="tts-control-group">
+          <label for="speech-rate">Speed:</label>
+          <input 
+            id="speech-rate" 
+            type="range" 
+            min="0.5" 
+            max="2" 
+            step="0.1" 
+            v-model="speechRate" 
+            class="speech-slider"
+          />
+          <span class="rate-display">{{ speechRate }}x</span>
+        </div>
+        <div class="tts-control-group">
+          <label for="speech-voice">Voice:</label>
+          <select id="speech-voice" v-model="selectedVoice" class="voice-select">
+            <option v-for="(voice, index) in availableVoices" :key="index" :value="index">
+              {{ voice.name }} ({{ voice.lang }})
+            </option>
+          </select>
+        </div>
+        <button 
+          v-if="currentSpeakingId" 
+          @click="stopSpeech" 
+          class="global-stop-btn"
+        >
+          <svg viewBox="0 0 24 24" class="stop-icon">
+            <rect x="6" y="6" width="12" height="12" fill="currentColor"/>
+          </svg>
+          Stop All
+        </button>
+      </div>
+    </div>
+
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
       <p>Loading daily feed...</p>
@@ -69,13 +106,36 @@
                   :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
                 >
                   <h4 class="summary-title">{{ getSummaryTitle(summary) }}</h4>
-                  <div class="toggle-icon">
-                    <svg 
-                      viewBox="0 0 24 24" 
-                      :class="{ 'rotated': isSummaryExpanded(category.category, index) }"
+                  <div class="header-controls">
+                    <!-- Text-to-Speech Button -->
+                    <button 
+                      v-if="speechSupported"
+                      @click.stop="toggleSpeech(category.category, index, summary)"
+                      class="tts-btn"
+                      :class="{ 
+                        'speaking': isSpeaking(category.category, index),
+                        'paused': isPaused(category.category, index)
+                      }"
+                      :title="getSpeechButtonTitle(category.category, index)"
                     >
-                      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                    </svg>
+                      <svg v-if="!isSpeaking(category.category, index) && !isPaused(category.category, index)" viewBox="0 0 24 24" class="play-icon">
+                        <path d="M8 5v14l11-7z" fill="currentColor"/>
+                      </svg>
+                      <svg v-else-if="isSpeaking(category.category, index)" viewBox="0 0 24 24" class="pause-icon">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" class="resume-icon">
+                        <path d="M8 5v14l11-7z" fill="currentColor"/>
+                      </svg>
+                    </button>
+                    <div class="toggle-icon">
+                      <svg 
+                        viewBox="0 0 24 24" 
+                        :class="{ 'rotated': isSummaryExpanded(category.category, index) }"
+                      >
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                      </svg>
+                    </div>
                   </div>
                 </div>
                 <div 
@@ -92,14 +152,12 @@
           </div>
         </div>
       </div>
-
-
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 // Enhanced type definitions for the new data structure
 interface SummaryData {
@@ -124,6 +182,14 @@ interface DailyFeedData {
   last_updated?: string
 }
 
+// Text-to-Speech interfaces
+interface SpeechState {
+  categoryId: string
+  summaryIndex: number
+  utterance: SpeechSynthesisUtterance | null
+  isPaused: boolean
+}
+
 // Reactive data
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -132,10 +198,161 @@ const dailyFeedData = ref<DailyFeedData>({
   categories: []
 })
 
-
-
 // Track expanded summaries: { categoryId: { summaryIndex: boolean } }
 const expandedSummaries = ref<Record<string, Record<number, boolean>>>({})
+
+// Text-to-Speech state management
+const speechSupported = ref(false)
+const currentSpeakingId = ref<string | null>(null)
+const speechState = ref<SpeechState | null>(null)
+const speechRate = ref(1.0)
+const selectedVoice = ref(0)
+const availableVoices = ref<SpeechSynthesisVoice[]>([])
+
+// Initialize Text-to-Speech
+const initializeTTS = () => {
+  if ('speechSynthesis' in window) {
+    speechSupported.value = true
+    
+    // Load available voices
+    const loadVoices = () => {
+      availableVoices.value = speechSynthesis.getVoices().filter(voice => 
+        voice.lang.startsWith('en')
+      )
+      if (availableVoices.value.length === 0) {
+        availableVoices.value = speechSynthesis.getVoices()
+      }
+    }
+    
+    loadVoices()
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices
+    }
+  }
+}
+
+// Generate unique ID for speech tracking
+const getSpeechId = (categoryId: string, summaryIndex: number): string => {
+  return `${categoryId}-${summaryIndex}`
+}
+
+// Check if a specific summary is currently being spoken
+const isSpeaking = (categoryId: string, summaryIndex: number): boolean => {
+  const speechId = getSpeechId(categoryId, summaryIndex)
+  return currentSpeakingId.value === speechId && 
+         !!speechState.value?.utterance && 
+         !(speechState.value?.isPaused ?? false) &&
+         speechSynthesis.speaking
+}
+
+// Check if a specific summary is paused
+const isPaused = (categoryId: string, summaryIndex: number): boolean => {
+  const speechId = getSpeechId(categoryId, summaryIndex)
+  return currentSpeakingId.value === speechId && 
+         (speechState.value?.isPaused ?? false) === true
+}
+
+// Get speech button title for accessibility
+const getSpeechButtonTitle = (categoryId: string, summaryIndex: number): string => {
+  if (isSpeaking(categoryId, summaryIndex)) return 'Pause reading'
+  if (isPaused(categoryId, summaryIndex)) return 'Resume reading'
+  return 'Listen to summary'
+}
+
+// Convert HTML content to plain text for speech
+const htmlToText = (html: string): string => {
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = html
+  return tempDiv.textContent || tempDiv.innerText || ''
+}
+
+// Start speech for a summary
+const startSpeech = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
+  if (!speechSupported.value) return
+  
+  // Stop any current speech
+  stopSpeech()
+  
+  // Get content to speak
+  const title = getSummaryTitle(summary)
+  const content = getSummaryContent(summary)
+  const renderedContent = renderMarkdown(content)
+  const textToSpeak = `${title}. ${htmlToText(renderedContent)}`
+  
+  // Create utterance
+  const utterance = new SpeechSynthesisUtterance(textToSpeak)
+  utterance.rate = speechRate.value
+  utterance.voice = availableVoices.value[selectedVoice.value] || null
+  
+  // Set up event handlers
+  utterance.onstart = () => {
+    currentSpeakingId.value = getSpeechId(categoryId, summaryIndex)
+    speechState.value = {
+      categoryId,
+      summaryIndex,
+      utterance,
+      isPaused: false
+    }
+  }
+  
+  utterance.onend = () => {
+    currentSpeakingId.value = null
+    speechState.value = null
+  }
+  
+  utterance.onerror = (event) => {
+    console.error('Speech synthesis error:', event)
+    currentSpeakingId.value = null
+    speechState.value = null
+  }
+  
+  // Start speaking
+  speechSynthesis.speak(utterance)
+}
+
+// Pause current speech
+const pauseSpeech = () => {
+  if (speechSynthesis.speaking && !speechSynthesis.paused) {
+    speechSynthesis.pause()
+    if (speechState.value) {
+      speechState.value.isPaused = true
+    }
+  }
+}
+
+// Resume paused speech
+const resumeSpeech = () => {
+  if (speechSynthesis.paused) {
+    speechSynthesis.resume()
+    if (speechState.value) {
+      speechState.value.isPaused = false
+    }
+  }
+}
+
+// Stop all speech
+const stopSpeech = () => {
+  if (speechSynthesis.speaking || speechSynthesis.paused) {
+    speechSynthesis.cancel()
+  }
+  currentSpeakingId.value = null
+  speechState.value = null
+}
+
+// Toggle speech for a summary
+const toggleSpeech = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
+  const speechId = getSpeechId(categoryId, summaryIndex)
+  
+  if (currentSpeakingId.value === speechId) {
+    if (speechState.value?.isPaused) {
+      resumeSpeech()
+    } else {
+      pauseSpeech()
+    }
+  } else {
+    startSpeech(categoryId, summaryIndex, summary)
+  }
+}
 
 // Get page title with date and total papers
 const getPageTitle = (): string => {
@@ -249,8 +466,6 @@ const handleImageError = (event: Event) => {
   console.warn('Failed to load word cloud image:', img.src)
 }
 
-
-
 // Simple markdown rendering function
 const renderMarkdown = (text: string): string => {
   if (!text) return ''
@@ -349,9 +564,14 @@ const isSummaryExpanded = (categoryId: string, summaryIndex: number): boolean =>
   return expandedSummaries.value[categoryId]?.[summaryIndex] || false
 }
 
-// Load data on component mount
+// Component lifecycle
 onMounted(() => {
+  initializeTTS()
   loadDailyFeed()
+})
+
+onUnmounted(() => {
+  stopSpeech()
 })
 </script>
 
@@ -625,6 +845,38 @@ onMounted(() => {
   color: #3f51b5;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tts-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: opacity 0.2s ease;
+}
+
+.tts-btn:hover {
+  opacity: 0.8;
+}
+
+.tts-btn.speaking {
+  opacity: 0.7;
+}
+
+.tts-btn.paused {
+  opacity: 0.7;
+}
+
+.play-icon, .pause-icon, .resume-icon {
+  width: 24px;
+  height: 24px;
+  fill: #3f51b5;
+}
+
 .toggle-icon {
   margin-left: 1rem;
   transition: transform 0.3s ease;
@@ -774,6 +1026,130 @@ onMounted(() => {
   border: 2px dashed #ddd;
 }
 
+.tts-global-controls {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.tts-settings {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.tts-control-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tts-control-group label {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.speech-slider {
+  -webkit-appearance: none;
+  width: 100px;
+  height: 5px;
+  background: #e0e0e0;
+  border-radius: 5px;
+  outline: none;
+  transition: opacity .2s;
+}
+
+.speech-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #3f51b5;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.speech-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #3f51b5;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.speech-slider:hover {
+  opacity: 1;
+}
+
+.speech-slider::-webkit-slider-thumb:hover {
+  background: #2c3e9e;
+}
+
+.speech-slider::-moz-range-thumb:hover {
+  background: #2c3e9e;
+}
+
+.rate-display {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.voice-select {
+  padding: 5px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.voice-select:hover {
+  border-color: #3f51b5;
+}
+
+.voice-select:focus {
+  outline: none;
+  border-color: #3f51b5;
+  box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
+}
+
+.global-stop-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.2s, opacity 0.2s ease;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.2);
+}
+
+.global-stop-btn:hover {
+  background: #d32f2f;
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.stop-icon {
+  width: 18px;
+  height: 18px;
+}
 
 
 @media (max-width: 768px) {
@@ -802,6 +1178,56 @@ onMounted(() => {
   }
   
   .manage-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .tts-global-controls {
+    bottom: 10px;
+    padding: 8px 15px;
+    border-radius: 15px;
+    gap: 8px;
+  }
+
+  .tts-settings {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .tts-control-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .tts-control-group label {
+    width: 100%;
+    text-align: left;
+  }
+
+  .speech-slider {
+    width: 80px;
+  }
+
+  .rate-display {
+    font-size: 0.7rem;
+  }
+
+  .voice-select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.7rem;
+  }
+
+  .global-stop-btn {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    border-radius: 15px;
+    gap: 4px;
+  }
+
+  .stop-icon {
     width: 16px;
     height: 16px;
   }
