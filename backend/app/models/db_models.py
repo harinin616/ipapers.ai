@@ -71,19 +71,49 @@ class DBCategory(Base):
     def __repr__(self):
         return f"<Category {self.name}>"
 
+class DBFolder(Base):
+    __tablename__ = "folders"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    user_id    = Column(Integer, ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, index=True)
+    name       = Column(String(64), nullable=False, default="default")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # 关系
+    user  = relationship("DBUser", back_populates="folders")
+    files = relationship(
+        "DBUserFile",
+        back_populates="folder",
+        cascade="all, delete-orphan",
+        order_by="DBUserFile.added_at"
+    )
+
+    __table_args__ = (
+        sa.UniqueConstraint('user_id', 'name', name='uq_folder_user_name'),
+    )
+
+    def __repr__(self):
+        return f"<Folder {self.name} (user={self.user_id})>"
 
 class DBUserFile(Base):
     __tablename__ = 'user_files'
+
     id        = Column(Integer, primary_key=True, autoincrement=True)
-    user_id   = Column(Integer, ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, index=True)
+    folder_id = Column(Integer, ForeignKey('folders.id', ondelete='CASCADE'), nullable=False, index=True)
     paper_id  = Column(String,  ForeignKey('papers.paper_id', ondelete='CASCADE'), nullable=False, index=True)
     added_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
-    # 反向关系
-    user  = relationship('DBUser',   back_populates='files')
-    paper = relationship('DBPaper')  # 如果你还想在 DBPaper 里加 back_populates，可自行添加
+
+    # 关系
+    folder = relationship('DBFolder', back_populates='files')
+    paper  = relationship('DBPaper')
+
+    __table_args__ = (
+        sa.UniqueConstraint('folder_id', 'paper_id', name='uq_folder_paper'),
+    )
 
     def __repr__(self):
-        return f'<UserFile user={self.user_id} paper={self.paper_id}>'
+        return f"<UserFile folder={self.folder_id} paper={self.paper_id}>"
+
 
 class DBUser(Base):
     """User database model"""
@@ -92,11 +122,11 @@ class DBUser(Base):
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
-    files   = relationship(
-      'DBUserFile',
-      back_populates='user',
-      cascade='all, delete-orphan',
-      order_by='DBUserFile.added_at'
+    folders  = relationship(
+        "DBFolder",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="DBFolder.created_at"
     )
     topics = relationship(
         'DBUserTopic',
