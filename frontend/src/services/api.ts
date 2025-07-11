@@ -612,7 +612,24 @@ class ApiService implements IApiService {
       return false;
     }
   }
+  async get_user_folders(): Promise<Folder[]> {
+    const resp = await this.api.get('/api/folders')
+    return resp.data  // [{id,name,files:[...]}, ...]
+  }
 }
 
+interface ChatFile {
+  file_path: string
+  filename:  string
+  paper_id:  string
+  paper_URL: string
+  added_at:  string
+}
 // Export singleton instance
 export default new ApiService(); 
+export interface Folder {
+  id: number
+  name: string
+  files: ChatFile[]
+}
+

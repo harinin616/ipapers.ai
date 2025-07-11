@@ -6,7 +6,7 @@ import logging
 
 
 from fastapi.responses import HTMLResponse
-from app.api import paper, search, chat, user, auth, review,share, metrics,contact,topics
+from app.api import paper, search, chat, user, auth, review,share, metrics,contact,topics,folders
 
 # Configure logging
 logging.basicConfig(
@@ -48,6 +48,6 @@ api_app.include_router(share.router, prefix="/share", tags=["share"])
 api_app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
 api_app.include_router(contact.router, prefix="/contact", tags=["contact"])
 api_app.include_router(topics.router, prefix="/topics", tags=["topics"])
-
+api_app.include_router(folders.router, prefix="/folders", tags=["folders"])
 # Mount API sub-application to main application
 app.mount("/api", api_app)

@@ -52,46 +52,75 @@
         <button class="close-btn" @click="toggleFilesList">×</button>
       </div>
        </div>
-      
-      <div class="pdf-files-list">
-        <div 
-          v-for="file in pdfFiles" 
-          :key="file.paper_id"
-          :class="['pdf-file-item', { active: file.paper_id === selectedFileId }]"
-          @click.stop="handleSelectFile(file)"
+
+       
+      <div class="folders-list">
+        <div
+          v-for="folder in folders"
+          :key="folder.id"
+          class="folder-block"
         >
-          <div class="pdf-file-icon">
-            <svg class="icon-svg" viewBox="0 0 24 24">
-              <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L10.9,19C11.2,19 11.3,18.9 11.4,18.7L12.2,17.1L14.3,18.9L15,18.4L12.8,16.6L13.9,15C14.1,14.8 14.2,14.5 14,14.2C13.8,14 13.4,13.9 13,14.1L11.4,15L10.5,12.2L10,12.3L10.6,15.4L9.7,16L9.2,16.5L10,19M13.3,14.7C13.5,14.6 13.6,14.8 13.4,14.9L12,15.8L13.3,14.7M10.8,15.9L11.5,17.2L11.1,16.2L10.8,15.9M11.7,16.3L12.3,15.6L12.3,15.7L11.7,16.3Z" />
-            </svg>
-          </div>
-          <div class="pdf-file-info">
-            <div class="pdf-file-name">{{ file.filename }}</div>
-          </div>
-          <button 
-            :class="['pdf-file-select', { selected: isFileSelected(file.paper_id) }]"
-            @click.stop="handleToggleSelect(file.paper_id)" 
-            :title="isFileSelected(file.paper_id) ? 'Deselect file' : 'Select file'"
+          <!-- 文件夹头 -->
+
+          <div
+            class="folder-header"
+            :class="{open: activeFid === folder.id}"
+            @click="toggleFolder(folder.id)"
           >
-            <svg class="icon-svg" viewBox="0 0 24 24">
-              <path v-if="isFileSelected(file.paper_id)" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
-              <path v-else d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,5V19H5V5H19Z" />
-            </svg>
-          </button>
-          <button 
-            class="pdf-file-delete" 
-            @click.stop="deleteFile(file)" 
-            title="Delete file"
-          >
-            <svg class="icon-svg" viewBox="0 0 24 24">
+            <svg class="caret" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+            <span class="fname">{{ folder.name }}</span>
+            <span class="count">({{ folder.files.length }})</span>
+          </div>
+
+          <!-- 论文列表：只渲染当前展开的文件夹 -->
+          <transition name="collapse">
+            <div
+              v-show="activeFid === folder.id"
+              class="pdf-files-list"
+            >
+              <div
+                v-for="file in folder.files"
+                :key="file.paper_id"
+                :class="['pdf-file-item', {active: file.paper_id===selectedFileId}]"
+                @click.stop="handleSelectFile(file)"
+              >
+                <!-- === 以下内容与你原来文件项保持一致 === -->
+                      <div class="pdf-file-icon">
+                  <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M14,2H6C4.9,2 4,2.9 4,4V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L10.9,19C11.2,19 11.3,18.9 11.4,18.7L12.2,17.1L14.3,18.9L15,18.4L12.8,16.6L13.9,15C14.1,14.8 14.2,14.5 14,14.2C13.8,14 13.4,13.9 13,14.1L11.4,15L10.5,12.2L10,12.3L10.6,15.4L9.7,16L9.2,16.5L10,19M13.3,14.7C13.5,14.6 13.6,14.8 13.4,14.9L12,15.8L13.3,14.7M10.8,15.9L11.5,17.2L11.1,16.2L10.8,15.9M11.7,16.3L12.3,15.6L12.3,15.7L11.7,16.3Z" />
+                  </svg>
+                </div>
+                <div class="pdf-file-info">
+                  <div class="pdf-file-name">{{ file.filename }}</div>
+                </div>
+                <button
+                  :class="['pdf-file-select',{selected:isFileSelected(file.paper_id)}]"
+                  @click.stop="handleToggleSelect(file.paper_id)"
+                >
+                  <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path v-if="isFileSelected(file.paper_id)" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
+                    <path v-else d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,5V19H5V5H19Z" />
+                  </svg>
+                </button>
+                <button class="pdf-file-delete"
+                        @click.stop="deleteFile(file)">
+                  <svg class="icon-svg" viewBox="0 0 24 24">
               <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
             </svg>
-          </button>
-        </div>
-        <div v-if="pdfFiles.length === 0" class="text-center p-4 text-gray-500">
-          No files available.
+                </button>
+              </div>
+
+              <div v-if="!folder.files.length"
+                  class="text-center p-4 text-gray-500">
+                Empty
+              </div>
+            </div>
+          </transition>
         </div>
       </div>
+      
+    
+
     </div>
      <div v-if="showConfirm" class="confirm-overlay">
       <div class="confirm-box">
@@ -116,6 +145,11 @@ interface ChatFile {
   paper_id: string;
   paper_URL: string;
   added_at: string;
+}
+interface Folder {       
+  id:    number
+  name:  string
+  files: ChatFile[]
 }
 
 export default defineComponent({
@@ -147,25 +181,27 @@ export default defineComponent({
   setup(props, { emit }) {
     const pdfFiles = ref<ChatFile[]>([])
     const currentPdfUrl = ref<string | null>(null)
- const securePdfUrl = computed(() => {
-  const url = currentPdfUrl.value
-  if (!url) return ''
+    
 
-  // 1. http → https
-  let secure = url.startsWith('http://')
-    ? url.replace(/^http:\/\//, 'https://')
-    : url
+    const securePdfUrl = computed(() => {
+      const url = currentPdfUrl.value
+      if (!url) return ''
 
-  // 2. arxiv.org/pdf 路径重写到 export.arxiv.org/pdf
-  if (secure.match(/^https:\/\/arxiv\.org\/pdf\//)) {
-    secure = secure.replace(
-      /^https:\/\/arxiv\.org\/pdf\//,
-      'https://export.arxiv.org/pdf/'
-    )
-  }
+      // 1. http → https
+      let secure = url.startsWith('http://')
+        ? url.replace(/^http:\/\//, 'https://')
+        : url
 
-  return secure
-})
+      // 2. arxiv.org/pdf 路径重写到 export.arxiv.org/pdf
+      if (secure.match(/^https:\/\/arxiv\.org\/pdf\//)) {
+        secure = secure.replace(
+          /^https:\/\/arxiv\.org\/pdf\//,
+          'https://export.arxiv.org/pdf/'
+        )
+      }
+
+      return secure
+    })
     const selectedFileId = ref<string | null>(null)
     const isPdfLoading = ref(false)
     const currentFileName = ref('Document')
@@ -174,19 +210,51 @@ export default defineComponent({
     const router = useRouter()
     const pendingShared = ref<ChatFile[]>([])
     const showConfirm = ref(false)
-    
-    const loadFiles = async () => {
+
+    const folders   = ref<Folder[]>([])
+    const openSet   = ref<Set<number>>(new Set())   // 展开的 folder.id
+    const activeFid = ref<number | null>(null)      // 当前展开的文件夹
+    const toggleFolder = (fid: number) => {
+      activeFid.value = (activeFid.value === fid) ? null : fid
+    }
+
+
+    const loadFolders = async () => {
       try {
-        const response = await api.get_user_files()
-        pdfFiles.value = response
-        const selectedIds = response.filter(f => f.selected).map(f => f.paper_id)
+        // 1. 拉取后端
+        folders.value = await api.get_user_folders()     // [{id,name,files:[{…}, …]}, …]
+
+        /* 2. 默认展开第一个文件夹 */
+        if (folders.value.length) {
+          openSet.value.add(folders.value[0].id)
+          activeFid.value = folders.value[0].id
+        }
+
+        /* 3. 汇总所有文件  */
+        const allFiles: ChatFile[] =
+          folders.value.flatMap(f => f.files)
+
+        /* 3-a. 同步“已选文件”到 Pinia store */
+        const selectedIds = allFiles
+          .filter(f => (f as any).selected)        // 后端若含 selected 字段
+          .map(f => f.paper_id)
         fileSelectionStore.setSelection(selectedIds)
-        emit('files-updated', pdfFiles.value)
-        emit('update-file-count', pdfFiles.value.length)
-      } catch (error) {
-        console.error('Failed to load files')
+
+        /* 3-b. 往父组件回传整个文件数组（保持旧事件语义） */
+        emit('files-updated', allFiles)
+
+        /* 4. 文件总数（侧边栏角标等） */
+        emit('update-file-count', allFiles.length)
+
+      } catch (err) {
+        console.error('load folders failed', err)
       }
     }
+    const currentFiles = computed<ChatFile[]>(() => {
+      const f = folders.value.find(x => x.id === activeFid.value)
+      return f ? f.files : []
+    })
+
     
     const handleSelectFile = (file: ChatFile) => {
       isPdfLoading.value = true
@@ -220,6 +288,7 @@ export default defineComponent({
             closePdf()
           }
         }
+        await loadFolders() // 重新加载文件夹列表
       } catch (error) {
         console.error('Failed to delete file:', error)
       }
@@ -250,7 +319,7 @@ export default defineComponent({
     })
     
     onMounted(async () =>  {
-      await loadFiles()
+      await loadFolders()  
       const shareId = route.params.share_id as string
       if (shareId) {
         const { files } = await api.getShare(shareId)
@@ -291,7 +360,7 @@ export default defineComponent({
         await api.attach_paper(file.paper_id);
       }
 
-      await loadFiles();
+    //  await loadFiles();
 
       showConfirm.value = false
       pendingShared.value = []
@@ -317,8 +386,7 @@ export default defineComponent({
       pdfFiles,
       pendingShared, showConfirm, 
   
-      route,shareList, applyShared, cancelShared,
-
+      route,shareList, applyShared, cancelShared,loadFolders,toggleFolder,
       currentPdfUrl,
       securePdfUrl,
       selectedFileId,
@@ -329,9 +397,12 @@ export default defineComponent({
       deleteFile,
       toggleFilesList,
       closePdf,
-      loadFiles,
       handleToggleSelect,
-      isFileSelected
+      isFileSelected,
+      folders,          // 顶层文件夹数组
+      activeFid,        // 当前展开的文件夹 id
+      openSet,          // 如果以后还想用折叠集合
+      currentFiles,     // 你也许会在别处用到
     }
   }
 })
@@ -406,7 +477,7 @@ export default defineComponent({
 }
 
 .pdf-files-list {
-  padding: 1rem;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -417,7 +488,7 @@ export default defineComponent({
 .pdf-file-item {
   display: flex;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.4rem;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -438,7 +509,7 @@ export default defineComponent({
 }
 
 .pdf-file-icon {
-  margin-right: 0.75rem;
+  margin-right: 0.25rem;
   color: #1976d2;
   flex-shrink: 0;
 }
@@ -455,7 +526,7 @@ export default defineComponent({
   border: none;
   color: #757575;
   cursor: pointer;
-  padding: 5px;
+  padding: 2px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -463,7 +534,7 @@ export default defineComponent({
   transition: all 0.2s;
   opacity: 0.7;
   flex-shrink: 0;
-  margin-right: 8px;
+  margin-right: 3px;
 }
 
 .pdf-file-select:hover {
@@ -487,7 +558,7 @@ export default defineComponent({
   border: none;
   color: #757575;
   cursor: pointer;
-  padding: 5px;
+  padding: 2px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -622,44 +693,41 @@ export default defineComponent({
   to { transform: rotate(360deg); }
 }
 
-/* Responsive styles */
-@media (min-width: 1400px) {
+/* ───────── Desktop & 超宽屏 ───────── */
+@media (min-width: 1600px) {              /* 4K 或 2K 显示器 */
   .files-sidebar.pdf-active {
-    width: 42%;
-    max-width: 750px;
+    width: 50%;           /* 占屏一半 */
+    max-width: 900px;     /* 纸面最大宽 */
   }
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 1280px) and (max-width: 1599px) { /* 普通 1080p / 1440p */
   .files-sidebar.pdf-active {
-    width: 45%;
-    min-width: 500px;
+    width: 48%;
+    max-width: 800px;
   }
 }
 
+/* ───────── 中等屏（Laptop） ───────── */
+@media (min-width: 1025px) and (max-width: 1279px) {
+  .files-sidebar.pdf-active {
+    width: 46%;
+    min-width: 560px;     /* 原来 500→560，让标题行多出 2~4 字 */
+  }
+}
+
+/* ───────── Pad / 小屏 Laptop ───────── */
 @media (max-width: 1024px) {
-  .files-sidebar {
-    width: 100%;
-    height: 400px;
-    min-width: 0;
-  }
-  
-  .files-sidebar.pdf-active {
-    height: 550px;
-    width: 100%;
-    min-width: 0;
-  }
-  
-  .files-sidebar.hidden {
-    height: 0;
-  }
+  .files-sidebar          { width: 100%; height: 420px; min-width: 0; }
+  .files-sidebar.pdf-active { width: 100%; height: 580px; }
+  .files-sidebar.hidden   { height: 0; }
 }
 
+/* ───────── 手机竖屏 ───────── */
 @media (max-width: 768px) {
-  .files-sidebar {
-    height: 350px;
-  }
+  .files-sidebar { height: 380px; }
 }
+
 .chat-button-inside-sidebar {
   background-color: #3f51b5;
   color: white;
@@ -688,5 +756,83 @@ export default defineComponent({
   padding: 5px 10px; border-radius:4px; transition: background 0.2s;
 }
 .share-btn:hover { background: rgba(63,81,181,0.1); }
+
+/* =============== Folder Block =============== */
+.folders-list {
+  padding: 0.5rem 1rem 1rem;
+  overflow-y: auto;
+}
+
+/* —— 1. 文件夹标题行 —— */
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: #374151;            /* slate-700 */
+  transition: background 0.2s, color 0.2s;
+  user-select: none;
+}
+
+.folder-header:hover {
+  background: #f3f4f6;       /* slate-100 */
+  color: #111827;            /* slate-900 */
+}
+
+/* 展开状态 */
+.folder-header.open {
+  background: #e0e7ff;       /* indigo-100 */
+  color: #3730a3;            /* indigo-800 */
+}
+
+/* —— 1.1 折叠箭头 —— */
+.folder-header .caret {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  transition: transform 0.25s;
+}
+
+.folder-header.open .caret {
+  transform: rotate(90deg);
+}
+
+/* —— 1.2 文件数角标 —— */
+.folder-header .count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #e5e7eb;       /* slate-200 */
+  color: #374151;
+  padding: 2px 6px;
+  border-radius: 9999px;
+}
+
+.folder-header.open .count {
+  background: #c7d2fe;       /* indigo-200 */
+  color: #3730a3;
+}
+
+/* —— 2. 折叠动画 —— */
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: max-height 0.25s ease;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+  overflow: hidden;
+}
+
+/* —— 3. 文件夹外层分隔 —— */
+.folder-block + .folder-block {
+  margin-top: 0.5rem;
+  border-top: 1px solid #f3f4f6; /* slate-100 */
+  padding-top: 0.5rem;
+}
 
 </style> 

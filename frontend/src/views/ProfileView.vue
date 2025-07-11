@@ -14,12 +14,8 @@
       <!-- 统计信息 -->
       <div class="stats">
         <div class="stat">
-          <span class="value">{{ metric.total }}</span>
-          <span class="label">Total Views</span>
-        </div>
-        <div class="stat">
-          <span class="value">{{ metric.today }}</span>
-          <span class="label">Today</span>
+          <span class="value">{{ folders }}</span>
+          <span class="label">Folders</span>
         </div>
         <div class="stat">
           <span class="value">{{ files }}</span>
@@ -48,6 +44,7 @@ export default {
     const user   = ref(null)
     const metric = ref({ total: '–', today: '–' })
     const files  = ref('–')
+    const folders = ref('–')
     const fallbackAvatar =
       'https://avatars.githubusercontent.com/u/9919?s=200&v=4'
 
@@ -62,8 +59,10 @@ export default {
         metric.value.today = m.last5.at(-1) ?? 0
       } catch {}
       try {
-        const list = await api.get_user_files()
-        files.value = list.length
+        const list1 = await api.get_user_files()
+        const list2 = await api.get_folders()
+        files.value = list1.length
+        folders.value = list2.length
       } catch {}
     }
 
@@ -82,7 +81,7 @@ export default {
       fetchStats()
     })
 
-    return { user, metric, files, fallbackAvatar, gotoFiles, logout }
+    return { user, metric, files,folders, fallbackAvatar, gotoFiles, logout }
   }
 }
 </script>

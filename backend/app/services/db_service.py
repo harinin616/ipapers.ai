@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder
 from app.db.database import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -730,8 +730,9 @@ class DBService:
     
     async def get_files_by_user_id(self, user_id: int) -> List[dict]:
         """
-        Get all files for a specific user, ordered by added_at desc.
-        返回每个文件对应的 paper_id、title、pdf_url、added_at（ISO 格式）
+        拉取某用户 *所有文件*（跨文件夹），按 added_at DESC。
+        返回字段：
+            file_path (预留空) | filename | paper_id | paper_URL | added_at | selected
         """
         if not user_id:
             logger.info("empty user_id")
@@ -739,46 +740,61 @@ class DBService:
 
         async for db in get_async_db():
             try:
-                # 1. 构造查询：带上 paper 关联，按 added_at 降序
+                # 1) 通过 folders JOIN user_files → 预加载 paper
                 stmt = (
                     select(DBUserFile)
+                    .join(DBFolder, DBFolder.id == DBUserFile.folder_id)
+                    .where(DBFolder.user_id == user_id)
                     .options(selectinload(DBUserFile.paper))
-                    .where(DBUserFile.user_id == user_id)
                     .order_by(DBUserFile.added_at.desc())
                 )
                 result = await db.execute(stmt)
                 user_files: List[DBUserFile] = result.scalars().all()
 
-            # 2. 构造返回列表
+                # 2) 组装返回列表
                 file_list: List[dict] = []
                 for uf in user_files:
-                # uf.paper 通过 relationship 已经加载
-                    paper = uf.paper
+                    paper = uf.paper         # 已通过 relationship 预加载
                     file_list.append({
-                        "file_path":    "",
-                        "filename":     paper.title,
-                        "paper_id":     uf.paper_id,
-                        "paper_URL":    paper.pdf_url.replace("http://", "https://") if paper.pdf_url else None,
-                        "added_at":     uf.added_at.isoformat() if isinstance(uf.added_at, datetime) else None,
-                        "selected":     True
-                  })
+                        "file_path": "",     # 你之前保留的字段
+                        "filename":  paper.title,
+                        "paper_id":  uf.paper_id,
+                        "paper_URL": (
+                            paper.pdf_url.replace("http://", "https://")
+                            if paper.pdf_url else None
+                        ),
+                        "added_at": (
+                            uf.added_at.isoformat()
+                            if isinstance(uf.added_at, datetime) else None
+                        ),
+                        "selected": True     # 默认全选；如有逻辑可改
+                    })
 
                 logger.info(f"get {len(file_list)} files for user {user_id}")
                 return file_list
 
             except SQLAlchemyError as e:
-                logger.error(f"Database error when getting files for user {user_id}: {e}")
+                logger.error(
+                    f"Database error when getting files for user {user_id}: {e}"
+                )
                 return []
             except Exception as e:
-                logger.error(f"Unexpected error when getting files for user {user_id}", exc_info=True)
+                logger.error(
+                    f"Unexpected error when getting files for user {user_id}",
+                    exc_info=True
+                )
                 return []
 
+        # 数据库连接意外中断
         return []
-        
+            
     async def add_file_to_user(self, user_id: int, paper_id: str) -> bool:
         """
-        将 paper 加入到用户的 file list。
-        返回 True 表示成功（新插入或已存在），False 表示出错。
+        把 paper 放进用户的“默认文件夹”：
+        1. 找到 user→folders.name=='default'；若不存在就创建
+        2. 在该 folder 内插入 (folder_id, paper_id)
+        True  = 新增成功 / 已存在
+        False = 参数错误或数据库异常
         """
         if not user_id or not paper_id:
             logger.warning("invalid user_id or paper_id")
@@ -786,69 +802,118 @@ class DBService:
 
         async for db in get_async_db():
             try:
-                # 先验证 user 和 paper 都存在（可选）
-                user = (await db.execute(select(DBUser).where(DBUser.user_id == user_id))).scalars().first()
+                # -------- 1) 校验用户 & 论文 --------
+                user = (await db.execute(
+                    select(DBUser).where(DBUser.user_id == user_id))
+                ).scalars().first()
                 if not user:
                     logger.info(f"user {user_id} not found")
                     return False
-                paper = (await db.execute(select(DBPaper).where(DBPaper.paper_id == paper_id))).scalars().first()
+
+                paper = (await db.execute(
+                    select(DBPaper).where(DBPaper.paper_id == paper_id))
+                ).scalars().first()
                 if not paper:
                     logger.info(f"paper {paper_id} not found")
                     return False
 
-                # 插入关联（如果已存在，IntegrityError 会被捕获）
-                entry = DBUserFile(user_id=user_id, paper_id=paper_id)
+                # -------- 2) 拿 / 建 default folder --------
+                folder = (await db.execute(
+                    select(DBFolder)
+                    .where(DBFolder.user_id == user_id, DBFolder.name == "default"))
+                ).scalars().first()
+
+                if not folder:
+                    folder = DBFolder(user_id=user_id, name="default")
+                    db.add(folder)
+                    await db.flush()          # 获得 folder.id
+
+                # -------- 3) 插入 (folder_id, paper_id) --------
+                entry = DBUserFile(folder_id=folder.id, paper_id=paper_id)
                 db.add(entry)
                 await db.commit()
                 return True
 
             except IntegrityError:
-                    # 已存在同样的 user_id + paper_id，不必重复插入
+                # 同一 folder 已有这篇 paper，无需重复
                 await db.rollback()
-                logger.info(f"file {paper_id} already in user {user_id}'s list")
+                logger.info(
+                    f"paper {paper_id} already in user {user_id}'s default folder"
+                )
                 return True
 
             except SQLAlchemyError as e:
                 await db.rollback()
-                logger.error(f"DB error adding file to user {user_id}: {e}")
+                logger.error(f"DB error adding file to default folder: {e}")
                 return False
 
     async def remove_file_from_user(self, user_id: int, paper_id: str) -> bool:
         """
-        从用户的 file list 中移除一条记录。
-        返回 True 表示删除成功（存在且已删除），False 表示未找到或出错。
+        删除 (paper_id) 在用户任意文件夹中的记录。
+        · 找得到即删，可能删除多条（不同文件夹副本）
+        · 若完全找不到，再尝试只删 default 文件夹里的记录
         """
-        if not user_id or not paper_id:
+        if not (user_id and paper_id):
             logger.warning("invalid user_id or paper_id")
             return False
 
         async for db in get_async_db():
             try:
-                # 执行 DELETE
+                # ---------- 1. 删除所有匹配行 ----------
+                # JOIN folders → 保证 folder 属于当前 user
                 stmt = (
                     delete(DBUserFile)
+                    .where(DBUserFile.paper_id == paper_id)
                     .where(
-                        DBUserFile.user_id  == user_id,
-                        DBUserFile.paper_id == paper_id
+                        DBUserFile.folder_id.in_(
+                            select(DBFolder.id).where(DBFolder.user_id == user_id)
+                        )
                     )
                 )
                 result = await db.execute(stmt)
                 await db.commit()
 
-                # rowcount>0 表示有行被删除
                 if result.rowcount and result.rowcount > 0:
-                    logger.info(f"removed file {paper_id} from user {user_id}'s list")
+                    logger.info(
+                        f"removed paper {paper_id} ({result.rowcount} rows) "
+                        f"from user {user_id}'s folders"
+                    )
                     return True
-                else:
-                    logger.info(f"file {paper_id} not found in user {user_id}'s list")
+
+                # ---------- 2. 兼容旧数据：default 文件夹 ----------
+                default_id = (await db.execute(
+                    select(DBFolder.id)
+                    .where(DBFolder.user_id == user_id,
+                        DBFolder.name == "default")
+                )).scalar_one_or_none()
+
+                if default_id is None:
+                    logger.info(f"file {paper_id} not found for user {user_id}")
                     return False
+
+                stmt_default = (
+                    delete(DBUserFile)
+                    .where(DBUserFile.folder_id == default_id,
+                        DBUserFile.paper_id == paper_id)
+                )
+                res2 = await db.execute(stmt_default)
+                await db.commit()
+
+                if res2.rowcount and res2.rowcount > 0:
+                    logger.info(
+                        f"removed paper {paper_id} from user {user_id}'s default folder"
+                    )
+                    return True
+
+                logger.info(f"file {paper_id} not found for user {user_id}")
+                return False
 
             except SQLAlchemyError as e:
                 await db.rollback()
-                logger.error(f"DB error deleting file {paper_id} for user {user_id}: {e}")
+                logger.error(
+                    f"DB error deleting paper {paper_id} for user {user_id}: {e}"
+                )
                 return False
-
-        return False
 
 
 
@@ -1073,6 +1138,37 @@ class DBService:
                 return []
         
         return []
+    
+    async def get_folders_with_files(self, user_id: int) -> list[dict]:
+        async for db in get_async_db():
+            # 预加载 files → paper
+            result = await db.execute(
+                select(DBFolder)
+                .options(
+                    selectinload(DBFolder.files)
+                    .selectinload(DBUserFile.paper)
+                )
+                .where(DBFolder.user_id == user_id)
+                .order_by(DBFolder.created_at)
+            )
+            folders: list[DBFolder] = result.scalars().all()
+
+            out = []
+            for fld in folders:
+                out.append({
+                    "id":   fld.id,
+                    "name": fld.name,
+                    "files": [
+                        {
+                            "paper_id":  uf.paper_id,
+                            "filename":  uf.paper.title,
+                            "paper_URL": uf.paper.pdf_url,
+                            "added_at":  uf.added_at.isoformat()
+                        }
+                        for uf in fld.files
+                    ]
+                })
+            return out
 
 # Create a global instance
 db_service = DBService() 

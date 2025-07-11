@@ -199,8 +199,8 @@ export default defineComponent({
     
     // Handle paper attached event to refresh FileList
     const handlePaperAttached = () => {
-      if (fileListRef.value && typeof (fileListRef.value as any).loadFiles === 'function') {
-        (fileListRef.value as any).loadFiles();
+      if (fileListRef.value && typeof (fileListRef.value as any).loadFolders === 'function') {
+        (fileListRef.value as any).loadFolders();
       }
     };
     
