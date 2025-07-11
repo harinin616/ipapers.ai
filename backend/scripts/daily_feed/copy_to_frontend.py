@@ -19,6 +19,13 @@ from datetime import datetime, timedelta
 import glob
 import re
 
+# Import audio generation modules
+from kokoro import KPipeline
+import soundfile as sf
+
+# Initialize the audio pipeline
+audio_pipeline = KPipeline(lang_code='a')
+
 def get_frontend_public_dir():
     """Get the path to the frontend's public directory."""
     # From the script location: backend/scripts/daily_feed/
@@ -87,8 +94,69 @@ def extract_summary_title_and_phrase(markdown_content: str, filename: str):
     
     return 'Summary', None
 
-def read_summary_files_with_metadata(summaries_dir: Path, phrases_summary_data):
-    """Read all markdown summary files and return their contents with paper counts."""
+def clean_content_for_audio(content: str):
+    """Remove hyperlinks and other unwanted formatting from content for audio generation."""
+    if not content:
+        return ""
+    
+    # Remove markdown hyperlinks in format [text](url)
+    cleaned_content = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', content)
+    
+    # Remove any remaining markdown formatting that might interfere with audio
+    # Remove headers (# ## ###)
+    cleaned_content = re.sub(r'^#+\s+', '', cleaned_content, flags=re.MULTILINE)
+    
+    # Remove bold/italic formatting
+    cleaned_content = re.sub(r'\*\*([^*]+)\*\*', r'\1', cleaned_content)
+    cleaned_content = re.sub(r'\*([^*]+)\*', r'\1', cleaned_content)
+    
+    # Remove extra whitespace and newlines
+    cleaned_content = re.sub(r'\n\s*\n', '\n\n', cleaned_content)
+    cleaned_content = cleaned_content.strip()
+    
+    return cleaned_content
+
+def generate_audio_for_summary(content: str, title: str, category_name: str, phrase: str, daily_feed_dir: Path):
+    """Generate audio file for a summary and return the relative path."""
+    try:
+        # Clean the content for audio generation
+        cleaned_content = clean_content_for_audio(content)
+        
+        if not cleaned_content:
+            print(f"  ⚠️  No content to generate audio for: {title}")
+            return None
+        
+        # Create audio subdirectory
+        audio_dir = daily_feed_dir / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create a safe filename
+        safe_phrase = re.sub(r'[^\w\s-]', '', phrase or 'summary').strip()
+        safe_phrase = re.sub(r'[-\s]+', '_', safe_phrase)
+        safe_category = re.sub(r'[^\w\s-]', '', category_name).strip()
+        safe_category = re.sub(r'[-\s]+', '_', safe_category)
+        
+        audio_filename = f"{safe_category}_{safe_phrase}.wav"
+        audio_filepath = audio_dir / audio_filename
+        
+        # Generate audio
+        print(f"  🎵 Generating audio for: {title}")
+        generator = audio_pipeline([cleaned_content], voice='af_heart')
+        
+        for i, (gs, ps, audio) in enumerate(generator):
+            print(f"    Generated audio: gs={gs}, ps={ps}")
+            sf.write(str(audio_filepath), audio, 24000)
+            break  # We only have one text to process
+        
+        # Return relative path for frontend
+        return f"/daily_feed/audio/{audio_filename}"
+        
+    except Exception as e:
+        print(f"  ⚠️  Error generating audio for {title}: {e}")
+        return None
+
+def read_summary_files_with_metadata(summaries_dir: Path, phrases_summary_data, category_name: str, daily_feed_dir: Path):
+    """Read all markdown summary files and return their contents with paper counts and audio."""
     summaries = []
     phrase_paper_counts = {}
     
@@ -114,11 +182,15 @@ def read_summary_files_with_metadata(summaries_dir: Path, phrases_summary_data):
                             normalized_phrase = phrase.replace(' ', '_')
                             paper_count = phrase_paper_counts.get(normalized_phrase)
                         
+                        # Generate audio for this summary
+                        audio_url = generate_audio_for_summary(content, title, category_name, phrase, daily_feed_dir)
+                        
                         summary_data = {
                             'content': content,
                             'title': title,
                             'phrase': phrase,
-                            'paper_count': paper_count
+                            'paper_count': paper_count,
+                            'audio_url': audio_url
                         }
                         summaries.append(summary_data)
                         
@@ -189,9 +261,9 @@ def generate_daily_feed_json(date: str):
         # Load phrases summary for this category
         phrases_summary_data = load_phrases_summary(source_category_dir)
         
-        # Read summaries with metadata
+        # Read summaries with metadata and generate audio
         summaries_dir = source_category_dir / "summaries"
-        summaries = read_summary_files_with_metadata(summaries_dir, phrases_summary_data)
+        summaries = read_summary_files_with_metadata(summaries_dir, phrases_summary_data, category_name, daily_feed_dir)
         
         # Copy word cloud image
         word_cloud_url = copy_images_to_frontend(source_category_dir, daily_feed_dir, category_name.replace(' ', '_').replace('(', '').replace(')', '').replace('.', ''))
@@ -212,6 +284,7 @@ def generate_daily_feed_json(date: str):
     categories_data.sort(key=lambda x: x['paper_count'] or 0, reverse=True)
     print(f"📊 Categories sorted by paper count (largest to smallest)")
     print(f"📊 Summaries within each category also sorted by paper count (largest to smallest)")
+    print(f"🎵 Audio files generated for all summaries")
     
     # Get total papers from pipeline summary
     total_papers = None
