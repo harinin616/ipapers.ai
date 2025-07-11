@@ -1010,13 +1010,45 @@ onUnmounted(() => {
 }
 
 .summary-content-wrapper.expanded {
-  max-height: 2000px; /* Large enough to accommodate content */
+  max-height: 400px; /* Fixed maximum height */
   padding: 1rem;
+  overflow-y: auto; /* Add vertical scroll bar */
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  background: #fafafa;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Custom scrollbar styling */
+.summary-content-wrapper.expanded::-webkit-scrollbar {
+  width: 8px;
+}
+
+.summary-content-wrapper.expanded::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.summary-content-wrapper.expanded::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.summary-content-wrapper.expanded::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Firefox scrollbar styling */
+.summary-content-wrapper.expanded {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
 .summary-content {
   line-height: 1.6;
   color: #333;
+  max-height: 100%;
 }
 
 .summary-content strong {
@@ -1287,6 +1319,15 @@ onUnmounted(() => {
   .manage-icon {
     width: 16px;
     height: 16px;
+  }
+
+  /* Mobile scroll adjustments */
+  .summary-content-wrapper.expanded {
+    max-height: 300px; /* Smaller max height on mobile */
+  }
+
+  .summary-content-wrapper.expanded::-webkit-scrollbar {
+    width: 6px; /* Thinner scrollbar on mobile */
   }
 
   .audio-global-controls {
