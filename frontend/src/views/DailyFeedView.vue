@@ -904,29 +904,8 @@ onUnmounted(() => {
 }
 
 .summary-content-wrapper.expanded {
-  max-height: 500px; /* Set reasonable max height */
+  max-height: 2000px; /* Large enough to accommodate content */
   padding: 1rem;
-  overflow-y: auto; /* Add vertical scrollbar when content exceeds max-height */
-}
-
-/* Style the scrollbar for better appearance */
-.summary-content-wrapper.expanded::-webkit-scrollbar {
-  width: 8px;
-}
-
-.summary-content-wrapper.expanded::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.summary-content-wrapper.expanded::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-.summary-content-wrapper.expanded::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
 }
 
 .summary-content {
