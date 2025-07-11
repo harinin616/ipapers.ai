@@ -50,8 +50,8 @@
           </select>
         </div>
         <button 
-          v-if="currentSpeakingId" 
-          @click="stopSpeech" 
+          v-if="currentSpeakingId || currentAudioId" 
+          @click="stopAllPlayback" 
           class="global-stop-btn"
         >
           <svg viewBox="0 0 24 24" class="stop-icon">
@@ -128,6 +128,27 @@
                         <path d="M8 5v14l11-7z" fill="currentColor"/>
                       </svg>
                     </button>
+                    <!-- Audio Button -->
+                    <button 
+                      v-if="getAudioUrl(summary)"
+                      @click.stop="toggleAudio(category.category, index, summary)"
+                      class="audio-btn"
+                      :class="{ 
+                        'playing': isAudioPlaying(category.category, index),
+                        'paused': isAudioPaused(category.category, index)
+                      }"
+                      :title="getAudioButtonTitle(category.category, index)"
+                    >
+                      <svg v-if="!isAudioPlaying(category.category, index) && !isAudioPaused(category.category, index)" viewBox="0 0 24 24" class="volume-icon">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+                      </svg>
+                      <svg v-else-if="isAudioPlaying(category.category, index)" viewBox="0 0 24 24" class="pause-icon">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" class="volume-icon">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+                      </svg>
+                    </button>
                     <div class="toggle-icon">
                       <svg 
                         viewBox="0 0 24 24" 
@@ -165,6 +186,7 @@ interface SummaryData {
   title: string
   phrase?: string
   paper_count?: number
+  audio_url?: string
 }
 
 interface CategoryData {
@@ -190,6 +212,14 @@ interface SpeechState {
   isPaused: boolean
 }
 
+// Audio playback interfaces
+interface AudioState {
+  categoryId: string
+  summaryIndex: number
+  audio: HTMLAudioElement | null
+  isPaused: boolean
+}
+
 // Reactive data
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -208,6 +238,12 @@ const speechState = ref<SpeechState | null>(null)
 const speechRate = ref(1.0)
 const selectedVoice = ref(0)
 const availableVoices = ref<SpeechSynthesisVoice[]>([])
+
+// Audio playback state management
+const currentAudioId = ref<string | null>(null)
+const audioState = ref<AudioState | null>(null)
+const audioVolume = ref(1.0)
+const audioPlaybackRate = ref(1.0)
 
 // Initialize Text-to-Speech
 const initializeTTS = () => {
@@ -341,6 +377,9 @@ const stopSpeech = () => {
 
 // Toggle speech for a summary
 const toggleSpeech = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
+  // Stop any current audio when TTS starts
+  stopAudio()
+  
   const speechId = getSpeechId(categoryId, summaryIndex)
   
   if (currentSpeakingId.value === speechId) {
@@ -352,6 +391,150 @@ const toggleSpeech = (categoryId: string, summaryIndex: number, summary: Summary
   } else {
     startSpeech(categoryId, summaryIndex, summary)
   }
+}
+
+// Audio playback methods
+// Generate unique ID for audio tracking
+const getAudioId = (categoryId: string, summaryIndex: number): string => {
+  return `audio-${categoryId}-${summaryIndex}`
+}
+
+// Get audio URL for a summary
+const getAudioUrl = (summary: SummaryData | string): string | null => {
+  if (typeof summary === 'string') {
+    return null // Legacy format doesn't have audio
+  }
+  return summary.audio_url || null
+}
+
+// Check if a specific summary audio is currently playing
+const isAudioPlaying = (categoryId: string, summaryIndex: number): boolean => {
+  const audioId = getAudioId(categoryId, summaryIndex)
+  return currentAudioId.value === audioId && 
+         !!audioState.value?.audio && 
+         !audioState.value?.audio.paused &&
+         !(audioState.value?.isPaused ?? false)
+}
+
+// Check if a specific summary audio is paused
+const isAudioPaused = (categoryId: string, summaryIndex: number): boolean => {
+  const audioId = getAudioId(categoryId, summaryIndex)
+  return currentAudioId.value === audioId && 
+         (audioState.value?.isPaused ?? false) === true
+}
+
+// Get audio button title for accessibility
+const getAudioButtonTitle = (categoryId: string, summaryIndex: number): string => {
+  if (isAudioPlaying(categoryId, summaryIndex)) return 'Pause audio'
+  if (isAudioPaused(categoryId, summaryIndex)) return 'Resume audio'
+  return 'Play audio narration'
+}
+
+// Start audio playback for a summary
+const startAudio = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
+  const audioUrl = getAudioUrl(summary)
+  if (!audioUrl) return
+  
+  // Stop any current audio and TTS
+  stopAudio()
+  stopSpeech()
+  
+  const audio = new Audio(audioUrl)
+  audio.volume = audioVolume.value
+  audio.playbackRate = audioPlaybackRate.value
+  
+  // Set up event handlers
+  audio.onloadstart = () => {
+    currentAudioId.value = getAudioId(categoryId, summaryIndex)
+    audioState.value = {
+      categoryId,
+      summaryIndex,
+      audio,
+      isPaused: false
+    }
+  }
+  
+  audio.onplay = () => {
+    if (audioState.value) {
+      audioState.value.isPaused = false
+    }
+  }
+  
+  audio.onpause = () => {
+    if (audioState.value) {
+      audioState.value.isPaused = true
+    }
+  }
+  
+  audio.onended = () => {
+    currentAudioId.value = null
+    audioState.value = null
+  }
+  
+  audio.onerror = (event) => {
+    console.error('Audio playback error:', event)
+    currentAudioId.value = null
+    audioState.value = null
+  }
+  
+  // Start playing
+  audio.play().catch(error => {
+    console.error('Failed to play audio:', error)
+    currentAudioId.value = null
+    audioState.value = null
+  })
+}
+
+// Pause current audio
+const pauseAudio = () => {
+  if (audioState.value?.audio && !audioState.value.audio.paused) {
+    audioState.value.audio.pause()
+    audioState.value.isPaused = true
+  }
+}
+
+// Resume paused audio
+const resumeAudio = () => {
+  if (audioState.value?.audio && audioState.value.audio.paused) {
+    audioState.value.audio.play().catch(error => {
+      console.error('Failed to resume audio:', error)
+    })
+    audioState.value.isPaused = false
+  }
+}
+
+// Stop all audio
+const stopAudio = () => {
+  if (audioState.value?.audio) {
+    audioState.value.audio.pause()
+    audioState.value.audio.currentTime = 0
+  }
+  currentAudioId.value = null
+  audioState.value = null
+}
+
+// Toggle audio for a summary
+const toggleAudio = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
+  // Stop any current TTS when audio starts
+  stopSpeech()
+  
+  const audioId = getAudioId(categoryId, summaryIndex)
+  
+  if (currentAudioId.value === audioId) {
+    if (audioState.value?.isPaused || audioState.value?.audio?.paused) {
+      resumeAudio()
+    } else {
+      pauseAudio()
+    }
+  } else {
+    startAudio(categoryId, summaryIndex, summary)
+  }
+}
+
+// Stop all playback (TTS and Audio)
+const stopAllPlayback = () => {
+  stopSpeech()
+  stopAudio()
 }
 
 // Get page title with date and total papers
@@ -572,6 +755,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopSpeech()
+  stopAudio()
 })
 </script>
 
@@ -871,10 +1055,35 @@ onUnmounted(() => {
   opacity: 0.7;
 }
 
-.play-icon, .pause-icon, .resume-icon {
+.play-icon, .pause-icon, .resume-icon, .volume-icon {
   width: 24px;
   height: 24px;
   fill: #3f51b5;
+}
+
+.audio-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: opacity 0.2s ease;
+}
+
+.audio-btn:hover {
+  opacity: 0.8;
+}
+
+.audio-btn.playing {
+  opacity: 0.7;
+}
+
+.audio-btn.paused {
+  opacity: 0.7;
+}
+
+.audio-btn .volume-icon,
+.audio-btn .pause-icon {
+  fill: #4caf50;
 }
 
 .toggle-icon {
