@@ -99,8 +99,11 @@ def clean_content_for_audio(content: str):
     if not content:
         return ""
     
-    # Remove markdown hyperlinks in format [text](url)
-    cleaned_content = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', content)
+    # Remove double bracket hyperlinks in format [[text](url)] - remove completely
+    cleaned_content = re.sub(r'\[\[([^\]]+)\]\([^\)]+\)\]', '', content)
+    
+    # Remove single bracket hyperlinks in format [text](url) as backup - remove completely
+    cleaned_content = re.sub(r'\[([^\]]+)\]\([^\)]+\)', '', cleaned_content)
     
     # Remove any remaining markdown formatting that might interfere with audio
     # Remove headers (# ## ###)
@@ -110,11 +113,28 @@ def clean_content_for_audio(content: str):
     cleaned_content = re.sub(r'\*\*([^*]+)\*\*', r'\1', cleaned_content)
     cleaned_content = re.sub(r'\*([^*]+)\*', r'\1', cleaned_content)
     
+    # Clean up extra spaces that might result from removing hyperlinks
+    cleaned_content = re.sub(r'\s+', ' ', cleaned_content)
+    
     # Remove extra whitespace and newlines
     cleaned_content = re.sub(r'\n\s*\n', '\n\n', cleaned_content)
     cleaned_content = cleaned_content.strip()
     
     return cleaned_content
+
+def split_content_into_sentences(content: str):
+    """Split content into individual sentences for audio generation."""
+    # Split by sentence-ending punctuation
+    sentences = re.split(r'(?<=[.!?])\s+', content)
+    
+    # Filter out empty sentences and clean them up
+    cleaned_sentences = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if sentence and len(sentence) > 10:  # Skip very short fragments
+            cleaned_sentences.append(sentence)
+    
+    return cleaned_sentences
 
 def generate_audio_for_summary(content: str, title: str, category_name: str, phrase: str, daily_feed_dir: Path):
     """Generate audio file for a summary and return the relative path."""
@@ -139,14 +159,37 @@ def generate_audio_for_summary(content: str, title: str, category_name: str, phr
         audio_filename = f"{safe_category}_{safe_phrase}.wav"
         audio_filepath = audio_dir / audio_filename
         
-        # Generate audio
-        print(f"  🎵 Generating audio for: {title}")
-        generator = audio_pipeline([cleaned_content], voice='af_heart')
+        # Split content into sentences for individual audio generation
+        sentences = split_content_into_sentences(cleaned_content)
+        print(f"  🎵 Generating audio for: {title} ({len(sentences)} sentences)")
         
-        for i, (gs, ps, audio) in enumerate(generator):
-            print(f"    Generated audio: gs={gs}, ps={ps}")
-            sf.write(str(audio_filepath), audio, 24000)
-            break  # We only have one text to process
+        # Generate audio for each sentence
+        audio_segments = []
+        for i, sentence in enumerate(sentences):
+            try:
+                print(f"    Processing sentence {i+1}/{len(sentences)}...")
+                generator = audio_pipeline([sentence], voice='af_heart')
+                
+                for gs, ps, audio in generator:
+                    print(f"      Sentence {i+1}: gs={gs}, ps={ps}")
+                    audio_segments.append(audio)
+                    break  # We only have one text to process per sentence
+                    
+            except Exception as e:
+                print(f"      ⚠️  Error generating audio for sentence {i+1}: {e}")
+                continue
+        
+        if not audio_segments:
+            print(f"  ⚠️  No audio segments generated for: {title}")
+            return None
+        
+        # Combine all audio segments
+        import numpy as np
+        combined_audio = np.concatenate(audio_segments)
+        
+        # Save combined audio
+        sf.write(str(audio_filepath), combined_audio, 24000)
+        print(f"    ✅ Combined {len(audio_segments)} audio segments into final file")
         
         # Return relative path for frontend
         return f"/daily_feed/audio/{audio_filename}"
@@ -284,7 +327,7 @@ def generate_daily_feed_json(date: str):
     categories_data.sort(key=lambda x: x['paper_count'] or 0, reverse=True)
     print(f"📊 Categories sorted by paper count (largest to smallest)")
     print(f"📊 Summaries within each category also sorted by paper count (largest to smallest)")
-    print(f"🎵 Audio files generated for all summaries")
+    print(f"🎵 Audio files generated sentence-by-sentence for all summaries")
     
     # Get total papers from pipeline summary
     total_papers = None
