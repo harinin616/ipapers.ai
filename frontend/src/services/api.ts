@@ -65,6 +65,9 @@ export interface IApiService {
   addUserTopic(topic: string): Promise<void>;
   /** 删除一个 topic */
   deleteUserTopic(topic: string): Promise<boolean>;
+
+  rename_folder(payload: { folder_id: number; name: string }): Promise<any>;
+  create_folder(payload: { name: string }): Promise<any>;
 }
 /**
  * API Service implementation
@@ -472,6 +475,10 @@ class ApiService implements IApiService {
       throw error;
     }
   }
+  async rename_folder(payload: { folder_id: number; name: string }) {
+    const resp = await this.api.patch('/api/folders/rename', payload)
+    return resp.data
+  }
 
   async complete_graph(session_id: string): Promise<any> {
     try {
@@ -616,6 +623,22 @@ class ApiService implements IApiService {
     const resp = await this.api.get('/api/folders')
     return resp.data  // [{id,name,files:[...]}, ...]
   }
+  async attach_to_folder(data: { folder_id: number; paper_id: string }) {
+  return await this.api.post(`/api/folders/${data.folder_id}/attach`, {
+    paper_id: data.paper_id
+  })
+}
+  async remove_file_from_folder(folderId: number, paperId: string): Promise<boolean> {
+    const resp = await this.api.delete(`/api/folders/${folderId}/files/${paperId}`)
+    return resp.status === 204
+  }
+  async create_folder(payload: { name: string }) {
+    const resp = await this.api.post('/api/folders/', payload)
+    return resp.data
+  }
+  async delete_folder(folderId: number) {
+  await this.api.delete(`/api/folders/${folderId}`)
+}
 }
 
 interface ChatFile {
@@ -624,6 +647,7 @@ interface ChatFile {
   paper_id:  string
   paper_URL: string
   added_at:  string
+  folder_id: number
 }
 // Export singleton instance
 export default new ApiService(); 

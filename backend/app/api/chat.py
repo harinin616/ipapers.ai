@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body, Path, Request, Query
+from fastapi import APIRouter, HTTPException, Body, Path, Request, Query, Header, Response,status
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
 import logging
@@ -148,31 +148,28 @@ async def get_user_files(
             })
     return result
 
-
-@router.delete("/files/delete/{paper_id}")
+@router.delete(
+    "/files/delete/{paper_id}",
+)
 async def delete_file(
-    request: Request,
-    paper_id: str = Path()
+    paper_id: str,
+    x_user_id: str = Header(..., alias="X-User-ID"),
 ):
     """
-    Delete a file from user's attached files
+    删除当前用户的 file list 中的指定 paper。
+    如果删除成功，返回 204 No Content；找不到记录则 404；用户未登录则 401。
     """
-    user_id = request.headers.get('X-User-ID')
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="User ID not found"
-        )
-    
-    chat_data = chat_service.active_chats[user_id]
-    if user_id.isdigit():
-        await db_service.remove_file_from_user(int(user_id), paper_id)
-    if chat_data["files"]:
-        for file_data in chat_data["files"]:
-            if file_data["paper_id"] == paper_id:
-                chat_data["files"].remove(file_data)
-                return True
-    return False
+    if not x_user_id.isdigit():
+        raise HTTPException(status_code=401, detail="Invalid or missing X-User-ID header")
+    user_id = int(x_user_id)
+
+    ok = await db_service.remove_file_from_user(user_id, paper_id)
+    if not ok:
+        # 如果该用户的列表里没有这篇论文，就返回 404
+        raise HTTPException(status_code=404, detail="File not found in your list")
+
+    # 204 响应体为空
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post("/update_file_selection")
 async def update_file_selection(request: Request, data: dict = Body(...)):
@@ -181,6 +178,9 @@ async def update_file_selection(request: Request, data: dict = Body(...)):
     selected = data.get("selected")
     if not user_id or paper_id is None or selected is None:
         raise HTTPException(status_code=400, detail="Missing parameters")
+    uid = str(user_id) 
+    if uid not in chat_service.active_chats:
+        chat_service.active_chats[uid] = {"files": set()}
     files = chat_service.active_chats[user_id]["files"]
     for file in files:
         if file["paper_id"] == paper_id:

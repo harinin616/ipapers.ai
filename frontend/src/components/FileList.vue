@@ -43,9 +43,12 @@
       <div class="panel-header">
         <h3>File List</h3>
           <div style="display: flex; gap: 10px; align-items: center;">
-           <button class="share-btn" @click="shareList" title="Share file list">
-            Share
-          </button>
+            <button class="new-folder-btn" @click="handleNewFolder" title="New Folder">
+               New Folder
+            </button>
+          <!-- <button class="share-btn" @click="shareList" title="Share file list">
+           Share
+          </button>-->
             <router-link to="/chat" class="chat-button-inside-sidebar">
               Chat
           </router-link>
@@ -62,15 +65,53 @@
         >
           <!-- 文件夹头 -->
 
-          <div
-            class="folder-header"
-            :class="{open: activeFid === folder.id}"
-            @click="toggleFolder(folder.id)"
-          >
-            <svg class="caret" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
-            <span class="fname">{{ folder.name }}</span>
-            <span class="count">({{ folder.files.length }})</span>
-          </div>
+                      <div
+              class="folder-header"
+              :class="{ open: activeFid === folder.id }"
+              @click="toggleFolder(folder.id)"
+            >
+              <!-- 折叠箭头 -->
+              <svg class="caret" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+
+              <!-- 名称：显示 or 输入框 -->
+              <template v-if="editingFolderId !== folder.id">
+                <span class="fname" @dblclick.stop="startEditFolder(folder)">{{ folder.name }}</span>
+                <span class="count">({{ folder.files.length }})</span>
+                 <button
+                   class="f-btn delete"
+                   @click.stop="handleDeleteFolder(folder.id)"
+                   title="Delete folder"
+                 >🗑️</button>
+              </template>
+
+              <template v-else>
+                <input
+                  ref="folderInput"
+                  v-model="editingName"
+                  class="folder-input"
+                  @keydown.enter.stop="saveFolderName(folder)"
+                  @keydown.esc.stop="cancelEditFolder"
+                  @click.stop
+                />
+                <!-- 保存 / 取消按钮 -->
+                <button class="f-btn save"   @click.stop="saveFolderName(folder)"   title="Save">
+                  ✔
+                </button>
+                <button class="f-btn cancel" @click.stop="cancelEditFolder"         title="Cancel">
+                  ✕
+                </button>
+              </template>
+
+              <!-- 单独的“✎”编辑按钮（非编辑态才显示） -->
+              <button
+                v-if="editingFolderId !== folder.id"
+                class="f-btn edit"
+                @click.stop="startEditFolder(folder)"
+                title="Rename folder"
+              >
+                ✎
+              </button>
+            </div>
 
           <!-- 论文列表：只渲染当前展开的文件夹 -->
           <transition name="collapse">
@@ -145,10 +186,11 @@ interface ChatFile {
   paper_id: string;
   paper_URL: string;
   added_at: string;
+  folder_id: number;
 }
-interface Folder {       
-  id:    number
-  name:  string
+interface Folder {
+  id: number
+  name: string
   files: ChatFile[]
 }
 
@@ -218,6 +260,68 @@ export default defineComponent({
       activeFid.value = (activeFid.value === fid) ? null : fid
     }
 
+    const editingFolderId = ref<number | null>(null)
+    const editingName     = ref('')
+    const folderInput     = ref<HTMLInputElement>()
+    const handleNewFolder = async () => {
+      try {
+        // 1. 调后端创建一个默认名为 "Untitled" 的文件夹
+        await api.create_folder({ name: 'Untitled' })
+        await loadFolders()
+      } catch (err) {
+        console.error('create folder failed', err)
+      }
+    }
+
+    const handleDeleteFolder = async (folderId: number) => {
+  if (!confirm('Delete this folder and all its files?')) return
+  try {
+    await api.delete_folder(folderId)  // 你需要在 api service 里实现这个 DELETE /api/folders/{id}
+    folders.value = folders.value.filter(f => f.id !== folderId)
+    // 如果删的是当前展开的，切换到第一个
+    if (activeFid.value === folderId) {
+      activeFid.value = folders.value.length ? folders.value[0].id : null
+    }
+    // 通知外层更新总数
+    const all = folders.value.flatMap(f => f.files)
+    emit('files-updated', all)
+    emit('update-file-count', all.length)
+  } catch (err) {
+    console.error('delete folder failed', err)
+  }
+}
+
+/** 双击名字或点 ✎ 时触发 */
+const startEditFolder = async (folder: Folder) => {
+  editingFolderId.value = folder.id
+  editingName.value     = folder.name
+  await nextTick()
+  folderInput.value?.focus()
+  folderInput.value?.select()
+}
+
+/** 保存 */
+const saveFolderName = async (folder: Folder) => {
+  const newName = editingName.value.trim()
+  if (newName === '' || newName === folder.name) {
+    cancelEditFolder()
+    return
+  }
+  try {
+    await api.rename_folder({ folder_id: folder.id, name: newName })
+    folder.name = newName           // 本地立即生效
+    cancelEditFolder()
+  } catch (e) {
+    console.error('rename failed', e)
+    // 可提示 Toast
+  }
+}
+
+/** 取消编辑 */
+const cancelEditFolder = () => {
+  editingFolderId.value = null
+  editingName.value     = ''
+}
 
     const loadFolders = async () => {
       try {
@@ -229,23 +333,14 @@ export default defineComponent({
           openSet.value.add(folders.value[0].id)
           activeFid.value = folders.value[0].id
         }
-
-        /* 3. 汇总所有文件  */
         const allFiles: ChatFile[] =
           folders.value.flatMap(f => f.files)
-
-        /* 3-a. 同步“已选文件”到 Pinia store */
         const selectedIds = allFiles
-          .filter(f => (f as any).selected)        // 后端若含 selected 字段
+          .filter(f => (f as any).selected)
           .map(f => f.paper_id)
         fileSelectionStore.setSelection(selectedIds)
-
-        /* 3-b. 往父组件回传整个文件数组（保持旧事件语义） */
         emit('files-updated', allFiles)
-
-        /* 4. 文件总数（侧边栏角标等） */
         emit('update-file-count', allFiles.length)
-
       } catch (err) {
         console.error('load folders failed', err)
       }
@@ -277,23 +372,35 @@ export default defineComponent({
       return fileSelectionStore.isFileSelected(paperId)
     }
     
-    const deleteFile = async (file: ChatFile) => {
-      try {
-        const result = await api.delete_file(file.paper_id)
-        if (result) {
-          pdfFiles.value = pdfFiles.value.filter(f => f.paper_id !== file.paper_id)
-          emit('files-updated', pdfFiles.value)
-          emit('update-file-count', pdfFiles.value.length)
-          if (selectedFileId.value === file.paper_id) {
-            closePdf()
-          }
-        }
-        await loadFolders() // 重新加载文件夹列表
-      } catch (error) {
-        console.error('Failed to delete file:', error)
-      }
+   const deleteFile = async (file: ChatFile) => {
+  try {
+    // 1) 找到要删的 folderId
+    const fid = file.folder_id ?? activeFid.value
+    if (!fid) throw new Error('No folder selected')
+
+    // 2) 调后端接口
+    const ok = await api.remove_file_from_folder(fid, file.paper_id)
+    if (!ok) throw new Error('Delete from folder failed')
+
+    // 3) 本地更新：把这个文件从对应 folder.files 里删掉
+    const folder = folders.value.find(f => f.id === fid)
+    if (folder) {
+      folder.files = folder.files.filter(f => f.paper_id !== file.paper_id)
     }
-    
+
+    // 4) 把最新的所有文件列表扁平化，回传给外层
+    const allFiles = folders.value.flatMap(f => f.files)
+    emit('files-updated', allFiles)
+    emit('update-file-count', allFiles.length)
+
+    // 5) 如果正在看的 PDF 被删了，就关闭它
+    if (selectedFileId.value === file.paper_id) {
+      closePdf()
+    }
+  } catch (error) {
+    console.error('Failed to delete file from folder:', error)
+  }
+}
     const toggleFilesList = () => {
       emit('update:showFilesList', !props.showFilesList)
       
@@ -386,7 +493,7 @@ export default defineComponent({
       pdfFiles,
       pendingShared, showConfirm, 
   
-      route,shareList, applyShared, cancelShared,loadFolders,toggleFolder,
+      route,shareList, applyShared, cancelShared,loadFolders,toggleFolder,handleDeleteFolder,
       currentPdfUrl,
       securePdfUrl,
       selectedFileId,
@@ -398,11 +505,17 @@ export default defineComponent({
       toggleFilesList,
       closePdf,
       handleToggleSelect,
+       handleNewFolder,
+      saveFolderName,
       isFileSelected,
+      editingName,
       folders,          // 顶层文件夹数组
       activeFid,        // 当前展开的文件夹 id
       openSet,          // 如果以后还想用折叠集合
       currentFiles,     // 你也许会在别处用到
+      startEditFolder,
+      editingFolderId,
+      cancelEditFolder,
     }
   }
 })
@@ -430,6 +543,7 @@ export default defineComponent({
   max-width: 750px;
   min-width: 580px;
 }
+
 
 .files-sidebar.hidden {
   width: 0;
@@ -833,6 +947,66 @@ export default defineComponent({
   margin-top: 0.5rem;
   border-top: 1px solid #f3f4f6; /* slate-100 */
   padding-top: 0.5rem;
+}
+
+.folder-header{
+  background: #f9fafb;  
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px;border-radius:6px;
+  cursor:pointer;transition:background .2s;
+}
+.folder-header:hover{background:#f5f5f5}
+.folder-header.open {background:#e8f0fe}
+
+.folder-input{
+  flex:1;min-width:0;border:1px solid #ccc;
+  border-radius:4px;padding:2px 6px;font-size:.92rem;
+}
+.folder-input:focus{
+  outline:none;border-color:#1a73e8;
+  box-shadow:0 0 0 2px rgba(26,115,232,.2);
+}
+
+/* 小图标按钮 */
+.f-btn{
+  background:none;border:none;padding:2px 4px;
+  cursor:pointer;font-size:.8rem;line-height:1;
+  border-radius:4px;color:#666;
+  transition:background .15s,color .15s;
+}
+.f-btn.edit:hover   {color:#1a73e8;background:#e8f0fe}
+.f-btn.save:hover   {color:#4caf50;background:#e8f5e8}
+.f-btn.cancel:hover {color:#e53935;background:#ffecec}
+
+.new-folder-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.new-folder-btn:hover {
+  background: #43a047;
+}
+.f-btn.delete {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: #666;                /* 默认灰色 */
+  font-size: 0.9rem;
+  transition: background 0.2s, color 0.2s;
+}
+.f-btn.delete:hover {
+  color: #e53935;             /* 红色 */
+  background: #ffecec;        /* 淡红背景 */
+  border-radius: 4px;
+}
+.f-btn.delete .icon-svg {
+  fill: currentColor;
 }
 
 </style> 

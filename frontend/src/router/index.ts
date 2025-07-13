@@ -2,7 +2,6 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { trackPageView } from '@/utils/analytics'
 
-// Define routes with proper types
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -115,8 +114,8 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/share/:share_id',
     name: 'home-share',
-    component: HomeView,              // ← 改为 HomeView
-    props: route => ({                // ← 可选：把 share_id 当 prop 传下去
+    component: HomeView,
+    props: route => ({
       share_id: route.params.share_id
     }),
     meta: { title: 'Home - iPapers', requiresAuth: false }
@@ -174,7 +173,7 @@ router.beforeEach((to, from, next) => {
 });
 
 router.afterEach((to, from) => {
-  if (to.fullPath !== from.fullPath) {          // 防止同一路径重复计
+  if (to.fullPath !== from.fullPath) {
     trackPageView(to)
   }
 })

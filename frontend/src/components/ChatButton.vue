@@ -1,131 +1,52 @@
 <template>
+  <!-- 主按钮：打开弹窗 -->
   <button
-    @click="attachPaper"
     class="action-button chat-button"
     title="Add to file list"
+    @click="showModal = true"
   >
     Add&nbsp;to&nbsp;File&nbsp;List
   </button>
+
+  <!-- 弹窗组件，Teleport 到 body -->
+  <AddToFoldersModal
+    v-if="showModal"
+    :paper-id="paperId"
+    @added="handleAdded"         
+    @close="showModal = false"  
+  />
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue' 
-import { chatSessionStore } from '../stores/chatSession'
-import api from '../services/api'
+<script setup lang="ts">
+import { ref } from 'vue'
+import AddToFoldersModal from '../views/AddPaperView.vue'
 
+/* -------- props -------- */
+const props = defineProps<{ paperId: string }>()   // 由父层传入的 arXiv id
 
-export default defineComponent({
-  name: 'ChatButton',
-  
-  props: {
-    paperId: {
-      type: String,
-      required: true
-    }
-  },
-  
-  setup(props) {
-    
-    // Start chat with paper
-    const attachPaper = async () => {
-      try {
-        try {
-          await api.click_paper(props.paperId);
-        } catch (error) {
-          console.error('Failed to record add to list click:', error);
-        }
-        
-        chatSessionStore.setProcessingPaper(true);
+/* -------- state -------- */
+const showModal = ref(false)
 
-        const user_id = localStorage.getItem('X-User-ID');
-        if (!user_id) {
-          throw new Error('User ID not found');
-        }        
-
-        try {
-          const attachResponse = await api.attach_paper(props.paperId);
-          
-          if (!attachResponse) {
-            throw new Error('Failed to attach paper to chat session');
-          }
-
-          // Emit global event to refresh FileList
-          window.dispatchEvent(new CustomEvent('paper-attached', {
-            detail: { paperId: props.paperId }
-          }));
-
-          
-          // process in background
-          setTimeout(async () => {
-            try {
-              // process embeddings
-              const paperResponse = await api.get_paper(props.paperId);
-              if (!paperResponse) {
-                console.error('Failed to get paper');
-                throw new Error('Failed to get paper');
-              }
-
-              const embeddingResponse = await api.process_embeddings(props.paperId);
-              
-              if (!embeddingResponse) {
-                console.error('Failed to process embeddings');
-                chatSessionStore.resetProcessingState(); 
-                return;
-              }
-
-              chatSessionStore.resetProcessingState(); 
-
-            } catch (error) {
-              chatSessionStore.resetProcessingState(); 
-            }
-          }, 100);
-          
-        } catch (error) {
-          console.error('Error preparing chat', error);
-          throw error;
-        }
-        
-      } catch (error) {
-        console.error('Error starting chat with paper:', error);
-      }
-    };
-    
-    return {
-      attachPaper
-    };
-  }
-})
+/* -------- events -------- */
+const handleAdded = () => {
+  // 通知全局 FileList 刷新
+  window.dispatchEvent(
+    new CustomEvent('paper-attached', {
+      detail: { paperId: props.paperId }
+    })
+  )
+  showModal.value = false                      // 关闭弹窗
+}
 </script>
 
 <style scoped>
-.action-button {
-  padding: 0.5rem 1rem;
-  background-color: #f0f0f0;
-  color: #333;
-  border-radius: 4px;
-  text-decoration: none;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
-  border: none;
-  cursor: pointer;
+.action-button{
+  padding:.5rem 1rem;border:none;border-radius:4px;
+  font-size:.9rem;cursor:pointer;transition:background .2s;
+  background:#f0f0f0;color:#333;
 }
+.action-button:hover{background:#e0e0e0}
 
-.action-button:hover {
-  background-color: #e0e0e0;
-}
-
-.chat-button {
-  background-color: #3f51b5;
-  color: white;
-}
-
-.chat-button:hover {
-  background-color: #303f9f;
-}
-
-.icon-svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-</style> 
+.chat-button{background:#3f51b5;color:#fff;}
+.chat-button:hover{background:#303f9f}
+</style>

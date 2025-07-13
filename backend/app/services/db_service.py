@@ -846,6 +846,27 @@ class DBService:
                 await db.rollback()
                 logger.error(f"DB error adding file to default folder: {e}")
                 return False
+    async def add_file_to_folder(self,folder_id: int, paper_id: str) -> bool:
+        # 检查 folder 属于 user
+        async for db in get_async_db():
+            folder = (await db.execute(
+                select(DBFolder)
+                  .where(DBFolder.id==folder_id)
+            )).scalars().first()
+            if not folder:
+                return False
+            entry = DBUserFile(folder_id=folder_id, paper_id=paper_id)
+            db.add(entry)
+            try:
+                await db.commit()
+                return True
+            except IntegrityError:
+                await db.rollback()
+                return True
+            except SQLAlchemyError:
+                await db.rollback()
+                return False
+        return False
 
     async def remove_file_from_user(self, user_id: int, paper_id: str) -> bool:
         """
@@ -914,6 +935,58 @@ class DBService:
                     f"DB error deleting paper {paper_id} for user {user_id}: {e}"
                 )
                 return False
+
+    async def remove_file_from_folder(
+        self,
+        user_id: int,
+        folder_id: int,
+        paper_id: str
+    ) -> bool:
+        """
+        从用户的指定文件夹移除一篇 paper。
+        返回 True 表示已删除，False 表示未找到或出错。
+        """
+        if not user_id or not folder_id or not paper_id:
+            logger.warning("invalid user_id, folder_id or paper_id")
+            return False
+
+        async for db in get_async_db():
+            try:
+                # 1) 验证这个 folder 确实属于当前 user
+                folder = (
+                    await db.execute(
+                        select(DBFolder)
+                        .where(DBFolder.id == folder_id, DBFolder.user_id == user_id)
+                    )
+                ).scalars().first()
+                if not folder:
+                    logger.info(f"folder {folder_id} not found for user {user_id}")
+                    return False
+
+                # 2) 删除关联表里的记录
+                stmt = (
+                    delete(DBUserFile)
+                    .where(
+                        DBUserFile.folder_id == folder_id,
+                        DBUserFile.paper_id  == paper_id
+                    )
+                )
+                result = await db.execute(stmt)
+                await db.commit()
+
+                if result.rowcount and result.rowcount > 0:
+                    logger.info(f"removed paper {paper_id} from folder {folder_id}")
+                    return True
+                else:
+                    logger.info(f"paper {paper_id} not in folder {folder_id}")
+                    return False
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error removing paper from folder {folder_id}: {e}")
+                return False
+
+        return False
 
 
 
@@ -1139,6 +1212,62 @@ class DBService:
         
         return []
     
+    async def rename_folder(
+        self,
+        *,
+        user_id: int,
+        folder_id: int,
+        new_name: str,
+    ) -> tuple[bool, str]:
+        """
+        把某用户的 folder 改名为 new_name。
+        ▸ 返回 (True, "ok")        —— 成功
+        ▸ 返回 (False, reason_str) —— 失败原因
+        """
+        new_name = (new_name or "").strip()
+        if not new_name:
+            return False, "empty name"
+
+        async for db in get_async_db():          # type: AsyncSession
+            try:
+                # ① 取到目标文件夹
+                folder = (
+                    await db.execute(
+                        select(DBFolder).where(
+                            DBFolder.id == folder_id,
+                            DBFolder.user_id == user_id,
+                        )
+                    )
+                ).scalars().first()
+
+                if folder is None:
+                    return False, "folder not found"
+
+                # ② 更新 name
+                folder.name = new_name
+                if hasattr(folder, "updated_at"):
+                    folder.updated_at = datetime.utcnow()
+
+                await db.commit()
+                logger.info(
+                    "User %s rename folder %s -> %s", user_id, folder_id, new_name
+                )
+                return True, "ok"
+
+            # ---- 唯一索引冲突：同一用户已有同名文件夹 ----
+            except IntegrityError:
+                await db.rollback()
+                return False, "name already exists"
+
+            # ---- 其它 SQLAlchemy 错误 ----
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error("rename_folder DB error: %s", e)
+                return False, "db error"
+
+        # should never reach here
+        return False, "unknown error"
+    
     async def get_folders_with_files(self, user_id: int) -> list[dict]:
         async for db in get_async_db():
             # 预加载 files → paper
@@ -1163,12 +1292,48 @@ class DBService:
                             "paper_id":  uf.paper_id,
                             "filename":  uf.paper.title,
                             "paper_URL": uf.paper.pdf_url,
-                            "added_at":  uf.added_at.isoformat()
+                            "added_at":  uf.added_at.isoformat(),
+                            "folder_id": fld.id
                         }
                         for uf in fld.files
                     ]
                 })
             return out
+    async def create_folder(self, user_id: int, name: str) -> DBFolder | None:
+        async for db in get_async_db():
+            try:
+     
 
+                f = DBFolder(user_id=user_id, name=name)
+                db.add(f)
+                await db.commit()
+                await db.refresh(f)    # 拿到自增 id
+                return f
+            except SQLAlchemyError:
+                await db.rollback()
+                return None
+        return None
+    async def delete_folder(self, user_id: int, folder_id: int) -> bool:
+        """
+        删除指定用户的指定文件夹（连同其下文件一起被级联删除）
+        返回 True if deleted, False if not found/not owned.
+        """
+        async for db in get_async_db():
+            try:
+                stmt = select(DBFolder).where(
+                    DBFolder.id == folder_id,
+                    DBFolder.user_id == user_id
+                )
+                result = await db.execute(stmt)
+                folder = result.scalar_one_or_none()
+                if not folder:
+                    return False
+                await db.delete(folder)
+                await db.commit()
+                return True
+            except SQLAlchemyError:
+                await db.rollback()
+                raise
+        return False
 # Create a global instance
 db_service = DBService() 

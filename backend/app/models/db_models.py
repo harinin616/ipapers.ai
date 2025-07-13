@@ -88,10 +88,6 @@ class DBFolder(Base):
         order_by="DBUserFile.added_at"
     )
 
-    __table_args__ = (
-        sa.UniqueConstraint('user_id', 'name', name='uq_folder_user_name'),
-    )
-
     def __repr__(self):
         return f"<Folder {self.name} (user={self.user_id})>"
 
