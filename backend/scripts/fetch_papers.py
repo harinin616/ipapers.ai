@@ -15,6 +15,7 @@ logger = logging.getLogger("fetch_papers")
 from app.services.arxiv_service import arxiv_service
 from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
+from app.services.pdf_service import pdf_service  # 新增，用于生成论文 embeddings
 
 BATCH_DAYS = 1
 DEFAULT_DAYS = 3
@@ -29,9 +30,7 @@ def save_paper_ids(paper_ids, data_dir):
         with open(file_path, 'w', encoding='utf-8') as f:
             for paper_id in paper_ids:
                 f.write(f"{paper_id}\n")
-        
         logger.info(f"Saved {len(paper_ids)} total paper IDs to {file_path}")
-        
     except Exception as e:
         logger.error(f"Failed to save paper IDs to file: {e}", exc_info=True)
 
@@ -53,11 +52,10 @@ async def fetch_papers_batch(start_date, end_date):
 async def fetch_papers(days=None):
     if days is None:
         days = DEFAULT_DAYS
-        
+    
     today = date.today()
     earliest_date = today - timedelta(days=days)
     
-    # Setup data directory path (relative to script location)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(script_dir, '..', 'data')
     
@@ -68,7 +66,7 @@ async def fetch_papers(days=None):
     total_fetched = 0
     total_added_db = 0
     batch_num = 1
-    all_fetched_paper_ids = []  # Accumulate all paper IDs from all batches
+    all_fetched_paper_ids = []
     
     try:
         current_end_date = today
@@ -87,18 +85,32 @@ async def fetch_papers(days=None):
                 batch_paper_ids = [paper.paper_id for paper in batch_papers]
                 all_fetched_paper_ids.extend(batch_paper_ids)
                 logger.info(f"Batch {batch_num}: Accumulated {len(batch_paper_ids)} paper IDs (total so far: {len(all_fetched_paper_ids)})")
-                
+            
             total_fetched += len(batch_papers)
                 
             added_db_ids = await db_service.add_papers(batch_papers)
             
             if not added_db_ids:
                 logger.info(f"No new papers in batch {batch_num} added to DB. All papers already exist.")
-        
+    
             await vector_search_service.add_papers(batch_papers)
             total_added_db += len(added_db_ids)
             logger.info(f"Batch {batch_num}: Fetched {len(batch_papers)} papers, added {len(added_db_ids)} new papers to DB and vector search.")
-            
+
+            # --- 新增：生成 embeddings ---
+            if added_db_ids:
+                logger.info(f"Generating embeddings for {len(added_db_ids)} new papers")
+                for pid in added_db_ids:
+                    try:
+                        ok = await pdf_service.generate_embeddings_for_paper(pid)
+                        if ok:
+                            logger.info(f"Generated embeddings for paper {pid}")
+                        else:
+                            logger.warning(f"Failed to generate embeddings for paper {pid}")
+                    except Exception as e:
+                        logger.error(f"Error generating embeddings for paper {pid}: {e}", exc_info=True)
+            # ---------------------------
+
             current_end_date = current_start_date - timedelta(days=1)
             batch_num += 1
             
@@ -108,7 +120,6 @@ async def fetch_papers(days=None):
             
         logger.info(f"Total fetched: {total_fetched} papers, added to DB: {total_added_db} new papers.")
         
-        # Save all accumulated paper IDs at the end of program execution
         if all_fetched_paper_ids:
             save_paper_ids(all_fetched_paper_ids, data_dir)
         else:
@@ -116,14 +127,12 @@ async def fetch_papers(days=None):
         
     except Exception as e:
         logger.error(f"Error occurred during fetch_papers task: {e}", exc_info=True)
-        # Save accumulated paper IDs even if there was an error
         if all_fetched_paper_ids:
             logger.info("Saving accumulated paper IDs despite error...")
             save_paper_ids(all_fetched_paper_ids, data_dir)
 
 
 async def main():
-    
     import argparse
     parser = argparse.ArgumentParser(description='Fetch papers from arXiv')
     parser.add_argument('--days', type=int, default=None)
@@ -141,4 +150,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())
