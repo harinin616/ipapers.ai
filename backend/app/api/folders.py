@@ -13,6 +13,7 @@ class FileOut(BaseModel):
     filename:  str
     paper_URL: str
     added_at:  str
+    selected: bool
 
 class FolderOut(BaseModel):
     id:    int

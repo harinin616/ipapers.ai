@@ -767,7 +767,7 @@ class DBService:
                             uf.added_at.isoformat()
                             if isinstance(uf.added_at, datetime) else None
                         ),
-                        "selected": True     # 默认全选；如有逻辑可改
+                        "selected": False     # 默认全选；如有逻辑可改
                     })
 
                 logger.info(f"get {len(file_list)} files for user {user_id}")
@@ -1293,7 +1293,8 @@ class DBService:
                             "filename":  uf.paper.title,
                             "paper_URL": uf.paper.pdf_url,
                             "added_at":  uf.added_at.isoformat(),
-                            "folder_id": fld.id
+                            "folder_id": fld.id,
+                            "selected": False,
                         }
                         for uf in fld.files
                     ]

@@ -187,6 +187,7 @@ interface ChatFile {
   paper_URL: string;
   added_at: string;
   folder_id: number;
+  selected?: boolean; // 可选属性，用于标记是否被选中
 }
 interface Folder {
   id: number
@@ -338,6 +339,7 @@ const cancelEditFolder = () => {
         const selectedIds = allFiles
           .filter(f => (f as any).selected)
           .map(f => f.paper_id)
+        
         fileSelectionStore.setSelection(selectedIds)
         emit('files-updated', allFiles)
         emit('update-file-count', allFiles.length)
@@ -345,6 +347,7 @@ const cancelEditFolder = () => {
         console.error('load folders failed', err)
       }
     }
+
     const currentFiles = computed<ChatFile[]>(() => {
       const f = folders.value.find(x => x.id === activeFid.value)
       return f ? f.files : []

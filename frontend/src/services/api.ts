@@ -648,6 +648,7 @@ interface ChatFile {
   paper_URL: string
   added_at:  string
   folder_id: number
+  selected?: boolean;
 }
 // Export singleton instance
 export default new ApiService(); 
