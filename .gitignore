@@ -12,3 +12,4 @@ backend/arxiv_search_page.html
 .DS_Store
 .venv
 backend/scripts/daily_feed/arxiv_search_page.html
+frontend/public/
