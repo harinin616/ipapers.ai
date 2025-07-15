@@ -16,8 +16,8 @@ from send_email import send_daily_summary
 # ==========================================
 # CHANGE THESE VALUES FOR YOUR EMAIL TEST
 # ==========================================
-EMAIL = "xiazhiqiuyarle@gmail.com"  # 👈 Change this to your email
-NAME = "Xia Zhiqiu"                # 👈 Change this to your name
+EMAIL = "hl1097@scarletmail.rutgers.edu"  # 👈 Change this to your email
+EMAIL = "xiazhiqiuyarle@gmail.com"
 TEST_MODE = False                  # 👈 Set to False to actually send email
 
 def main():
@@ -28,13 +28,11 @@ def main():
     print("📧 Single Email Test Script")
     print("=" * 50)
     print(f"Email: {EMAIL}")
-    print(f"Name: {NAME}")
     
     try:
         # Send the email
         result = send_daily_summary(
             recipient_email=EMAIL,
-            recipient_name=NAME,
             test_mode=TEST_MODE
         )
         

@@ -302,12 +302,13 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
                 </div>
 
                 <div class="section">
-                    <h2>🌐 Visit Our Website</h2>
-                    <div class="website-link">
-                        <a href="https://ipapers.ai/daily-feed">
+                    <h2>
+                        🌐 Visit our website 
+                        <a href="https://ipapers.ai/daily-feed" target="_blank" style="color: #007bff; text-decoration: underline;">
                             https://ipapers.ai/daily-feed
                         </a>
-                    </div>
+                        for more details and audio feeds.
+                    </h2>
                 </div>
 
                 <div class="section">
@@ -378,12 +379,13 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
         # Add email footer
         html_body += """
                 <div class="section">
-                    <h2>🌐 Visit Our Website</h2>
-                    <div class="website-link">
-                        <a href="https://ipapers.ai/daily-feed">
+                    <h2>
+                        🌐 Visit our website 
+                        <a href="https://ipapers.ai/daily-feed" target="_blank" style="color: #007bff; text-decoration: underline;">
                             https://ipapers.ai/daily-feed
                         </a>
-                    </div>
+                        for more details and audio feeds.
+                    </h2>
                 </div>
 
                 <div class="footer">
