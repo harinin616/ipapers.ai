@@ -126,8 +126,6 @@ class CreateFolderOut(BaseModel):
     name: str
     file_count: int
 
-    class Config:
-        orm_mode = False  # 我们完全手动构造，不用 orm_mode
 
 
 @router.post(

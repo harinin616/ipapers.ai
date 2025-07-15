@@ -179,19 +179,23 @@ class VectorSearchService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": query}
             ]
-
-            response = await llm_service.get_conversation_completion(
-                messages=messages,
-                stream=False,
-                model= llm_service.query_model
-            )
-
-            reformulated = response.text.strip()
-            if not reformulated:
-                logger.warning("LLM returned empty string; fallback to original query")
+            try:
+                response = await llm_service.get_conversation_completion(
+                    messages=messages,
+                    stream=False,
+                    model=llm_service.query_model
+                )
+                reformulated = response.text.strip()
+                if not reformulated:
+                    logger.warning("LLM returned empty string; fallback to original query")
+                    reformulated = query
+            except Exception as e:
+                logger.error(f"LLM call failed ({e}); fallback to original query")
                 reformulated = query
-            
+
+            # 用重写后的（或原始）文本搜索
             result_ids = await self.vector_search(reformulated, k=k)
+
             return list(result_ids)
                 
 vector_search_service = VectorSearchService() 

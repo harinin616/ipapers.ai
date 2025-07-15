@@ -6,32 +6,36 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from sqlalchemy import distinct
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors
 from app.db.database import get_async_db
 
 
 logger = logging.getLogger(__name__)
 
-
+from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from contextlib import asynccontextmanager
 
-engine = create_async_engine(DATABASE_URL, echo=True)
-AsyncSessionLocal = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+# 先在模块级别创建一个 sessionmaker
+DATABASE_URL = "postgresql+asyncpg://postgres:1@localhost:5432/dlmonitor"
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+    pool_size=50,
+    max_overflow=50,
+    pool_timeout=60,
+    pool_recycle=1800,
+    pool_pre_ping=True,
 )
 
-@asynccontextmanager
-async def get_async_db() -> AsyncSession:
-    """
-    提供一个真正的 async context manager，
-    你可以放心地用 `async with get_async_db() as db:`
-    """
-    async with AsyncSessionLocal() as session:
-        yield session
+AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+
 
 class DBService:
     """
@@ -298,35 +302,62 @@ class DBService:
         return None
 
     async def get_papers_by_ids(self, paper_ids: List[str]) -> List[Paper]:
-        papers: List[Paper] = []
-        async with get_async_db() as db:
+        async with AsyncSessionLocal() as db:
             stmt = (
-                select(DBPaper)
-                .options(
-                    selectinload(DBPaper.authors),
-                    selectinload(DBPaper.categories),
+                select(
+                    DBPaper.paper_id,
+                    DBPaper.title,
+                    DBPaper.abstract,
+                    DBPaper.pdf_url,
+                    DBPaper.published_date,
+                    DBPaper.updated_date,
+                    # 把作者名聚成数组
+                    func.coalesce(
+                        func.array_agg(distinct(DBAuthor.name))
+                        .filter(paper_authors.c.paper_id == DBPaper.paper_id),
+                        []
+                    ).label("author_names"),
+                    # 把分类名聚成数组
+                    func.coalesce(
+                        func.array_agg(distinct(DBCategory.name))
+                        .filter(paper_categories.c.paper_id == DBPaper.paper_id),
+                        []
+                    ).label("category_names"),
                 )
+                .outerjoin(paper_authors, paper_authors.c.paper_id == DBPaper.paper_id)
+                .outerjoin(DBAuthor, DBAuthor.name == paper_authors.c.author)
+                .outerjoin(paper_categories, paper_categories.c.paper_id == DBPaper.paper_id)
+                .outerjoin(DBCategory, DBCategory.name == paper_categories.c.category)
                 .where(DBPaper.paper_id.in_(paper_ids))
+                .group_by(
+                    DBPaper.paper_id,
+                    DBPaper.title,
+                    DBPaper.abstract,
+                    DBPaper.pdf_url,
+                    DBPaper.published_date,
+                    DBPaper.updated_date,
+                )
             )
             result = await db.execute(stmt)
-            db_papers = result.scalars().all()
+            rows = result.all()
 
-        # 会话外再做模型转换
-        for db_p in db_papers:
+        papers: List[Paper] = []
+        for row in rows:
             papers.append(
                 Paper(
-                    paper_id=db_p.paper_id,
-                    title=db_p.title,
-                    authors=[a.name for a in db_p.authors],
-                    abstract=db_p.abstract,
-                    categories=[c.name for c in db_p.categories],
-                    pdf_url=db_p.pdf_url.replace("http://", "https://"),
-                    published_date=db_p.published_date,
-                    updated_date=db_p.updated_date,
+                    paper_id=row.paper_id,
+                    title=row.title,
+                    authors=row.author_names,
+                    abstract=row.abstract,
+                    categories=row.category_names,
+                    pdf_url=row.pdf_url.replace("http://", "https://"),
+                    published_date=row.published_date,
+                    updated_date=row.updated_date,
                 )
             )
-
         return papers
+
+
     
     
     async def get_recent_papers(self, limit: int = 30, keyword: str = None, offset: int = 0) -> List[Paper]:
