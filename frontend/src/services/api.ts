@@ -633,8 +633,13 @@ class ApiService implements IApiService {
     return resp.status === 204
   }
   async create_folder(payload: { name: string }) {
-    const resp = await this.api.post('/api/folders/', payload)
-    return resp.data
+    try {
+      const resp = await this.api.post('/api/folders/', payload)
+      return resp.data
+    } catch (error) {
+      console.error('Failed to create folder:', error)
+      throw error
+    }
   }
   async delete_folder(folderId: number) {
   await this.api.delete(`/api/folders/${folderId}`)

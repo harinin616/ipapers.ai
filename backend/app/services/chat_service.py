@@ -9,6 +9,8 @@ from app.services.llm_service import llm_service
 from app.services.pdf_service import pdf_service
 from app.services.db_service import db_service
 from datetime import datetime
+import uuid
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,9 @@ class ChatService:
         self.max_context_messages = 10
         
         # active chats
-        self.active_chats = {}
+        self.active_chats = defaultdict(
+            lambda: {"files": [], "sessions": {}}
+        )
         
         #  track processing files
         self.processing_files = set()
@@ -33,7 +37,7 @@ class ChatService:
         logger.info(f"Chat Service initialized. Max context: {self.max_context_messages}")
 
 
-    async def load_user_history(self, user_id: str) -> None:
+    async def load_user_history(self, user_id: uuid.UUID) -> None:
         """
         Load user chat history (files, sessions, messages) into self.active_chats cache.
         如果已经加载过则直接返回。
@@ -43,21 +47,21 @@ class ChatService:
 #            return
 
         # 初始化结构
-        if not user_id.isdigit():
-            return
-        self.active_chats[user_id] = { "files": [], "sessions": {} }
+        if str(user_id).isdigit():
+            user_id = await db_service.get_uuid_by_user_id(int(user_id))
+        self.active_chats[str(user_id)] = { "files": [], "sessions": {} }
 
         # 1) 加载文件列表
         try:
-            files = await db_service.get_files_by_user_id(int(user_id))
-            self.active_chats[user_id]["files"] = files
+            files = await db_service.get_files_by_user_id(user_id)
+            self.active_chats[str(user_id)]["files"] = files
         except Exception as e:
             logger.error(f"Failed to load files for user {user_id}: {e}", exc_info=True)
             # 即便失败，也继续尝试加载会话
 
         # 2) 加载会话列表
         try:
-            sessions = await db_service.get_sessions_by_user_id(int(user_id))
+            sessions = await db_service.get_sessions_by_user_id(user_id)
         except Exception as e:
             logger.error(f"Failed to load sessions for user {user_id}: {e}", exc_info=True)
             sessions = []
@@ -79,16 +83,20 @@ class ChatService:
             except Exception as e:
                 logger.error(f"Failed to load messages for session {sid}: {e}", exc_info=True)
 
-            self.active_chats[user_id]["sessions"][sid] = entry
+            self.active_chats[str(user_id)]["sessions"][sid] = entry
 
         logger.info(
-            f"Loaded {len(self.active_chats[user_id]['files'])} files and "
-            f"{len(self.active_chats[user_id]['sessions'])} sessions for user {user_id}"
+            f"Loaded {len(self.active_chats[str(user_id)]['files'])} files and "
+            f"{len(self.active_chats[str(user_id)]['sessions'])} sessions for user {user_id}"
         )
 
-    def create_session(self, user_id: str, title: str = "Untitled Session") -> str:
+    async def create_session(self, user_id: str, title: str = "Untitled Session") -> str:
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         if user_id not in self.active_chats:
             self.active_chats[user_id] = {"files": [], "sessions": {}}
+        if "sessions" not in self.active_chats[user_id]:
+            self.active_chats[user_id]["sessions"] = {}
         session_id = str(uuid.uuid4())
         self.active_chats[user_id]["sessions"][session_id] = {
             "messages": [],
@@ -99,7 +107,9 @@ class ChatService:
     
     async def get_sessions(self, user_id: str):
         await self.load_user_history(user_id)
+        user_id = str(user_id)
         if user_id not in self.active_chats:
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
             return []
         return [
             {
@@ -109,16 +119,20 @@ class ChatService:
         }
         for sid, ctx in self.active_chats[user_id]["sessions"].items()
     ]
-    def update_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+    async def update_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         if user_id not in self.active_chats:
-            return False
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
         sessions = self.active_chats[user_id]["sessions"]
         if session_id not in sessions:
             return False
         sessions[session_id]["title"] = title
         return True
-    
-    def add_message(self, user_id: str, session_id: str, role: str, content: str):
+
+    async def add_message(self, user_id: str, session_id: str, role: str, content: str):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
             logger.error(f"Chat session not found: {user_id} {session_id}")
             return
@@ -130,19 +144,25 @@ class ChatService:
         })
         self.active_chats[user_id]["sessions"][session_id]["lastMessageAt"] = now
 
-    def get_messages(self, user_id: str, session_id: str, limit: int = None):
+    async def get_messages(self, user_id: str, session_id: str, limit: int = None):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
             return []
         messages = self.active_chats[user_id]["sessions"][session_id]["messages"]
         if limit:
             return messages[-limit:]
         return messages
-    
-    def delete_session(self, user_id: str, session_id: str):
+
+    async def delete_session(self, user_id: str, session_id: str):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         if user_id in self.active_chats and session_id in self.active_chats[user_id]["sessions"]:
             del self.active_chats[user_id]["sessions"][session_id]
     
     async def attach_paper(self, user_id: str, paper_id: str) -> bool:
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         """attach paper to chat"""
         if user_id not in self.active_chats:
             self.active_chats[user_id] = {"files": [], "sessions": {}}
@@ -164,9 +184,7 @@ class ChatService:
             if not success:
                 return False
             #如果user_id完全由数字构成的话
-            if user_id.isdigit():
-                user_id = int(user_id)
-                await db_service.add_file_to_user(user_id, paper_id)
+            await db_service.add_file_to_user(uuid.UUID(user_id), paper_id)
 
             logger.info(f"Added paper {paper_id} to chat session {user_id}.")
             return True
@@ -176,6 +194,8 @@ class ChatService:
             return False
     
     async def get_paper(self, user_id: str, paper_id: str) -> bool:
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
         """get paper pdf"""
         if user_id not in self.active_chats:
             return None
@@ -220,6 +240,7 @@ class ChatService:
         """
         format messages for API call
         """
+        user_id = str(user_id)
         chat_data = self.active_chats.get(user_id)
        # logger.error(f"Formatting messages for user {user_id}, session {session_id},{chat_data}")
         
@@ -246,7 +267,8 @@ class ChatService:
         return api_messages
     
     async def generate_response(self, user_id: str, session_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
-        self.add_message(user_id, session_id, "user", query)
+        user_id = str(user_id)
+        await self.add_message(user_id, session_id, "user", query)
         chat_data = self.active_chats[user_id]
 
         chat_file_names = []
@@ -259,7 +281,7 @@ class ChatService:
             # 直接返回预设答复
             preset = "Please attach at least one file before I can answer questions about it. \n[Go to Home]l(https://ipapers.ai/) to add papers to your file list, then select them in the file list and try again."
             # 将预设答复写入历史
-            self.add_message(user_id, session_id, "assistant", preset)
+            await self.add_message(user_id, session_id, "assistant", preset)
             await db_service.add_message(
                 session_id,
                 preset,
@@ -313,7 +335,7 @@ class ChatService:
             
             if not stream_response:
                 error_msg = "Sorry, I encountered an error while processing your request."
-                self.add_message(user_id,session_id, "assistant", error_msg)
+                await self.add_message(user_id,session_id, "assistant", error_msg)
                 yield error_msg, True
                 return
             
@@ -327,7 +349,7 @@ class ChatService:
             
             # add to chat history after completion
             if assistant_response:
-                self.add_message(user_id,session_id, "assistant", assistant_response)
+                await self.add_message(user_id,session_id, "assistant", assistant_response)
                 await db_service.add_message(session_id, assistant_response, "assistant", datetime.now())
                 
             # send end flag
@@ -336,7 +358,17 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error generating response for chat {user_id}: {str(e)}")
             error_msg = "Sorry, I encountered an error while processing your request."
-            self.add_message(user_id,session_id, "assistant", error_msg)
+            await self.add_message(user_id,session_id, "assistant", error_msg)
             yield error_msg, True
-
+    def is_file_selected(self, user_id:str, paper_id:str):
+        """
+        Check if a file is selected in the user's chat context
+        """
+        user_id = str(user_id)
+        if user_id not in self.active_chats:
+            return False
+        for file_data in self.active_chats[user_id]["files"]:
+            if file_data.get("paper_id") == paper_id and file_data.get("selected"):
+                return True
+        return False
 chat_service = ChatService() 

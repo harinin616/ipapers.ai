@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 import requests
 from app.services.db_service import db_service
+import uuid
 from app.services.chat_service import chat_service
 
 router = APIRouter()
@@ -13,7 +14,7 @@ class TokenPayload(BaseModel):
 
 
 @router.post("/google-login")
-async def google_login(payload: TokenPayload):
+async def google_login(request: Request, payload: TokenPayload):
     resp = requests.get(
         "https://oauth2.googleapis.com/tokeninfo",
         params={"id_token": payload.credential}
@@ -21,6 +22,10 @@ async def google_login(payload: TokenPayload):
 
     if resp.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
+    user_id = request.headers.get("X-User-ID")
+    if not user_id:
+        user_id = uuid.uuid4()
 
     info = resp.json()
 
@@ -30,16 +35,14 @@ async def google_login(payload: TokenPayload):
     user_email = info.get("email")
     user_name = info.get("name")
     picture = info.get("picture")
+    tmp = await db_service.get_user_id_by_email(user_email)
+    if tmp:
+        user_id = tmp
 
-    result = await db_service.add_user(user_name, user_email)
+    result = await db_service.add_user(user_id, user_name, user_email)
     if not result:
         raise HTTPException(status_code=500, detail="Failed to add user")
-    
-    user_id = await db_service.get_user_id_by_email(user_email)
-    if not user_id:
-        raise HTTPException(status_code=500, detail="Failed to get user ID")
 
-    user_id = str(user_id)   
     await chat_service.load_user_history(user_id)
  
     return {

@@ -60,11 +60,14 @@ export default {
       } catch {}
       try {
         const list1 = await api.get_user_files()
-        const list2 = await api.get_folders()
+        const list2 = await api.get_user_folders()
         files.value = list1.length
         folders.value = list2.length
-      } catch {}
-    }
+      } catch (err) {
+        console.error('[fetchStats] files/folders 请求失败', err)
+        files.value = folders.value = 0 // 给个兜底数
+      }
+    }		
 
     function gotoFiles () {
       router.push('/')
@@ -76,9 +79,9 @@ export default {
       window.location.href = '/'
     }
 
-    onMounted(() => {
+    onMounted(async () => {
       loadUser()
-      fetchStats()
+      await fetchStats()
     })
 
     return { user, metric, files,folders, fallbackAvatar, gotoFiles, logout }
@@ -131,7 +134,7 @@ export default {
 /* 统计网格 */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3,1fr);
+  grid-template-columns: repeat(2,1fr);
   text-align: center;
   gap: .5rem;
   border-top: 1px solid #eee;
