@@ -1,0 +1,66 @@
+2025-07-18 14:38:20,124 - faiss.loader - INFO - Loading faiss with AVX512 support.
+2025-07-18 14:38:20,156 - faiss.loader - INFO - Successfully loaded faiss with AVX512 support.
+2025-07-18 14:38:20,163 - faiss - INFO - Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+Traceback (most recent call last):
+  File "/home/ec2-user/PMo/backend/scripts/fetch_papers.py", line 17, in <module>
+    from app.services.vector_search_service import vector_search_service
+  File "/home/ec2-user/PMo/backend/app/services/vector_search_service.py", line 12, in <module>
+    from app.services.llm_service import llm_service
+  File "/home/ec2-user/PMo/backend/app/services/llm_service.py", line 300, in <module>
+    llm_service = LLMService()
+  File "/home/ec2-user/PMo/backend/app/services/llm_service.py", line 78, in __init__
+    AutoModel
+    ~~~~~~~~~
+    .from_pretrained(model_name, trust_remote_code=True)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py", line 568, in from_pretrained
+    model_class = _get_model_class(config, cls._model_mapping)
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py", line 388, in _get_model_class
+    supported_models = model_mapping[type(config)]
+                       ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py", line 774, in __getitem__
+    return self._load_attr_from_module(model_type, model_name)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py", line 788, in _load_attr_from_module
+    return getattribute_from_module(self._modules[module_name], attr)
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/models/auto/auto_factory.py", line 700, in getattribute_from_module
+    if hasattr(module, attr):
+       ~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/utils/import_utils.py", line 2045, in __getattr__
+    module = self._get_module(self._class_to_module[name])
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/utils/import_utils.py", line 2073, in _get_module
+    return importlib.import_module("." + module_name, self.__name__)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/models/bert/modeling_bert.py", line 44, in <module>
+    from ...modeling_utils import PreTrainedModel
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/modeling_utils.py", line 62, in <module>
+    from .integrations.flex_attention import flex_attention_forward
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/transformers/integrations/flex_attention.py", line 39, in <module>
+    from torch.nn.attention.flex_attention import BlockMask, flex_attention
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/nn/attention/flex_attention.py", line 15, in <module>
+    from torch._dynamo._trace_wrapped_higher_order_op import TransformGetItemToIndex
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+    from . import config, convert_frame, eval_frame, resume_execution
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_dynamo/convert_frame.py", line 52, in <module>
+    from torch._dynamo.symbolic_convert import TensorifyState
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysis
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+    from .utils import counters
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_dynamo/utils.py", line 107, in <module>
+    import torch._numpy as tnp
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_numpy/__init__.py", line 5, in <module>
+    from ._funcs import *  # noqa: F403
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ec2-user/miniconda3/lib/python3.13/site-packages/torch/_numpy/_funcs.py", line 6, in <module>
+    from . import _funcs_impl, _reductions_impl
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+KeyboardInterrupt

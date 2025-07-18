@@ -6,11 +6,11 @@ from sqlalchemy import func, text, update, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import distinct
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
 from app.db.database import get_async_db
 
 
@@ -1354,6 +1354,7 @@ class DBService:
 
         # should never reach here
         return False, "unknown error"
+
     async def get_uuid_by_user_id(self, user_id: int) -> uuid.UUID | None:
         async for db in get_async_db():
             try:
@@ -1400,8 +1401,7 @@ class DBService:
                     ]
                 })
             return out
-        
-    
+
 
 
     async def create_folder(self, user_id: uuid.UUID, name: str) -> DBFolder | None:
@@ -1444,7 +1444,110 @@ class DBService:
                 await db.rollback()
                 raise
         return False
+    async def get_folder(self, folder_id: int) -> DBFolder | None:
+        async for db in get_async_db():
+            return await db.get(DBFolder, folder_id)
+
+    async def get_files_by_folder_id(self, folder_id: int) -> list[dict]:
+        """
+        根据 folder_id 返回该文件夹下所有文件的扁平列表。
+
+        [{paper_id, filename, paper_URL, added_at, folder_id, selected}, ...]
+        """
+        async for db in get_async_db():
+            try:
+                # ① 预加载 paper，避免外部再触发 lazy‑load
+                stmt = (
+                    select(DBUserFile)
+                    .options(selectinload(DBUserFile.paper))
+                    .where(DBUserFile.folder_id == folder_id)
+                    .order_by(DBUserFile.added_at)
+                )
+                result = await db.execute(stmt)
+                user_files: list[DBUserFile] = result.scalars().all()
+
+                return [
+                    {
+                        "paper_id":  uf.paper_id,
+                        "filename":  uf.paper.title if uf.paper else "",
+                        "paper_URL": uf.paper.pdf_url if uf.paper else "",
+                        "added_at":  uf.added_at.isoformat(),
+                        "folder_id": uf.folder_id,
+                        "selected": bool(uf.selected),
+                    }
+                    for uf in user_files
+                ]
+
+            except SQLAlchemyError as e:
+                logger.error("DB error (get_files_by_folder_id): %s", e)
+                return []
+            except Exception as e:
+                logger.exception("Unexpected error in get_files_by_folder_id")
+                return []
+
+    async def create_shared_folder(
+            self, *, folder_id: int, owner_id: str, is_public: bool
+        ) -> DBSharedFolder:
+            async for db in get_async_db():
+                shared = DBSharedFolder(
+                    folder_id = folder_id,
+                    owner_id  = owner_id,
+                    is_public = is_public,
+                    created_at = datetime.now(),
+                )
+                db.add(shared)
+                await db.commit()
+                await db.refresh(shared)
+                return shared
     
+    async def get_shared_folders(self) -> list[dict]:
+        """
+        返回 [{share_id, folder_name, file_cnt, created_at}, ...]
+        """
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBSharedFolder).options(
+                        selectinload(DBSharedFolder.folder).selectinload(DBFolder.files)
+                    )
+                )
+                shared: list[DBSharedFolder] = result.scalars().all()
+
+                return [
+                    {
+                        "id":    sf.id,
+                        "folder_id": sf.folder_id,
+                        "owner_id":  sf.owner_id,
+                        "is_public": sf.is_public,
+                        "created_at":  sf.created_at,
+                        "folder_name": sf.folder.name if sf.folder else "Unknown",
+                        "file_cnt":   len(sf.folder.files) if sf.folder else 0,
+                    }
+                    for sf in shared
+                ]
+
+            except Exception as e:
+                logger.error("get_shared_folders failed: %s", e, exc_info=True)
+                return []
+
+    async def delete_shared_folder(self, folder_id: int) -> bool:
+        """
+        删除共享文件夹及其关联数据。
+        返回 True if deleted, False if not found.
+        """
+        async for db in get_async_db():
+            try:
+                await db.execute(
+                    delete(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                )
+                await db.commit()
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error deleting shared folder {folder_id}: {e}")
+                return False
+
     async def update_file_selection(
         self,
         user_id: uuid.UUID,

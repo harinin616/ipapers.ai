@@ -186,3 +186,13 @@ async def delete_folder(request: Request, folder_id: int):
 
     # 204 No Content
     return Response(status_code=204)
+
+@router.get("/{folder_id}/files")
+async def get_files_by_folderId(
+    folder_id: int,
+):
+    files = await db_service.get_files_by_folder_id(folder_id)
+    if not files:
+        return []
+   # print(files)
+    return files

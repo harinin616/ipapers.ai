@@ -29,6 +29,9 @@ async def get_current_user_id(x_user_id: Optional[str] = Header(None)):
 @router.get("/", response_model=TopicsOut)
 async def list_topics(request: Request):
     uid = request.headers.get("X-User-ID")
+    if not uid:
+        uid=uuid.uuid4()  # 如果没有提供 X-User-ID，则生成一个新的 UUID
+    
     if uid.isdigit():
         uid=await db_service.get_uuid_by_user_id(int(uid))
     topics = await db_service.get_topics_by_user(uid)   # 之前补充的函数

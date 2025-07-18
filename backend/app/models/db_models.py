@@ -208,3 +208,24 @@ class DBEmailList(Base):
 
     def __repr__(self):
         return f"<Email {self.email}>"
+
+class DBSharedFolder(Base):
+    __tablename__ = "shared_folders"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    folder_id  = Column(Integer,
+                        ForeignKey("folders.id", ondelete="CASCADE"),
+                        nullable=False)
+    owner_id   = Column(UUID(as_uuid=True),
+                        ForeignKey("users.id", ondelete="CASCADE"),
+                        nullable=False)
+    is_public  = Column(Boolean, nullable=False,
+                        server_default=sa.text("true"))
+    created_at = Column(DateTime, nullable=False,
+                        default=datetime.utcnow)
+
+    folder = relationship("DBFolder")
+    owner  = relationship("DBUser")
+
+    def __repr__(self):
+        return f"<Share#{self.id} → Folder {self.folder_id}>"

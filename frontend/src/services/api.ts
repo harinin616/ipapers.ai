@@ -20,6 +20,10 @@ export interface IApiService {
   shareFiles(payload: { files: string[] }): Promise<{ share_id: string }>;
   getShare(shareId: string): Promise<{ files: string[] }>;
   clear_user_files(): Promise<void>;
+  share_folder (payload: {
+    folder_id : number;
+    is_public : boolean;
+  }): Promise<void>;
 
   
   // Session management methods
@@ -68,6 +72,9 @@ export interface IApiService {
 
   rename_folder(payload: { folder_id: number; name: string }): Promise<any>;
   create_folder(payload: { name: string }): Promise<any>;
+  get_files_by_folderId(folderId: number): Promise<any[]>;
+
+  delete_shared_folder(folderId: number): Promise<void>;
 }
 /**
  * API Service implementation
@@ -150,6 +157,39 @@ class ApiService implements IApiService {
       throw error;
     }
   }
+async share_folder(payload: { folder_id: number; is_public: boolean }): Promise<void> {
+  try {
+    await this.api.post(
+      '/api/forum/',
+      {
+        folder_id: payload.folder_id,   // 整数
+        is_public: payload.is_public    
+      }
+    );
+  } catch (error) {
+    console.error('Failed to share folder:', error);
+    throw error;
+  }
+}
+
+async delete_shared_folder(folderId: number): Promise<void> {
+  try {
+    await this.api.delete(`/api/forum/${folderId}`);
+  } catch (error) {
+    console.error('Failed to delete shared folder:', error);
+    throw error;
+  }
+}
+
+async get_shared_folders(): Promise<any[]> {
+  try {
+    const response = await this.api.get('/api/forum/');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get shared folders:', error);
+    throw error;
+  }
+}
 
   /**
    * Get a new user ID
@@ -644,6 +684,15 @@ class ApiService implements IApiService {
   async delete_folder(folderId: number) {
   await this.api.delete(`/api/folders/${folderId}`)
 }
+  async get_files_by_folderId(folderId: number): Promise<any[]> {
+    try {
+      const resp = await this.api.get(`/api/folders/${folderId}/files`)
+      return resp.data
+    } catch (error) {
+      console.error('Failed to get files by folder ID:', error)
+      throw error
+    }
+  }
 }
 
 interface ChatFile {
