@@ -788,7 +788,7 @@ Focus on meaningful relationships that would help understand the research landsc
                         year_month = paper_id[:4]
                         year = year_month[:2]
                         month = year_month[2:4]
-                        global_path = pdf_service.embedding_dir / year / month / f"{paper_id}.json"
+                        global_path = pdf_service.embedding_dir / "arxiv" / year / month / f"{paper_id}.json"
                         
                         # Destination: session-specific location
                         session_dir = pdf_service.embedding_dir / "uploads" / user_id / session_id

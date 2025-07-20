@@ -175,7 +175,7 @@ class ChatService:
             year_month = paper_id[:4]
             year = year_month[:2]
             month = year_month[2:4]
-            target_dir = pdf_service.pdf_dir / year / month
+            target_dir = pdf_service.pdf_dir / "arxiv" / year / month
             filename = f"{paper_id}.pdf"
             file_path = target_dir / filename
 

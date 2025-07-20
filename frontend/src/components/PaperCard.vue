@@ -11,6 +11,10 @@
       <span class="paper-date">{{ formattedDate }}</span>
     </div>
     
+    <div class="paper-platform" v-if="paper.platform">
+      <span class="platform-tag">{{ paper.platform.toUpperCase() }}</span>
+    </div>
+    
     <div class="paper-categories">
       <span 
         v-for="category in paper.categories" 
@@ -205,6 +209,24 @@ export default defineComponent({
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 70%;
+}
+
+.paper-platform {
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.platform-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .paper-categories {

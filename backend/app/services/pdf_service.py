@@ -46,7 +46,7 @@ class PdfService:
             year_month = paper_id[:4]
             year = year_month[:2]
             month = year_month[2:4]
-            target_dir = self.pdf_dir / year / month
+            target_dir = self.pdf_dir / "arxiv" / year / month
             filename = f"{paper_id}.pdf"
             local_path = target_dir / filename
             if await aiofiles.os.path.exists(local_path):
@@ -211,7 +211,7 @@ class PdfService:
             year = year_month[:2]
             month = year_month[2:4]
 
-            local_path = self.embedding_dir / year / month / f"{paper_id}.json"
+            local_path = self.embedding_dir / "arxiv" / year / month / f"{paper_id}.json"
 
             if not local_path.exists():
                 logger.warning(f"Embedding file not found: {local_path}")
@@ -264,8 +264,8 @@ class PdfService:
             year = year_month[:2]
             month = year_month[2:4]
             
-            pdf_path = self.pdf_dir / year / month / f"{paper_id}.pdf"
-            target_dir = self.embedding_dir / year / month
+            pdf_path = self.pdf_dir / "arxiv" / year / month / f"{paper_id}.pdf"
+            target_dir = self.embedding_dir / "arxiv" / year / month
             local_path = target_dir / f"{paper_id}.json"
 
             if local_path.exists():
