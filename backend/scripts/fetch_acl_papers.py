@@ -92,13 +92,19 @@ def extract_paper_metadata_from_page(paper_url: str, session: requests.Session) 
         
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Extract basic metadata
+        # Extract basic metadata according to Paper model
         metadata = {}
+        
+        # Paper ID (from URL)
+        paper_id = paper_url.rstrip('/').split('/')[-1]
+        metadata['paper_id'] = paper_id
         
         # Title
         title_elem = soup.find('h2', id='title')
         if title_elem:
             metadata['title'] = title_elem.get_text(strip=True)
+        else:
+            metadata['title'] = ""
         
         # Authors
         authors = []
@@ -140,66 +146,79 @@ def extract_paper_metadata_from_page(paper_url: str, session: requests.Session) 
         
         metadata['abstract'] = abstract or ""
         
-        # DOI
-        doi_elem = soup.find('a', href=lambda x: x and 'doi.org' in x)
-        if doi_elem:
-            metadata['doi'] = doi_elem.get('href')
+        # Categories (extract from venue and conference info)
+        categories = []
+        venue_elem = soup.find('span', class_='badge badge-secondary')
+        if venue_elem:
+            venue_text = venue_elem.get_text(strip=True)
+            categories.append(venue_text)
+        
+        # Add more categories from anthology ID (track info)
+        if 'long' in paper_id:
+            categories.append('Long Paper')
+        elif 'short' in paper_id:
+            categories.append('Short Paper')
+        elif 'demo' in paper_id:
+            categories.append('Demo Paper')
+        elif 'industry' in paper_id:
+            categories.append('Industry Paper')
+        elif 'srw' in paper_id:
+            categories.append('Student Research Workshop')
+        elif 'findings' in paper_id:
+            categories.append('Findings')
+        
+        metadata['categories'] = categories
         
         # PDF URL
         pdf_elem = soup.find('a', href=lambda x: x and x.endswith('.pdf'))
         if pdf_elem:
             metadata['pdf_url'] = urljoin(paper_url, pdf_elem.get('href'))
+        else:
+            metadata['pdf_url'] = ""
         
-        # URL
-        metadata['url'] = paper_url
-        
-        # Venue information
-        venue_elem = soup.find('span', class_='badge badge-secondary')
-        if venue_elem:
-            metadata['venue'] = venue_elem.get_text(strip=True)
-        
-        # Year
+        # Published date (construct from year and month if available)
+        published_date = None
         year_elem = soup.find('span', class_='badge badge-info')
-        if year_elem:
-            metadata['year'] = year_elem.get_text(strip=True)
+        month_text = None
         
-        # Pages
-        pages_elem = soup.find('span', string=re.compile(r'pages', re.IGNORECASE))
-        if pages_elem:
-            pages_text = pages_elem.parent.get_text(strip=True)
-            pages_match = re.search(r'(\d+(?:–\d+)?)', pages_text)
-            if pages_match:
-                metadata['pages'] = pages_match.group(1)
-        
-        # Language
-        metadata['language'] = 'en'  # Default to English for ACL papers
-        
-        # Anthology ID (from URL)
-        anthology_id = paper_url.rstrip('/').split('/')[-1]
-        metadata['anthology_id'] = anthology_id
-        
-        # Editors (from the proceedings page)
-        editors = []
-        editor_elements = soup.find_all('a', href=lambda x: x and '/people/' in x)
-        # This is a simplified approach - in practice, distinguishing editors from authors is complex
-        
-        # Venue details
+        # Try to extract month from venue details
         venue_details = soup.find('dl', class_='acl-paper-details')
         if venue_details:
             dt_elements = venue_details.find_all('dt')
             for dt in dt_elements:
                 key = dt.get_text(strip=True).lower()
                 dd = dt.find_next_sibling('dd')
-                if dd:
-                    value = dd.get_text(strip=True)
-                    if 'volume' in key:
-                        metadata['volume'] = value
-                    elif 'month' in key:
-                        metadata['month'] = value
-                    elif 'address' in key:
-                        metadata['address'] = value
-                    elif 'publisher' in key:
-                        metadata['publisher'] = value
+                if dd and 'month' in key:
+                    month_text = dd.get_text(strip=True)
+                    break
+        
+        # Construct published_date
+        if year_elem:
+            year_str = year_elem.get_text(strip=True)
+            try:
+                year_int = int(year_str)
+                if month_text:
+                    # Try to parse month
+                    month_mapping = {
+                        'january': 1, 'february': 2, 'march': 3, 'april': 4,
+                        'may': 5, 'june': 6, 'july': 7, 'august': 8,
+                        'september': 9, 'october': 10, 'november': 11, 'december': 12
+                    }
+                    month_lower = month_text.lower()
+                    month_int = month_mapping.get(month_lower, 1)
+                    published_date = datetime(year_int, month_int, 1).isoformat()
+                else:
+                    # Default to January if no month specified
+                    published_date = datetime(year_int, 1, 1).isoformat()
+            except ValueError:
+                published_date = datetime(2024, 1, 1).isoformat()  # Default fallback
+        else:
+            published_date = datetime(2024, 1, 1).isoformat()  # Default fallback
+        
+        metadata['published_date'] = published_date
+        
+        # Updated date (set to None as requested)
+        metadata['updated_date'] = None
         
         return metadata
         

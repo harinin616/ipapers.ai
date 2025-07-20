@@ -6,6 +6,7 @@ Create Date: 2025‑07‑17 14:43:57.790510
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 revision = "95504d7384d0"
 down_revision = "1e74cbe6aa38"
@@ -14,6 +15,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Check if legacy_user_id column exists, if not add it
+    inspector = inspect(op.get_bind())
+    columns = [col['name'] for col in inspector.get_columns('users')]
+    if 'legacy_user_id' not in columns:
+        op.add_column('users', sa.Column('legacy_user_id', sa.Integer(), nullable=True))
+
     op.execute("""
     DO $$
     BEGIN
@@ -29,7 +36,7 @@ def upgrade() -> None:
     op.execute("""
       SELECT setval(
         'users_legacy_user_id_seq',
-        COALESCE((SELECT MAX(legacy_user_id) FROM users), 0)
+        GREATEST(COALESCE((SELECT MAX(legacy_user_id) FROM users), 0), 1)
       );
     """)
 
