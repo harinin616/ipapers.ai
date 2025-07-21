@@ -173,23 +173,21 @@
         <!-- Right Column: Paper Cards -->
         <div class="right-column">
           <div class="papers-section">
-            <h3 class="papers-title">Recent Papers</h3>
-            <div v-if="categoryPapers[category.category]?.isLoading" class="loading-papers">
-              <div class="mini-spinner"></div>
-              <p>Loading papers...</p>
-            </div>
-            <div v-else-if="categoryPapers[category.category]?.papers?.length === 0" class="no-papers">
-              <p>No papers found for this category</p>
-            </div>
-            <div v-else-if="categoryPapers[category.category]?.papers?.length > 0" class="papers-list">
+            <h3 class="papers-title">
+              Recent Papers
+              <span v-if="category.papers && category.papers.length > 0" class="papers-count">
+                ({{ category.papers.length }})
+              </span>
+            </h3>
+            <div v-if="category.papers && category.papers.length > 0" class="papers-list">
               <PaperCard 
-                v-for="paper in categoryPapers[category.category].papers.slice(0, 3)" 
-                :key="paper.paper_id" 
-                :paper="paper" 
+                v-for="(rawPaper, index) in category.papers" 
+                :key="rawPaper.arxiv_id || index" 
+                :paper="convertToPaper(rawPaper)" 
               />
             </div>
             <div v-else class="no-papers">
-              <p>Loading papers...</p>
+              <p>No papers available for this category</p>
             </div>
           </div>
         </div>
@@ -201,7 +199,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import PaperCard from '../components/PaperCard.vue'
-import api from '../services/api'
 import type { Paper } from '../types/paper'
 
 // Enhanced type definitions for the new data structure
@@ -219,6 +216,7 @@ interface CategoryData {
   paper_count?: number
   word_cloud_url?: string
   summaries: SummaryData[]
+  papers?: any[] // Raw papers from daily_feed.json
 }
 
 interface DailyFeedData {
@@ -236,12 +234,6 @@ interface AudioState {
   isPaused: boolean
   duration: number
   currentTime: number
-}
-
-// Paper loading state for each category
-interface CategoryPapers {
-  papers: Paper[]
-  isLoading: boolean
 }
 
 // Reactive data
@@ -266,8 +258,19 @@ const audioProgress = ref(0) // 0-100 percentage
 const audioDuration = ref(0) // in seconds
 const audioCurrentTime = ref(0) // in seconds
 
-// Category papers state
-const categoryPapers = ref<Record<string, CategoryPapers>>({})
+// Convert raw paper data from daily_feed.json to Paper interface
+const convertToPaper = (rawPaper: any): Paper => {
+  return {
+    paper_id: rawPaper.arxiv_id || 'unknown',
+    title: rawPaper.title || 'Unknown Title',
+    authors: Array.isArray(rawPaper.authors) ? rawPaper.authors : [],
+    abstract: rawPaper.abstract || 'No abstract available',
+    categories: Array.isArray(rawPaper.categories) ? rawPaper.categories : [],
+    pdf_url: rawPaper.arxiv_id ? `https://arxiv.org/pdf/${rawPaper.arxiv_id}.pdf` : '',
+    published_date: rawPaper.submitted_date_parsed || new Date().toISOString(),
+    platform: 'arxiv'
+  }
+}
 
 // Audio playback methods
 // Generate unique ID for audio tracking
@@ -586,27 +589,7 @@ const getAllCategories = (): CategoryData[] => {
   return allCategories
 }
 
-// Load papers for a specific category
-const loadCategoryPapers = async (category: CategoryData) => {
-  if (!categoryPapers.value[category.category]) {
-    categoryPapers.value[category.category] = { papers: [], isLoading: true }
-  }
-  
-  try {
-    categoryPapers.value[category.category].isLoading = true
-    
-    // Use category display name as keyword for searching papers
-    const keyword = category.display_name.toLowerCase()
-    const papers = await api.getRecentPapers(5, keyword, 0) // Get 5 recent papers for this category
-    
-    categoryPapers.value[category.category].papers = papers
-  } catch (err) {
-    console.error(`Failed to load papers for category ${category.display_name}:`, err)
-    categoryPapers.value[category.category].papers = []
-  } finally {
-    categoryPapers.value[category.category].isLoading = false
-  }
-}
+
 
 // Load daily feed data from static JSON file
 const loadDailyFeed = async () => {
@@ -620,12 +603,6 @@ const loadDailyFeed = async () => {
     }
     const data = await response.json()
     dailyFeedData.value = data
-    
-    // Load papers for each category
-    const categories = getAllCategories()
-    for (const category of categories) {
-      loadCategoryPapers(category)
-    }
   } catch (err) {
     console.error('Failed to load daily feed:', err)
     error.value = 'Failed to load daily feed. Please try again later.'
@@ -898,22 +875,41 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr; /* Two columns */
   gap: 2rem; /* Space between columns */
-  align-items: start; /* Align items to the start */
+  align-items: start; /* Allow different heights */
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
+  /* Remove min-height to allow natural content sizing */
 }
 
-.left-column, .right-column {
+.left-column {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Space between word cloud/summaries and papers */
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+  min-height: 0; /* Allow proper flex behavior */
+  overflow: hidden; /* Prevent content from expanding beyond bounds */
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+  max-height: 80vh; /* Limit height to viewport for scrolling */
+  overflow: hidden; /* Prevent overflow from expanding the column */
 }
 
 .category-content {
-  /* Background and padding now handled by category-row */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .category-row:hover {
@@ -967,6 +963,7 @@ onUnmounted(() => {
 .summaries-section {
   border-top: 1px solid #e0e0e0;
   padding-top: 1rem;
+  flex: 1;
 }
 
 .summaries-title {
@@ -1220,8 +1217,11 @@ onUnmounted(() => {
 }
 
 .papers-section {
-  border-top: 1px solid #e0e0e0;
-  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Important for flex children */
+  overflow: hidden;
 }
 
 .papers-title {
@@ -1229,39 +1229,82 @@ onUnmounted(() => {
   font-weight: 600;
   color: #333;
   margin-bottom: 1rem;
-}
-
-.loading-papers {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem 0;
+  gap: 0.5rem;
 }
 
-.mini-spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3f51b5;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.papers-count {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #666;
+  background: #e3f2fd;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid #bbdefb;
 }
+
+
 
 .no-papers {
   text-align: center;
   color: #666;
   font-style: italic;
-  padding: 1rem 0;
+  padding: 2rem 1rem;
   background: #f9f9f9;
   border-radius: 8px;
   border: 2px dashed #ddd;
+  margin: 1rem 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0; /* Prevent expansion */
+  max-height: 100%; /* Stay within bounds */
 }
 
 .papers-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 0.5rem;
+  /* Remove height constraints to let paper cards use natural size */
+}
+
+/* Custom scrollbar for papers list */
+.papers-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.papers-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.papers-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.papers-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Firefox scrollbar styling */
+.papers-list {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+/* Ensure paper cards in daily feed use natural size like home page */
+.papers-list .paper-card {
+  height: auto !important; /* Override any height constraints */
+  min-height: auto !important;
+  max-height: none !important;
+  flex-shrink: 0; /* Prevent cards from being compressed */
 }
 
 .audio-global-controls {
@@ -1425,10 +1468,21 @@ onUnmounted(() => {
     grid-template-columns: 1fr; /* Stack columns on mobile */
     gap: 1rem;
     padding: 1rem;
+    /* Let content determine height naturally on mobile */
   }
 
-  .left-column, .right-column {
-    gap: 1rem;
+  .left-column {
+    padding: 1rem;
+    min-height: 250px; /* Compact height for left on mobile */
+  }
+
+  .right-column {
+    padding: 1rem;
+    max-height: 70vh; /* Reasonable height on mobile */
+  }
+
+  .papers-list {
+    /* Let paper cards use natural size on mobile too */
   }
   
   .display-controls {
