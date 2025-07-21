@@ -111,6 +111,12 @@
               >
                 ✎
               </button>
+              <button
+               v-if="editingFolderId !== folder.id"
+               class="f-btn share"
+               @click.stop="shareFolder(folder)"
+               title="Share folder"
+             >🔗</button>
             </div>
 
           <!-- 论文列表：只渲染当前展开的文件夹 -->
@@ -171,6 +177,22 @@
         <button @click="cancelShared">Cancel</button>
       </div>
     </div>
+    <transition name="fade">
+
+  <div v-if="showShareModal" class="confirm-overlay">
+    <div class="confirm-box">
+      <p>
+        Do you want to post it to the public Forum now?
+      </p>
+
+      <div class="btn-row">
+        <button class="btn primary" @click="confirmShare">Confirm</button>
+        <button class="btn outline"  @click="cancelShare">Cancel</button>
+      </div>
+    </div>
+  </div>
+</transition>
+    
   </div>
 </template>
 
@@ -189,7 +211,7 @@ interface ChatFile {
   folder_id: number;
   selected?: boolean; // 可选属性，用于标记是否被选中
 }
-interface Folder {
+export interface Folder {
   id: number
   name: string
   files: ChatFile[]
@@ -224,6 +246,37 @@ export default defineComponent({
   setup(props, { emit }) {
     const pdfFiles = ref<ChatFile[]>([])
     const currentPdfUrl = ref<string | null>(null)
+    const showShareModal = ref(false);
+    let   pendingShare: { folder: Folder } | null = null;
+    const shareFolder = (folder: Folder) => {
+      pendingShare = { folder };
+      showShareModal.value = true;     // open the 2‑button dialog
+    };
+
+  /* ---------- modal handlers ---------- */
+  const confirmShare = async () => {
+    if (!pendingShare) return;
+
+    try {
+      /* 1) 向后端创建 shared_folders 记录 */
+      await api.share_folder({
+        folder_id: Number(pendingShare.folder.id), // ⬅ 保证是整数
+        is_public: true,                             // ⬅ 布尔
+      });
+      window.dispatchEvent(new Event('share-folder-success'))
+    } catch (e) {
+      console.error('share failed', e);
+    } finally {
+      showShareModal.value = false;
+      pendingShare = null;
+    }
+  };
+
+
+const cancelShare = () => {
+  showShareModal.value = false;
+  pendingShare = null;
+};
     
 
     const securePdfUrl = computed(() => {
@@ -314,7 +367,7 @@ const saveFolderName = async (folder: Folder) => {
     cancelEditFolder()
   } catch (e) {
     console.error('rename failed', e)
-    // 可提示 Toast
+    alert('Failed to rename folder. Please try again.')
   }
 }
 
@@ -359,7 +412,7 @@ const cancelEditFolder = () => {
       currentFileName.value = file.filename
       currentPdfUrl.value = file.paper_URL
       
-      emit('update:showPdf', true)
+      //emit('update:showPdf', true)
       emit('file-selected', file)
       
       if (window.innerWidth <= 768) {
@@ -433,13 +486,13 @@ const cancelEditFolder = () => {
       const shareId = route.params.share_id as string
       if (shareId) {
         const { files } = await api.getShare(shareId)
-        pendingShared.value = files.map(id => ({
-          paper_id: id,
-          filename: id,
-          file_path: '',
-          paper_URL: '',
-          added_at: '' 
-        }))
+    //    pendingShared.value = files.map(id => ({
+      //    paper_id: id,
+        //  filename: id,
+          //file_path: '',
+        //  paper_URL: '',
+         // added_at: '' 
+       // }))
         if (pdfFiles.value.length) {
           showConfirm.value = true
         } else {
@@ -497,6 +550,10 @@ const cancelEditFolder = () => {
       pendingShared, showConfirm, 
   
       route,shareList, applyShared, cancelShared,loadFolders,toggleFolder,handleDeleteFolder,
+       showShareModal,
+      shareFolder,
+      confirmShare,
+      cancelShare,
       currentPdfUrl,
       securePdfUrl,
       selectedFileId,
@@ -1011,5 +1068,81 @@ const cancelEditFolder = () => {
 .f-btn.delete .icon-svg {
   fill: currentColor;
 }
+/* sidebar scoped css */
+.f-btn.share {
+  font-size: 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 .25rem;
+  opacity: .75;
+}
+.f-btn.share:hover { opacity: 1 }
+/* ───────── Share‑Modal 基础 ───────── */
+.share-overlay {
+  position: fixed;
+  inset: 0;                        /* top/right/bottom/left = 0 */
+  background: rgba(0,0,0,.45);     /* 暗色蒙版 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;                   /* 保证压过侧边栏 / Header */
+}
+
+.share-box {
+  width: 92%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 2rem 1.75rem 1.5rem;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18);
+  text-align: center;
+  animation: modal-fade-in .25s ease-out;
+}
+
+/* 标题 / 文案 */
+.share-box h3   { margin: 0 0 .75rem; font-size: 1.2rem; font-weight: 600; color:#222 }
+.share-box p    { margin: 0 0 1.5rem; color:#555; line-height: 1.5; }
+
+/* ───────── 按钮区 ───────── */
+.share-actions {
+  display:flex;
+  gap:.85rem;
+  justify-content:center;
+}
+
+.share-btn {
+  flex:1 1 0;
+  min-width: 120px;
+  padding:.55rem 0;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size:.95rem;
+  cursor:pointer;
+  transition: background .18s, color .18s, transform .18s;
+}
+
+/* 主按钮 —— confirm */
+.share-btn.confirm   {
+  background:#3f51b5;
+  border:1px solid #3f51b5;
+  color:#fff;
+}
+.share-btn.confirm:hover { background:#32409b; transform:translateY(-1px); }
+
+/* 次按钮 —— cancel */
+.share-btn.cancel    {
+  background:#fff;
+  border:1px solid #bbb;
+  color:#555;
+}
+.share-btn.cancel:hover { background:#f2f2f2; }
+
+/* ───────── 动画 ───────── */
+@keyframes modal-fade-in {
+  from { opacity:0; transform:translateY(12px) scale(.96); }
+  to   { opacity:1; transform:none; }
+}
+
 
 </style> 

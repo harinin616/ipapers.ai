@@ -1,0 +1,176 @@
+import os
+import re
+from typing import Tuple, Optional
+from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class PaperInfoExtractor:
+    
+    def __init__(self):
+        self.project_root = Path(__file__).parent.parent.parent
+        self.pdf_base_dir = self.project_root / "data" / "cached_pdfs"
+        self.embedding_base_dir = self.project_root / "data" / "cached_embeddings"
+        
+        # Ensure directories exist
+        os.makedirs(self.pdf_base_dir, exist_ok=True)
+        os.makedirs(self.embedding_base_dir, exist_ok=True)
+    
+    def extract_platform(self, paper_id: str) -> str:
+
+        # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
+        if re.match(r'^\d{4}\.\d+v?\d*$', paper_id):
+            return "arxiv"
+        
+        # Conference format: YYYY.venue-track.N (e.g., 2023.acl-long.2)
+        if '.' in paper_id:
+            parts = paper_id.split('.')
+            if len(parts) >= 3:
+                venue_track = parts[1]
+                if '-' in venue_track:
+                    venue = venue_track.split('-')[0].lower()
+                    return venue
+                else:
+                    return venue_track.lower()
+        
+        # If no pattern matches, try to extract from filename-like patterns
+        if '_' in paper_id:
+            return paper_id.split('_')[0].lower()
+        
+        raise ValueError(f"Cannot determine platform from paper_id format: {paper_id}")
+    
+    def extract_arxiv_info(self, paper_id: str) -> Tuple[str, str]:
+        """
+        Extract year and month information from arXiv paper
+        
+        Args:
+            paper_id: arXiv paper ID like "2505.24877v1"
+        
+        Returns:
+            (year, month) tuple
+        """
+        arxiv_number = paper_id
+        # Remove version number
+        if 'v' in arxiv_number:
+            arxiv_number = arxiv_number.split('v')[0]
+        
+        # arXiv ID format: YYMM.NNNNN
+        if len(arxiv_number) >= 4:
+            year_month = arxiv_number[:4]
+            year = year_month[:2]
+            month = year_month[2:4]
+            return year, month
+        else:
+            raise ValueError(f"Invalid arXiv ID format: {arxiv_number}")
+    
+    def extract_conference_info(self, paper_id: str) -> Tuple[str, str, str]:
+        """
+        Extract year and conference information from conference paper
+        
+        Args:
+            paper_id: Conference paper ID like "2023.acl-long.2"
+        
+        Returns:
+            (year, venue, track) tuple
+        """
+        # Parse format: year.venue-track.number
+        parts = paper_id.split('.')
+        if len(parts) >= 3:
+            year = parts[0]
+            venue_track = parts[1]
+            
+            # Separate venue and track
+            if '-' in venue_track:
+                venue, track = venue_track.split('-', 1)
+            else:
+                venue = venue_track
+                track = "main"
+            
+            return year, venue, track
+        else:
+            raise ValueError(f"Invalid conference paper ID format: {paper_id}")
+    
+
+    
+    def get_pdf_storage_directory(self, paper_id: str) -> Path:
+        """
+        Get PDF file storage directory (without filename)
+        
+        Args:
+            paper_id: Paper ID
+        
+        Returns:
+            PDF file storage directory path
+        """
+        return self.get_pdf_storage_path(paper_id).parent
+    
+    def get_embedding_storage_directory(self, paper_id: str) -> Path:
+        """
+        Get embedding file storage directory (without filename)
+        
+        Args:
+            paper_id: Paper ID
+        
+        Returns:
+            Embedding file storage directory path
+        """
+        return self.get_embedding_storage_path(paper_id).parent
+    
+    def get_pdf_url(self, paper_id: str) -> str:
+        platform = self.extract_platform(paper_id)
+        
+        if platform == "arxiv":
+            # arXiv URL format: https://arxiv.org/pdf/{paper_id}
+            return f"https://arxiv.org/pdf/{paper_id}"
+        
+        elif platform in ["acl", "emnlp", "naacl", "eacl", "coling"]:
+            # ACL Anthology URL format: https://aclanthology.org/{paper_id}.pdf
+            return f"https://aclanthology.org/{paper_id}.pdf"
+        
+        elif platform == "iclr":
+            # ICLR OpenReview URL format (approximate)
+            year, venue, track = self.extract_conference_info(paper_id)
+            return f"https://openreview.net/pdf?id={paper_id}"
+        
+        elif platform in ["nips", "neurips"]:
+            # NeurIPS papers URL format (approximate)
+            year, venue, track = self.extract_conference_info(paper_id)
+            return f"https://papers.nips.cc/paper/{year}/file/{paper_id}.pdf"
+        
+        elif platform == "icml":
+            # ICML proceedings URL format (approximate)
+            year, venue, track = self.extract_conference_info(paper_id)
+            return f"https://proceedings.mlr.press/{paper_id}.pdf"
+        
+        else:
+            # For unknown platforms, return a generic format
+            raise ValueError(f"PDF URL format not supported for platform: {platform}")
+
+
+# Create global instance
+paper_info_extractor = PaperInfoExtractor()
+
+
+# Convenience functions
+def extract_platform(paper_id: str) -> str:
+    """Extract paper platform"""
+    return paper_info_extractor.extract_platform(paper_id)
+
+
+def get_pdf_storage_directory(paper_id: str) -> Path:
+    """Get PDF storage directory"""
+    return paper_info_extractor.get_pdf_storage_directory(paper_id)
+
+
+def get_embedding_storage_directory(paper_id: str) -> Path:
+    """Get embedding storage directory"""
+    return paper_info_extractor.get_embedding_storage_directory(paper_id)
+
+
+def get_pdf_url(paper_id: str) -> str:
+    """Get PDF download URL"""
+    return paper_info_extractor.get_pdf_url(paper_id)
+
+paper_info_extractor = PaperInfoExtractor()

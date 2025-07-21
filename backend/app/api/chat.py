@@ -50,8 +50,10 @@ async def get_chat_messages(
             status_code=401,
             detail="User ID not found"
         )
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     messages = []
-    messages = chat_service.get_messages(user_id,session_id)
+    messages = await chat_service.get_messages(user_id,session_id)
     return messages
 
 
@@ -69,7 +71,9 @@ async def chat(
             status_code=401,
             detail="User ID not found"
         )
-    
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
+    user_id = str(user_id)
     session_id = body.session_id
     message = body.message
 
@@ -124,6 +128,8 @@ async def get_user_files(
             status_code=401,
             detail="User ID not found"
         )
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     
     await chat_service.load_user_history(user_id)
     
@@ -178,10 +184,18 @@ async def update_file_selection(request: Request, data: dict = Body(...)):
     selected = data.get("selected")
     if not user_id or paper_id is None or selected is None:
         raise HTTPException(status_code=400, detail="Missing parameters")
+    if user_id.isdigit():
+        user_id = await db_service.get_uuid_by_user_id(int(user_id))
+    print(f"Updating selection for paper {paper_id} to {selected} for user {user_id}")
+    await db_service.update_file_selection(
+        user_id=user_id,
+        paper_id=str(paper_id),
+        selected=selected
+    )
     uid = str(user_id) 
     if uid not in chat_service.active_chats:
         chat_service.active_chats[uid] = {"files": set()}
-    files = chat_service.active_chats[user_id]["files"]
+    files = chat_service.active_chats[uid]["files"]
     for file in files:
         if file["paper_id"] == paper_id:
             file["selected"] = selected
@@ -203,6 +217,8 @@ async def get_paper(
             status_code=401,
             detail="User ID not found"
         )
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     try:
         success = await chat_service.get_paper(user_id, paper_id)
         
@@ -224,6 +240,8 @@ async def attach_paper(
     Get a paper from the database
     """
     user_id = request.headers.get('X-User-ID')
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     if not user_id:
         raise HTTPException(
             status_code=401,
@@ -240,6 +258,8 @@ async def clear_user_files(request: Request):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
 
     # 如果尚未初始化，就先建结构
     if user_id not in chat_service.active_chats:
@@ -268,6 +288,8 @@ async def process_paper_embeddings(
             status_code=401,
             detail="User ID not found"
         )
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     
     try:
         success = await chat_service.process_embeddings(paper_id)
@@ -287,6 +309,8 @@ async def get_sessions(request: Request):
     获取用户所有会话列表
     """
     user_id = request.headers.get('X-User-ID')
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
     return await chat_service.get_sessions(user_id)
@@ -300,13 +324,14 @@ async def create_session(request: Request, data: dict = Body(...)):
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
     title = data.get("title", "Untitled Session")
-    session_id = chat_service.create_session(user_id, title)
-    
+    session_id = await chat_service.create_session(str(user_id), title)
     # Try to convert user_id to integer for database operation
     try:
-        int_user_id = int(user_id)
-        await db_service.add_session(session_id, int_user_id, datetime.now(), title)
+        user_id
+        await db_service.add_session(session_id, user_id, datetime.now(), title)
     except (ValueError, TypeError):
         # If conversion fails, skip database operation
         logger.info("user not logged in")
@@ -324,7 +349,9 @@ async def delete_session(request: Request, data: dict = Body(...)):
     session_id = data.get("session_id")
     if not user_id or not session_id:
         raise HTTPException(status_code=400, detail="Missing user_id or session_id")
-    chat_service.delete_session(user_id, session_id)
+    if user_id.isdigit():
+        user_id=await db_service.get_uuid_by_user_id(int(user_id))
+    await chat_service.delete_session(user_id, session_id)
     await db_service.delete_session(session_id)
     return {"success": True}
 
@@ -341,11 +368,19 @@ async def update_session_title(
     title = data.get("title")
     if not user_id or not session_id or not title:
         raise HTTPException(status_code=400, detail="Missing user_id, session_id or title")
+    try:
+        if user_id.isdigit():
+            user_id=await db_service.get_uuid_by_user_id(int(user_id))
+        #print(f"Updating session {session_id} title to '{title}' for user {user_id}")
     
-    success = chat_service.update_session_title(user_id, session_id, title)
-    if not success:
-        raise HTTPException(status_code=404, detail="Session not found")
+        success = await chat_service.update_session_title(str(user_id), session_id, title)
+        print(f"Update success: {success}")
+        if not success:
+            raise HTTPException(status_code=404, detail="Session not found")
     
-    await db_service.update_session_title(session_id, title)
+        await db_service.update_session_title(session_id, title)
+    except Exception as e:
+        logger.error(f"Error updating session title: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     
     return {"success": True}

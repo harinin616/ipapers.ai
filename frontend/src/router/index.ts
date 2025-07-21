@@ -49,6 +49,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/rwf',
+    name: 'related-work-forum',
+    component: () => import('../views/ShareView.vue'),
+    meta: {
+      title: 'Related Work Forum - iPapers',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/chat',
     name: 'chat',
     component: () => import('../views/ChatView.vue'),

@@ -9,10 +9,11 @@ class Paper(BaseModel):
     title: str
     authors: List[str]
     abstract: str
-    categories: List[str]
+    categories: Optional[List[str]] = None
     pdf_url: str
     published_date: datetime
     updated_date: Optional[datetime] = None
+    platform: Optional[str] = "arxiv"
     
 
 

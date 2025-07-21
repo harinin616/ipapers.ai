@@ -553,7 +553,7 @@ const loadDailyFeed = async () => {
   error.value = null
   
   try {
-    const response = await fetch('/daily_feed/daily_feed.json')
+    const response = await fetch(`/daily_feed/daily_feed.json?v=${Date.now()}`)
     if (!response.ok) {
       throw new Error(`Failed to load daily feed data: ${response.status}`)
     }

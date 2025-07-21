@@ -1,17 +1,42 @@
 import logging
+import uuid
 from typing import List, Optional
 from sqlalchemy.future import select
 from sqlalchemy import func, text, update, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlalchemy import distinct
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
 from app.db.database import get_async_db
 
+
 logger = logging.getLogger(__name__)
+
+from contextlib import asynccontextmanager
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+# 先在模块级别创建一个 sessionmaker
+DATABASE_URL = "postgresql+asyncpg://postgres:1@localhost:5432/dlmonitor"
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+    pool_size=50,
+    max_overflow=50,
+    pool_timeout=60,
+    pool_recycle=1800,
+    pool_pre_ping=True,
+)
+
+AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+
 
 class DBService:
     """
@@ -21,7 +46,39 @@ class DBService:
     def __init__(self):
         pass
     
-    async def add_user(self, name: str, email: str) -> bool:
+    async def get_user_id_by_email(self, email: str) -> Optional[int]:
+        """
+        Get user ID by email address
+        Returns user_id if found, None if not found
+        """
+        if not email:
+            logger.warning("Attempted to get user ID with empty email")
+            return None
+            
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBUser.id).where(DBUser.email == email)
+                )
+                user_id = result.scalar_one_or_none()
+                
+                if user_id is None:
+                    logger.info(f"User with email {email} not found")
+                    return None
+                
+                return user_id
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting user ID for email {email}: {str(e)}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error when getting user ID for email {email}: {str(e)}", exc_info=True)
+                return None
+        
+        return None
+
+    
+    async def add_user(self,user_id: uuid.UUID, name: str, email: str) -> bool:
         """
         Add user to database, check if email already exists first
         """
@@ -42,8 +99,9 @@ class DBService:
                 
                 # Create new user
                 new_user = DBUser(
+                    id=user_id,
                     name=name,
-                    email=email
+                    email=email,
                 )
                 
                 db.add(new_user)
@@ -276,36 +334,65 @@ class DBService:
         
         logger.warning(f"Paper lookup completed with no result for ID: {paper_id}")
         return None
-    
+
     async def get_papers_by_ids(self, paper_ids: List[str]) -> List[Paper]:
-        """
-        get papers by a list of paper_ids
-        """
-        papers = []
-        async for db in get_async_db():
-            result = await db.execute(
-                select(DBPaper)
-                .options(
-                    selectinload(DBPaper.authors),
-                    selectinload(DBPaper.categories)
+        async with AsyncSessionLocal() as db:
+            stmt = (
+                select(
+                    DBPaper.paper_id,
+                    DBPaper.title,
+                    DBPaper.abstract,
+                    DBPaper.pdf_url,
+                    DBPaper.published_date,
+                    DBPaper.updated_date,
+                    # 把作者名聚成数组
+                    func.coalesce(
+                        func.array_agg(DBAuthor.name.op('ORDER BY')(paper_authors.c.author_order))
+                        .filter(paper_authors.c.paper_id == DBPaper.paper_id),
+                        []
+                    ).label("author_names"),
+                    # 把分类名聚成数组
+                    func.coalesce(
+                        func.array_agg(distinct(DBCategory.name))
+                        .filter(paper_categories.c.paper_id == DBPaper.paper_id),
+                        []
+                    ).label("category_names"),
                 )
+                .outerjoin(paper_authors, paper_authors.c.paper_id == DBPaper.paper_id)
+                .outerjoin(DBAuthor, DBAuthor.name == paper_authors.c.author)
+                .outerjoin(paper_categories, paper_categories.c.paper_id == DBPaper.paper_id)
+                .outerjoin(DBCategory, DBCategory.name == paper_categories.c.category)
                 .where(DBPaper.paper_id.in_(paper_ids))
+                .group_by(
+                    DBPaper.paper_id,
+                    DBPaper.title,
+                    DBPaper.abstract,
+                    DBPaper.pdf_url,
+                    DBPaper.published_date,
+                    DBPaper.updated_date,
+                )
             )
-            db_papers = result.scalars().all()
-            
-            for db_paper in db_papers:
-                papers.append(Paper(
-                    paper_id=db_paper.paper_id,
-                    title=db_paper.title,
-                    authors=[author.name for author in db_paper.authors],
-                    abstract=db_paper.abstract,
-                    categories=[category.name for category in db_paper.categories],
-                    pdf_url=db_paper.pdf_url.replace("http://", "https://"),
-                    published_date=db_paper.published_date,
-                    updated_date=db_paper.updated_date
-                ))
-        
+            result = await db.execute(stmt)
+            rows = result.all()
+
+        papers: List[Paper] = []
+        for row in rows:
+            papers.append(
+                Paper(
+                    paper_id=row.paper_id,
+                    title=row.title,
+                    authors=row.author_names,
+                    abstract=row.abstract,
+                    categories=row.category_names,
+                    pdf_url=row.pdf_url.replace("http://", "https://"),
+                    published_date=row.published_date,
+                    updated_date=row.updated_date,
+                )
+            )
         return papers
+
+
+    
     
     async def get_recent_papers(self, limit: int = 30, keyword: str = None, offset: int = 0) -> List[Paper]:
         """
@@ -418,38 +505,7 @@ class DBService:
         
         return None
 
-    async def get_user_id_by_email(self, email: str) -> Optional[int]:
-        """
-        Get user ID by email address
-        Returns user_id if found, None if not found
-        """
-        if not email:
-            logger.warning("Attempted to get user ID with empty email")
-            return None
-            
-        async for db in get_async_db():
-            try:
-                result = await db.execute(
-                    select(DBUser.user_id).where(DBUser.email == email)
-                )
-                user_id = result.scalar_one_or_none()
-                
-                if user_id is None:
-                    logger.info(f"User with email {email} not found")
-                    return None
-                
-                return user_id
-                
-            except SQLAlchemyError as e:
-                logger.error(f"Database error when getting user ID for email {email}: {str(e)}")
-                return None
-            except Exception as e:
-                logger.error(f"Unexpected error when getting user ID for email {email}: {str(e)}", exc_info=True)
-                return None
-        
-        return None
-
-    async def add_session(self, session_id: str, user_id: int, session_time: datetime, title: str = "untitled") -> bool:
+    async def add_session(self, session_id: str, user_id: uuid.UUID, session_time: datetime, title: str = "untitled") -> bool:
         """
         Create a new chat session for a user
         """
@@ -471,7 +527,7 @@ class DBService:
                 
                 # Check if user exists
                 result = await db.execute(
-                    select(DBUser).where(DBUser.user_id == user_id)
+                    select(DBUser).where(DBUser.id == user_id)
                 )
                 user = result.scalars().first()
                 
@@ -642,7 +698,7 @@ class DBService:
         
         return False
 
-    async def get_sessions_by_user_id(self, user_id: int) -> List[dict]:
+    async def get_sessions_by_user_id(self, user_id: uuid.UUID) -> List[dict]:
         """
         Get all sessions for a specific user
         """
@@ -728,7 +784,7 @@ class DBService:
         
         return []
     
-    async def get_files_by_user_id(self, user_id: int) -> List[dict]:
+    async def get_files_by_user_id(self, user_id: uuid.UUID) -> List[dict]:
         """
         拉取某用户 *所有文件*（跨文件夹），按 added_at DESC。
         返回字段：
@@ -767,7 +823,7 @@ class DBService:
                             uf.added_at.isoformat()
                             if isinstance(uf.added_at, datetime) else None
                         ),
-                        "selected": False     # 默认全选；如有逻辑可改
+                        "selected": uf.selected if uf.selected is not None else False
                     })
 
                 logger.info(f"get {len(file_list)} files for user {user_id}")
@@ -1038,8 +1094,42 @@ class DBService:
                 return False
         
         return False
+
+    async def create_user_by_uuid(self, user_id: uuid.UUID) -> DBUser | None:
+        if not user_id:
+            logger.warning("create_user_by_uuid called with empty user_id")
+            return None
+
+        async for db in get_async_db():
+            try:
+                # 检查用户是否已存在
+                existing_user = await db.scalar(
+                    select(DBUser.id).where(DBUser.id == user_id)
+                )
+                if existing_user:
+                    logger.info(f"User {user_id} already exists")
+                    return existing_user  # 用户已存在，返回现有用户
+
+                # 创建新用户
+                new_user = DBUser(id=user_id)
+                db.add(new_user)
+                await db.commit()
+                await db.refresh(new_user)  # 刷新以获取最新数据
+                logger.info(f"Created new user with ID {user_id}")
+                return new_user
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Database error when creating user {user_id}: {str(e)}")
+                return None
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error when creating user {user_id}: {str(e)}", exc_info=True)
+                return None
+
+        return None
     
-    async def add_topic_to_user(self, user_id: int, topic: str) -> bool:
+    async def add_topic_to_user(self, user_id: uuid.UUID, topic: str) -> bool:
         """
         给用户添加一个 topic；若已存在则直接返回 True。
         """
@@ -1050,10 +1140,7 @@ class DBService:
         async for db in get_async_db():
             try:
                 # 确认用户存在
-                user_exists = await db.scalar(select(DBUser.user_id).where(DBUser.user_id == user_id))
-                if not user_exists:
-                    logger.info(f"user {user_id} not found")
-                    return False
+                await self.create_user_by_uuid(user_id)
 
                 # 若已存在该 (user_id, topic) 组合，直接返回 True
                 exists_stmt = select(DBUserTopic).where(
@@ -1076,7 +1163,7 @@ class DBService:
                 return False
 
         return False
-    async def get_topics_by_user(self, user_id: int) -> list[str]:
+    async def get_topics_by_user(self, user_id: uuid.UUID) -> list[str]:
         """
         返回用户所有 topic 字符串列表（升序）。
         """
@@ -1093,7 +1180,7 @@ class DBService:
 
         return []
 
-    async def remove_topic_from_user(self, user_id: int, topic: str) -> bool:
+    async def remove_topic_from_user(self, user_id: uuid.UUID, topic: str) -> bool:
         """
         删除用户的指定 topic；若不存在返回 False。
         """
@@ -1267,8 +1354,22 @@ class DBService:
 
         # should never reach here
         return False, "unknown error"
-    
-    async def get_folders_with_files(self, user_id: int) -> list[dict]:
+
+    async def get_uuid_by_user_id(self, user_id: int) -> uuid.UUID | None:
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBUser.id).where(DBUser.legacy_user_id == user_id)
+                )
+                return result.scalar_one_or_none()
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when getting UUID by user ID {user_id}: {str(e)}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error when getting UUID by user ID {user_id}: {str(e)}", exc_info=True)
+                return None
+
+    async def get_folders_with_files(self, user_id: uuid.UUID) -> list[dict]:
         async for db in get_async_db():
             # 预加载 files → paper
             result = await db.execute(
@@ -1294,27 +1395,34 @@ class DBService:
                             "paper_URL": uf.paper.pdf_url,
                             "added_at":  uf.added_at.isoformat(),
                             "folder_id": fld.id,
-                            "selected": False,
+                            "selected":  uf.selected if uf.selected is not None else False
                         }
                         for uf in fld.files
                     ]
                 })
             return out
-    async def create_folder(self, user_id: int, name: str) -> DBFolder | None:
+
+
+
+    async def create_folder(self, user_id: uuid.UUID, name: str) -> DBFolder | None:
+        await self.create_user_by_uuid(user_id)  # 确保用户存在
         async for db in get_async_db():
             try:
-     
-
-                f = DBFolder(user_id=user_id, name=name)
-                db.add(f)
+                folder = DBFolder(user_id=user_id, name=name)
+                db.add(folder)
                 await db.commit()
-                await db.refresh(f)    # 拿到自增 id
-                return f
-            except SQLAlchemyError:
+                await db.refresh(folder)
+                return folder
+            except SQLAlchemyError as e:
+                logger.error(
+                    "Failed to create folder user=%s name=%s: %s", user_id, name, e
+                )
                 await db.rollback()
                 return None
         return None
-    async def delete_folder(self, user_id: int, folder_id: int) -> bool:
+
+
+    async def delete_folder(self, user_id: uuid.UUID, folder_id: int) -> bool:
         """
         删除指定用户的指定文件夹（连同其下文件一起被级联删除）
         返回 True if deleted, False if not found/not owned.
@@ -1335,6 +1443,176 @@ class DBService:
             except SQLAlchemyError:
                 await db.rollback()
                 raise
+        return False
+    async def get_folder(self, folder_id: int) -> DBFolder | None:
+        async for db in get_async_db():
+            return await db.get(DBFolder, folder_id)
+
+    async def get_files_by_folder_id(self, folder_id: int) -> list[dict]:
+        """
+        根据 folder_id 返回该文件夹下所有文件的扁平列表。
+
+        [{paper_id, filename, paper_URL, added_at, folder_id, selected}, ...]
+        """
+        async for db in get_async_db():
+            try:
+                # ① 预加载 paper，避免外部再触发 lazy‑load
+                stmt = (
+                    select(DBUserFile)
+                    .options(selectinload(DBUserFile.paper))
+                    .where(DBUserFile.folder_id == folder_id)
+                    .order_by(DBUserFile.added_at)
+                )
+                result = await db.execute(stmt)
+                user_files: list[DBUserFile] = result.scalars().all()
+
+                return [
+                    {
+                        "paper_id":  uf.paper_id,
+                        "filename":  uf.paper.title if uf.paper else "",
+                        "paper_URL": uf.paper.pdf_url if uf.paper else "",
+                        "added_at":  uf.added_at.isoformat(),
+                        "folder_id": uf.folder_id,
+                        "selected": bool(uf.selected),
+                    }
+                    for uf in user_files
+                ]
+
+            except SQLAlchemyError as e:
+                logger.error("DB error (get_files_by_folder_id): %s", e)
+                return []
+            except Exception as e:
+                logger.exception("Unexpected error in get_files_by_folder_id")
+                return []
+
+    async def create_shared_folder(
+        self, *, folder_id: int, owner_id: str, is_public: bool
+    ) -> DBSharedFolder:
+        async for db in get_async_db():
+            # 1) 查询是否已存在相同 folder_id 的记录
+            result = await db.execute(
+                select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+            )
+            existing = result.scalars().first()
+            if existing:
+                # 已存在，则直接返回，不重复插入
+                return existing
+
+            # 2) 不存在时，新增一条
+            shared = DBSharedFolder(
+                folder_id=folder_id,
+                owner_id=owner_id,
+                is_public=is_public,
+                created_at=datetime.utcnow(),
+            )
+            db.add(shared)
+            await db.commit()
+            await db.refresh(shared)
+            return shared
+
+        # 如果走不到上面 return，可抛错
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create shared folder"
+        )
+    
+    async def get_shared_folders(self) -> list[dict]:
+        """
+        返回 [{share_id, folder_name, file_cnt, created_at}, ...]
+        """
+        async for db in get_async_db():
+            try:
+                result = await db.execute(
+                    select(DBSharedFolder).options(
+                        selectinload(DBSharedFolder.folder).selectinload(DBFolder.files)
+                    )
+                )
+                shared: list[DBSharedFolder] = result.scalars().all()
+
+                return [
+                    {
+                        "id":    sf.id,
+                        "folder_id": sf.folder_id,
+                        "owner_id":  sf.owner_id,
+                        "is_public": sf.is_public,
+                        "created_at":  sf.created_at,
+                        "folder_name": sf.folder.name if sf.folder else "Unknown",
+                        "file_cnt":   len(sf.folder.files) if sf.folder else 0,
+                    }
+                    for sf in shared
+                ]
+
+            except Exception as e:
+                logger.error("get_shared_folders failed: %s", e, exc_info=True)
+                return []
+
+    async def delete_shared_folder(self, folder_id: int) -> bool:
+        """
+        删除共享文件夹及其关联数据。
+        返回 True if deleted, False if not found.
+        """
+        async for db in get_async_db():
+            try:
+                await db.execute(
+                    delete(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                )
+                await db.commit()
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error deleting shared folder {folder_id}: {e}")
+                return False
+
+    async def update_file_selection(
+        self,
+        user_id: uuid.UUID,
+        paper_id: uuid.UUID,
+        selected: bool
+    ) -> bool:
+        """
+        更新用户文件的选中状态。
+        返回 True 表示更新成功，False 表示未找到或出错。
+        """
+        if not user_id or not paper_id:
+            logger.warning("invalid user_id or paper_id")
+            return False
+
+        async for db in get_async_db():
+            try:
+                # 1) 验证用户和文件
+                user = (await db.execute(
+                    select(DBUser).where(DBUser.id == user_id)
+                )).scalars().first()
+                if not user:
+                    logger.info(f"user {user_id} not found")
+                    return False
+
+                file = (await db.execute(
+                    select(DBUserFile).where(
+                        DBUserFile.paper_id == paper_id,
+                        DBUserFile.folder.has(user_id=user_id)
+                    )
+                )).scalars().first()
+                if not file:
+                    logger.info(f"file {paper_id} not found for user {user_id}")
+                    return False
+
+                # 2) 更新选中状态
+                file.selected = selected
+                await db.commit()
+                logger.info(f"Updated selection for paper {paper_id} to {selected} for user {user_id}")
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error updating selection for paper {paper_id}: {e}")
+                return False
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Unexpected error updating selection for paper {paper_id}: {str(e)}", exc_info=True)
+                return False
+
         return False
 # Create a global instance
 db_service = DBService() 

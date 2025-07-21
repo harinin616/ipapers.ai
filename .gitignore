@@ -13,4 +13,8 @@ backend/arxiv_search_page.html
 .venv
 backend/scripts/daily_feed/arxiv_search_page.html
 frontend/public/
+<<<<<<< HEAD
 backend/scripts/daily_tree/output/
+=======
+backend/arxiv_search_page.html
+>>>>>>> refs/remotes/origin/main

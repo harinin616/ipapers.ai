@@ -17,7 +17,7 @@ def main():
     # 3) 查询并打印所有用户
     users = session.query(DBUser).all()
     for u in users:
-        print(f"user_id={u.user_id} | name={u.name!r} | email={u.email!r}")
+        print(f"id={u.id} | user_id={u.legacy_user_id} | name={u.name!r} | email={u.email!r}")
 
 if __name__ == "__main__":
     main()
