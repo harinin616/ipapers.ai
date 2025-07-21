@@ -88,81 +88,108 @@
     </div>
 
     <div v-else class="daily-feed-content">
-      <div v-for="category in getAllCategories()" :key="category.category" class="category-section">
-        <div class="category-content">
-          <!-- Word Cloud Section -->
-          <div class="wordcloud-section">
-            <h2 class="category-title">{{ getCategoryTitle(category) }}</h2>
-            <div v-if="category.word_cloud_url" class="wordcloud-container">
-              <img 
-                :src="category.word_cloud_url" 
-                :alt="`${category.display_name} Word Cloud`"
-                class="wordcloud-image"
-                @error="handleImageError"
-              />
-            </div>
-            <div v-else class="no-wordcloud">
-              <p>Word cloud not available</p>
-            </div>
-          </div>
-
-          <!-- Summaries Section -->
-          <div class="summaries-section">
-            <h3 class="summaries-title">Recent Trends</h3>
-            <div v-if="category.summaries && category.summaries.length > 0" class="summaries-list">
-              <div 
-                v-for="(summary, index) in category.summaries.slice(0, maxSummaries)" 
-                :key="index"
-                class="summary-accordion-item"
-              >
-                <div 
-                  class="summary-header"
-                  @click="toggleSummary(category.category, index)"
-                  :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
-                >
-                  <h4 class="summary-title">{{ getSummaryTitle(summary) }}</h4>
-                  <div class="header-controls">
-                    <!-- Audio Button -->
-                    <button 
-                      v-if="getAudioUrl(summary)"
-                      @click.stop="toggleAudio(category.category, index, summary)"
-                      class="audio-btn"
-                      :class="{ 
-                        'playing': isAudioPlaying(category.category, index),
-                        'paused': isAudioPaused(category.category, index)
-                      }"
-                      :title="getAudioButtonTitle(category.category, index)"
-                    >
-                      <svg v-if="!isAudioPlaying(category.category, index) && !isAudioPaused(category.category, index)" viewBox="0 0 24 24" class="volume-icon">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
-                      </svg>
-                      <svg v-else-if="isAudioPlaying(category.category, index)" viewBox="0 0 24 24" class="pause-icon">
-                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/>
-                      </svg>
-                      <svg v-else viewBox="0 0 24 24" class="volume-icon">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <div class="toggle-icon">
-                      <svg 
-                        viewBox="0 0 24 24" 
-                        :class="{ 'rotated': isSummaryExpanded(category.category, index) }"
-                      >
-                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div 
-                  class="summary-content-wrapper"
-                  :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
-                >
-                  <div class="summary-content" v-html="renderMarkdown(getSummaryContent(summary))"></div>
-                </div>
+      <div v-for="category in getAllCategories()" :key="category.category" class="category-row">
+        <!-- Left Column: Word Cloud and Summaries -->
+        <div class="left-column">
+          <div class="category-content">
+            <!-- Word Cloud Section -->
+            <div class="wordcloud-section">
+              <h2 class="category-title">{{ getCategoryTitle(category) }}</h2>
+              <div v-if="category.word_cloud_url" class="wordcloud-container">
+                <img 
+                  :src="category.word_cloud_url" 
+                  :alt="`${category.display_name} Word Cloud`"
+                  class="wordcloud-image"
+                  @error="handleImageError"
+                />
+              </div>
+              <div v-else class="no-wordcloud">
+                <p>Word cloud not available</p>
               </div>
             </div>
-            <div v-else class="no-summaries">
-              <p>There is no new paper for this category today.</p>
+
+            <!-- Summaries Section -->
+            <div class="summaries-section">
+              <h3 class="summaries-title">Recent Trends</h3>
+              <div v-if="category.summaries && category.summaries.length > 0" class="summaries-list">
+                <div 
+                  v-for="(summary, index) in category.summaries.slice(0, maxSummaries)" 
+                  :key="index"
+                  class="summary-accordion-item"
+                >
+                  <div 
+                    class="summary-header"
+                    @click="toggleSummary(category.category, index)"
+                    :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
+                  >
+                    <h4 class="summary-title">{{ getSummaryTitle(summary) }}</h4>
+                    <div class="header-controls">
+                      <!-- Audio Button -->
+                      <button 
+                        v-if="getAudioUrl(summary)"
+                        @click.stop="toggleAudio(category.category, index, summary)"
+                        class="audio-btn"
+                        :class="{ 
+                          'playing': isAudioPlaying(category.category, index),
+                          'paused': isAudioPaused(category.category, index)
+                        }"
+                        :title="getAudioButtonTitle(category.category, index)"
+                      >
+                        <svg v-if="!isAudioPlaying(category.category, index) && !isAudioPaused(category.category, index)" viewBox="0 0 24 24" class="volume-icon">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+                        </svg>
+                        <svg v-else-if="isAudioPlaying(category.category, index)" viewBox="0 0 24 24" class="pause-icon">
+                          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" class="volume-icon">
+                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+                        </svg>
+                      </button>
+                      <div class="toggle-icon">
+                        <svg 
+                          viewBox="0 0 24 24" 
+                          :class="{ 'rotated': isSummaryExpanded(category.category, index) }"
+                        >
+                          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div 
+                    class="summary-content-wrapper"
+                    :class="{ 'expanded': isSummaryExpanded(category.category, index) }"
+                  >
+                    <div class="summary-content" v-html="renderMarkdown(getSummaryContent(summary))"></div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="no-summaries">
+                <p>There is no new paper for this category today.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Column: Paper Cards -->
+        <div class="right-column">
+          <div class="papers-section">
+            <h3 class="papers-title">Recent Papers</h3>
+            <div v-if="categoryPapers[category.category]?.isLoading" class="loading-papers">
+              <div class="mini-spinner"></div>
+              <p>Loading papers...</p>
+            </div>
+            <div v-else-if="categoryPapers[category.category]?.papers?.length === 0" class="no-papers">
+              <p>No papers found for this category</p>
+            </div>
+            <div v-else-if="categoryPapers[category.category]?.papers?.length > 0" class="papers-list">
+              <PaperCard 
+                v-for="paper in categoryPapers[category.category].papers.slice(0, 3)" 
+                :key="paper.paper_id" 
+                :paper="paper" 
+              />
+            </div>
+            <div v-else class="no-papers">
+              <p>Loading papers...</p>
             </div>
           </div>
         </div>
@@ -173,6 +200,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import PaperCard from '../components/PaperCard.vue'
+import api from '../services/api'
+import type { Paper } from '../types/paper'
 
 // Enhanced type definitions for the new data structure
 interface SummaryData {
@@ -208,6 +238,12 @@ interface AudioState {
   currentTime: number
 }
 
+// Paper loading state for each category
+interface CategoryPapers {
+  papers: Paper[]
+  isLoading: boolean
+}
+
 // Reactive data
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -229,6 +265,9 @@ const audioPlaybackRate = ref(1.0)
 const audioProgress = ref(0) // 0-100 percentage
 const audioDuration = ref(0) // in seconds
 const audioCurrentTime = ref(0) // in seconds
+
+// Category papers state
+const categoryPapers = ref<Record<string, CategoryPapers>>({})
 
 // Audio playback methods
 // Generate unique ID for audio tracking
@@ -547,6 +586,28 @@ const getAllCategories = (): CategoryData[] => {
   return allCategories
 }
 
+// Load papers for a specific category
+const loadCategoryPapers = async (category: CategoryData) => {
+  if (!categoryPapers.value[category.category]) {
+    categoryPapers.value[category.category] = { papers: [], isLoading: true }
+  }
+  
+  try {
+    categoryPapers.value[category.category].isLoading = true
+    
+    // Use category display name as keyword for searching papers
+    const keyword = category.display_name.toLowerCase()
+    const papers = await api.getRecentPapers(5, keyword, 0) // Get 5 recent papers for this category
+    
+    categoryPapers.value[category.category].papers = papers
+  } catch (err) {
+    console.error(`Failed to load papers for category ${category.display_name}:`, err)
+    categoryPapers.value[category.category].papers = []
+  } finally {
+    categoryPapers.value[category.category].isLoading = false
+  }
+}
+
 // Load daily feed data from static JSON file
 const loadDailyFeed = async () => {
   loading.value = true
@@ -559,6 +620,12 @@ const loadDailyFeed = async () => {
     }
     const data = await response.json()
     dailyFeedData.value = data
+    
+    // Load papers for each category
+    const categories = getAllCategories()
+    for (const category of categories) {
+      loadCategoryPapers(category)
+    }
   } catch (err) {
     console.error('Failed to load daily feed:', err)
     error.value = 'Failed to load daily feed. Please try again later.'
@@ -818,21 +885,20 @@ onUnmounted(() => {
 }
 
 .daily-feed-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
   margin-bottom: 2rem;
-  max-width: 1400px;
+  max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
 }
 
-.category-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.category-content {
+.category-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Two columns */
+  gap: 2rem; /* Space between columns */
+  align-items: start; /* Align items to the start */
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
@@ -840,7 +906,17 @@ onUnmounted(() => {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.category-content:hover {
+.left-column, .right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Space between word cloud/summaries and papers */
+}
+
+.category-content {
+  /* Background and padding now handled by category-row */
+}
+
+.category-row:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
@@ -1143,6 +1219,51 @@ onUnmounted(() => {
   border: 2px dashed #ddd;
 }
 
+.papers-section {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 1rem;
+}
+
+.papers-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.loading-papers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.mini-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3f51b5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.no-papers {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 1rem 0;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+}
+
+.papers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .audio-global-controls {
   position: fixed;
   bottom: 20px;
@@ -1293,7 +1414,6 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .daily-feed-content {
-    grid-template-columns: 1fr;
     gap: 1.5rem;
   }
   
@@ -1301,8 +1421,14 @@ onUnmounted(() => {
     font-size: 1.8rem;
   }
   
-  .category-content {
+  .category-row {
+    grid-template-columns: 1fr; /* Stack columns on mobile */
+    gap: 1rem;
     padding: 1rem;
+  }
+
+  .left-column, .right-column {
+    gap: 1rem;
   }
   
   .display-controls {
