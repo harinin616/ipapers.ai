@@ -21,21 +21,18 @@ import json
 from pathlib import Path
 
 from app.services.llm_service import llm_service
-
+from app.services.extract_info import paper_info_extractor
 logger = logging.getLogger(__name__)
 
 class PdfService:
     def __init__(self):
-        self.project_root = Path(__file__).parent.parent.parent
-        self.pdf_dir = self.project_root / "data" / "cached_pdfs"
-        self.embedding_dir = self.project_root / "data" / "cached_embeddings"
         self.chunk_size = 1000
         self.chunk_overlap = 200
         self.top_k = 20
         self.downloading_processes=set()
         
-        os.makedirs(self.pdf_dir, exist_ok=True)
-        os.makedirs(self.embedding_dir, exist_ok=True)
+        self.pdf_dir = paper_info_extractor.pdf_base_dir
+        self.embedding_dir = paper_info_extractor.embedding_base_dir
     
     async def get_pdf(self,paper_id:str):
         """
@@ -43,10 +40,7 @@ class PdfService:
         return the pdf file path
         """
         try:
-            year_month = paper_id[:4]
-            year = year_month[:2]
-            month = year_month[2:4]
-            target_dir = self.pdf_dir / "arxiv" / year / month
+            target_dir = paper_info_extractor.get_pdf_storage_directory(paper_id)
             filename = f"{paper_id}.pdf"
             local_path = target_dir / filename
             if await aiofiles.os.path.exists(local_path):
@@ -66,7 +60,7 @@ class PdfService:
 
             await aiofiles.os.makedirs(target_dir, exist_ok=True)
 
-            pdf_url = f"https://arxiv.org/pdf/{paper_id}.pdf"
+            pdf_url = paper_info_extractor.get_pdf_url(paper_id)
  
             async with aiohttp.ClientSession() as session:
                 async with session.get(pdf_url) as response:
@@ -156,7 +150,7 @@ class PdfService:
         return chunks
     
     
-    async def update_chat_files(self, user_id: str, file_path: str, paper_id: str, paper_title: Optional[str] = None) -> Dict[str, Any]:
+    async def update_chat_files(self, user_id: str, paper_id: str, paper_title: Optional[str] = None) -> Dict[str, Any]:
         """
         update chat files for a user
         """
@@ -173,12 +167,16 @@ class PdfService:
             for existing_file in existing_files:
                 if existing_file.get("paper_id") == paper_id:
                     return True
-            
+                
+            file_dir=paper_info_extractor.get_pdf_storage_directory(paper_id)
+            file_path= file_dir/filename
+            pdf_url=paper_info_extractor.get_pdf_url(paper_id)
+
             file_info = {
                 "file_path": file_path,
                 "filename": filename,
                 "paper_id": paper_id,
-                "paper_URL":f"https://arxiv.org/pdf/{paper_id}.pdf",
+                "paper_URL":pdf_url,
                 "added_at": datetime.now().isoformat(),
                 "selected": True
             }
@@ -207,11 +205,8 @@ class PdfService:
             paper_id = file_info.get("paper_id")
             logger.info(f"chat Paper name: {file_info.get('filename')}")
 
-            year_month = paper_id[:4]
-            year = year_month[:2]
-            month = year_month[2:4]
-
-            local_path = self.embedding_dir / "arxiv" / year / month / f"{paper_id}.json"
+            local_dir = paper_info_extractor.get_embedding_storage_directory(paper_id)
+            local_path = local_dir / f"{paper_id}.json"
 
             if not local_path.exists():
                 logger.warning(f"Embedding file not found: {local_path}")
@@ -259,13 +254,12 @@ class PdfService:
         generate embeddings for a paper and save to local directory
         """
         try:
-                
-            year_month = paper_id[:4]
-            year = year_month[:2]
-            month = year_month[2:4]
             
-            pdf_path = self.pdf_dir / "arxiv" / year / month / f"{paper_id}.pdf"
-            target_dir = self.embedding_dir / "arxiv" / year / month
+            pdf_dir = paper_info_extractor.get_pdf_storage_directory
+
+            pdf_path = pdf_dir / f"{paper_id}.pdf"
+
+            target_dir = paper_info_extractor.get_embedding_storage_directory
             local_path = target_dir / f"{paper_id}.json"
 
             if local_path.exists():

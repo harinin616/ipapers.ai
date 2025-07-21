@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class PaperInfoExtractor:
-    """Extract paper information including platform, PDF and embedding storage directories"""
     
     def __init__(self):
         self.project_root = Path(__file__).parent.parent.parent
@@ -20,19 +19,7 @@ class PaperInfoExtractor:
         os.makedirs(self.embedding_base_dir, exist_ok=True)
     
     def extract_platform(self, paper_id: str) -> str:
-        """
-        Extract platform information from paper_id based on ID format
-        
-        Args:
-            paper_id: Paper ID in formats like:
-                - 2505.24877v1 (arXiv)
-                - 2023.acl-long.2 (ACL)
-                - 2024.emnlp-main.1 (EMNLP)
-                - 2024.naacl-long.1 (NAACL)
-        
-        Returns:
-            Platform name (arxiv, acl, emnlp, naacl, etc.)
-        """
+
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
         if re.match(r'^\d{4}\.\d+v?\d*$', paper_id):
             return "arxiv"
@@ -105,75 +92,7 @@ class PaperInfoExtractor:
         else:
             raise ValueError(f"Invalid conference paper ID format: {paper_id}")
     
-    def get_pdf_storage_path(self, paper_id: str) -> Path:
-        """
-        Get the local storage path for PDF file
-        
-        Args:
-            paper_id: Paper ID
-        
-        Returns:
-            Complete path to PDF file
-        """
-        platform = self.extract_platform(paper_id)
-        
-        if platform == "arxiv":
-            year, month = self.extract_arxiv_info(paper_id)
-            # Create directory structure: arxiv/year/month/
-            pdf_dir = self.pdf_base_dir / "arxiv" / year / month
-            filename = f"{paper_id}.pdf"
-        
-        elif platform in ["acl", "emnlp", "naacl", "iclr", "nips", "icml"]:
-            year, venue, track = self.extract_conference_info(paper_id)
-            # Create directory structure: platform/year/venue-track/
-            pdf_dir = self.pdf_base_dir / platform / year / f"{venue}-{track}"
-            # Use paper_id as filename (replace dots with underscores for safety)
-            filename = f"{paper_id.replace('.', '_')}.pdf"
-        
-        else:
-            # Other platforms use generic structure
-            pdf_dir = self.pdf_base_dir / platform
-            filename = f"{paper_id.replace('.', '_')}.pdf"
-        
-        # Ensure directory exists
-        os.makedirs(pdf_dir, exist_ok=True)
-        
-        return pdf_dir / filename
-    
-    def get_embedding_storage_path(self, paper_id: str) -> Path:
-        """
-        Get the local storage path for embedding file
-        
-        Args:
-            paper_id: Paper ID
-        
-        Returns:
-            Complete path to embedding file
-        """
-        platform = self.extract_platform(paper_id)
-        
-        if platform == "arxiv":
-            year, month = self.extract_arxiv_info(paper_id)
-            # Create directory structure: arxiv/year/month/
-            embedding_dir = self.embedding_base_dir / "arxiv" / year / month
-            filename = f"{paper_id}.pkl"
-        
-        elif platform in ["acl", "emnlp", "naacl", "iclr", "nips", "icml"]:
-            year, venue, track = self.extract_conference_info(paper_id)
-            # Create directory structure: platform/year/venue-track/
-            embedding_dir = self.embedding_base_dir / platform / year / f"{venue}-{track}"
-            # Use paper_id as filename (replace dots with underscores for safety)
-            filename = f"{paper_id.replace('.', '_')}.pkl"
-        
-        else:
-            # Other platforms use generic structure
-            embedding_dir = self.embedding_base_dir / platform
-            filename = f"{paper_id.replace('.', '_')}.pkl"
-        
-        # Ensure directory exists
-        os.makedirs(embedding_dir, exist_ok=True)
-        
-        return embedding_dir / filename
+
     
     def get_pdf_storage_directory(self, paper_id: str) -> Path:
         """
@@ -198,6 +117,36 @@ class PaperInfoExtractor:
             Embedding file storage directory path
         """
         return self.get_embedding_storage_path(paper_id).parent
+    
+    def get_pdf_url(self, paper_id: str) -> str:
+        platform = self.extract_platform(paper_id)
+        
+        if platform == "arxiv":
+            # arXiv URL format: https://arxiv.org/pdf/{paper_id}
+            return f"https://arxiv.org/pdf/{paper_id}"
+        
+        elif platform in ["acl", "emnlp", "naacl", "eacl", "coling"]:
+            # ACL Anthology URL format: https://aclanthology.org/{paper_id}.pdf
+            return f"https://aclanthology.org/{paper_id}.pdf"
+        
+        elif platform == "iclr":
+            # ICLR OpenReview URL format (approximate)
+            year, venue, track = self.extract_conference_info(paper_id)
+            return f"https://openreview.net/pdf?id={paper_id}"
+        
+        elif platform in ["nips", "neurips"]:
+            # NeurIPS papers URL format (approximate)
+            year, venue, track = self.extract_conference_info(paper_id)
+            return f"https://papers.nips.cc/paper/{year}/file/{paper_id}.pdf"
+        
+        elif platform == "icml":
+            # ICML proceedings URL format (approximate)
+            year, venue, track = self.extract_conference_info(paper_id)
+            return f"https://proceedings.mlr.press/{paper_id}.pdf"
+        
+        else:
+            # For unknown platforms, return a generic format
+            raise ValueError(f"PDF URL format not supported for platform: {platform}")
 
 
 # Create global instance
@@ -210,16 +159,6 @@ def extract_platform(paper_id: str) -> str:
     return paper_info_extractor.extract_platform(paper_id)
 
 
-def get_pdf_storage_path(paper_id: str) -> Path:
-    """Get PDF storage path"""
-    return paper_info_extractor.get_pdf_storage_path(paper_id)
-
-
-def get_embedding_storage_path(paper_id: str) -> Path:
-    """Get embedding storage path"""
-    return paper_info_extractor.get_embedding_storage_path(paper_id)
-
-
 def get_pdf_storage_directory(paper_id: str) -> Path:
     """Get PDF storage directory"""
     return paper_info_extractor.get_pdf_storage_directory(paper_id)
@@ -230,19 +169,8 @@ def get_embedding_storage_directory(paper_id: str) -> Path:
     return paper_info_extractor.get_embedding_storage_directory(paper_id)
 
 
-if __name__ == "__main__":
-    # Test examples
-    test_ids = [
-        "2505.24877v1",
-        "2023.acl-long.2",
-        "2024.emnlp-main.1",
-        "2024.naacl-long.1"
-    ]
-    
-    for paper_id in test_ids:
-        print(f"\nPaper ID: {paper_id}")
-        print(f"Platform: {extract_platform(paper_id)}")
-        print(f"PDF Path: {get_pdf_storage_path(paper_id)}")
-        print(f"PDF Directory: {get_pdf_storage_directory(paper_id)}")
-        print(f"Embedding Path: {get_embedding_storage_path(paper_id)}")
-        print(f"Embedding Directory: {get_embedding_storage_directory(paper_id)}") 
+def get_pdf_url(paper_id: str) -> str:
+    """Get PDF download URL"""
+    return paper_info_extractor.get_pdf_url(paper_id)
+
+paper_info_extractor = PaperInfoExtractor()

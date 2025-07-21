@@ -172,14 +172,8 @@ class ChatService:
             if paper:
                 paper_title = paper.title
 
-            year_month = paper_id[:4]
-            year = year_month[:2]
-            month = year_month[2:4]
-            target_dir = pdf_service.pdf_dir / "arxiv" / year / month
-            filename = f"{paper_id}.pdf"
-            file_path = target_dir / filename
 
-            success = await pdf_service.update_chat_files(user_id, file_path, paper_id, paper_title)
+            success = await pdf_service.update_chat_files(user_id, paper_id, paper_title)
 
             if not success:
                 return False

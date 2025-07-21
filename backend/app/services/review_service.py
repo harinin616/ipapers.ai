@@ -16,6 +16,7 @@ from enum import Enum
 from app.services.llm_service import llm_service
 from app.services.pdf_service import pdf_service
 from app.services.db_service import db_service
+from app.services.extract_info import paper_info_extractor
 
 logger = logging.getLogger(__name__)
 
@@ -784,11 +785,9 @@ Focus on meaningful relationships that would help understand the research landsc
                     
                     # Copy embedding file from global to session-specific location
                     try:
-                        # Source: global embedding file location
-                        year_month = paper_id[:4]
-                        year = year_month[:2]
-                        month = year_month[2:4]
-                        global_path = pdf_service.embedding_dir / "arxiv" / year / month / f"{paper_id}.json"
+
+                        embedding_dir = paper_info_extractor.get_embedding_storage_directory
+                        global_path = embedding_dir / f"{paper_id}.json"
                         
                         # Destination: session-specific location
                         session_dir = pdf_service.embedding_dir / "uploads" / user_id / session_id
