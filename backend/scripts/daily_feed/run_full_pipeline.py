@@ -5,8 +5,9 @@ Full Daily Feed Pipeline Runner
 This script runs the complete daily feed pipeline:
 1. Collect data from arXiv
 2. Generate word clouds and extract top phrases
-3. Generate summaries using Gemini API
-4. Copy files to website location
+3. Save category-specific paper data to output folders
+4. Generate summaries using Gemini API
+5. Copy files to website location
 
 Usage:
     python run_full_pipeline.py --date 2024-07-04
@@ -93,6 +94,8 @@ def main():
                        help='Skip data collection step (use existing data)')
     parser.add_argument('--skip-wordcloud', action='store_true',
                        help='Skip word cloud generation step')
+    parser.add_argument('--skip-category-papers', action='store_true',
+                       help='Skip saving category papers to output folders')
     parser.add_argument('--skip-summaries', action='store_true',
                        help='Skip summary generation step')
     parser.add_argument('--skip-copy', action='store_true',
@@ -153,6 +156,21 @@ def main():
     else:
         print("⏭️  Skipping word cloud generation step")
     
+    # Step 2.5: Save category-specific paper data to each output folder
+    if not args.skip_category_papers:
+        total_steps += 1
+        command = [
+            sys.executable, "save_category_papers.py",
+            "--date", args.date
+        ]
+        if run_command(command, "Step 2.5: Saving category papers to output folders", cwd=script_dir):
+            success_steps += 1
+        else:
+            print("❌ Category papers saving failed. Continuing pipeline.")
+            # Don't stop the pipeline for this step, just continue
+    else:
+        print("⏭️  Skipping category papers saving step")
+    
     # Step 3: Generate summaries using Gemini API
     if not args.skip_summaries:
         total_steps += 1
@@ -195,9 +213,14 @@ def main():
         
         # Show expected file locations
         website_data_dir = script_dir.parent.parent / "data" / "daily_feed"
+        output_data_dir = script_dir / "output" / args.date
         print(f"\n📁 Files are available at:")
         print(f"   📷 Word clouds: {website_data_dir}/{{category}}/images/")
         print(f"   📄 Summaries: {website_data_dir}/{{category}}/summaries/")
+        print(f"   📊 Pipeline output: {output_data_dir}/")
+        print(f"   🗂️  Category papers: {output_data_dir}/{{category}}/papers.json")
+        print(f"   📈 Top phrases: {output_data_dir}/{{category}}/top_phrases.json")
+        print(f"   📝 Phrases summary: {output_data_dir}/{{category}}/phrases_summary.json")
     else:
         print(f"⚠️  Pipeline completed with some issues.")
         print(f"💡 Check the output above for details on failed steps.")
@@ -205,8 +228,14 @@ def main():
     # Show useful commands for debugging
     print(f"\n🔧 Useful debugging commands:")
     print(f"   📊 Check pipeline output: ls -la {script_dir}/output/{args.date}/")
+    print(f"   🗂️  Check category papers: ls -la {script_dir}/output/{args.date}/*/papers.json")
     print(f"   🌐 Check website files: ls -la {script_dir.parent.parent}/data/daily_feed/")
-    print(f"   🔄 Re-run specific step: python {{script_name}} --date {args.date}")
+    print(f"   🔄 Re-run specific steps:")
+    print(f"      📄 Data collection: python collect_data.py --date {args.date}")
+    print(f"      🎨 Word clouds: python run_wordcloud_pipeline.py --date {args.date}")
+    print(f"      🗂️  Category papers: python save_category_papers.py --date {args.date}")
+    print(f"      📝 Summaries: python summary_generator.py --date {args.date}")
+    print(f"      📋 Copy to website: python copy_to_website.py --date {args.date}")
 
 if __name__ == "__main__":
     main() 

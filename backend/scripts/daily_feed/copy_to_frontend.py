@@ -2,9 +2,13 @@
 """
 Copy Daily Feed Files to Frontend Public Folder
 
-This script copies the generated word cloud images and summary markdown files
-from the pipeline output directory to the frontend's public folder and generates
-a JSON file that the frontend can consume directly without backend API calls.
+This script copies the generated word cloud images, summary markdown files, and
+filtered papers data from the pipeline output directory to the frontend's public 
+folder and generates a JSON file that the frontend can consume directly without 
+backend API calls.
+
+The papers data is filtered to include only: arxiv_id, categories, title, 
+authors, abstract, and submitted_date_parsed.
 
 Usage:
     python copy_to_frontend.py --date 2025-07-03
@@ -70,6 +74,38 @@ def load_phrases_summary(category_dir: Path):
     except Exception as e:
         print(f"  ⚠️  Error reading phrases summary: {e}")
         return None
+
+def load_category_papers(category_dir: Path):
+    """Load the category papers JSON and filter to required fields only."""
+    papers_file = category_dir / "papers.json"
+    
+    if not papers_file.exists():
+        print(f"  ⚠️  Category papers file not found: {papers_file}")
+        return []
+    
+    try:
+        with open(papers_file, 'r', encoding='utf-8') as f:
+            papers_data = json.load(f)
+        
+        # Extract just the papers array
+        papers = papers_data.get('papers', [])
+        
+        # Filter to only the required fields
+        required_fields = ['arxiv_id', 'categories', 'title', 'authors', 'abstract', 'submitted_date_parsed']
+        filtered_papers = []
+        
+        for paper in papers:
+            filtered_paper = {}
+            for field in required_fields:
+                filtered_paper[field] = paper.get(field)
+            filtered_papers.append(filtered_paper)
+        
+        print(f"  📄 Loaded and filtered {len(filtered_papers)} papers")
+        return filtered_papers
+        
+    except Exception as e:
+        print(f"  ⚠️  Error reading category papers: {e}")
+        return []
 
 def extract_summary_title_and_phrase(markdown_content: str, filename: str):
     """Extract title from markdown content and determine the corresponding phrase."""
@@ -304,6 +340,9 @@ def generate_daily_feed_json(date: str):
         # Load phrases summary for this category
         phrases_summary_data = load_phrases_summary(source_category_dir)
         
+        # Load and filter category papers
+        category_papers = load_category_papers(source_category_dir)
+        
         # Read summaries with metadata and generate audio
         summaries_dir = source_category_dir / "summaries"
         summaries = read_summary_files_with_metadata(summaries_dir, phrases_summary_data, category_name, daily_feed_dir)
@@ -317,16 +356,18 @@ def generate_daily_feed_json(date: str):
             "display_name": category_name,
             "paper_count": category_paper_count,
             "word_cloud_url": word_cloud_url,
-            "summaries": summaries
+            "summaries": summaries,
+            "papers": category_papers
         }
         
         categories_data.append(category_data)
-        print(f"  ✅ Added {len(summaries)} summaries (sorted by paper count), papers: {category_paper_count}, image: {'Yes' if word_cloud_url else 'No'}")
+        print(f"  ✅ Added {len(summaries)} summaries, {len(category_papers)} papers (filtered), total papers: {category_paper_count}, image: {'Yes' if word_cloud_url else 'No'}")
     
     # Sort categories by paper count in descending order (largest to smallest)
     categories_data.sort(key=lambda x: x['paper_count'] or 0, reverse=True)
     print(f"📊 Categories sorted by paper count (largest to smallest)")
     print(f"📊 Summaries within each category also sorted by paper count (largest to smallest)")
+    print(f"📄 Papers data included with filtered fields: arxiv_id, categories, title, authors, abstract, submitted_date_parsed")
     print(f"🎵 Audio files generated sentence-by-sentence for all summaries")
     
     # Get total papers from pipeline summary
@@ -392,6 +433,7 @@ def main():
         print(f"\n🎉 File copying completed!")
         print(f"🌐 Files are now ready for the frontend at: {frontend_public_dir}/daily_feed/")
         print(f"📱 Frontend can now access data via: /daily_feed/daily_feed.json")
+        print(f"📄 Each category includes filtered papers data (arxiv_id, categories, title, authors, abstract, submitted_date_parsed)")
         print(f"💡 The frontend will work without backend API calls!")
     else:
         print(f"\n❌ Failed to generate daily feed files")
