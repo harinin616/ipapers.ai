@@ -1486,19 +1486,35 @@ class DBService:
                 return []
 
     async def create_shared_folder(
-            self, *, folder_id: int, owner_id: str, is_public: bool
-        ) -> DBSharedFolder:
-            async for db in get_async_db():
-                shared = DBSharedFolder(
-                    folder_id = folder_id,
-                    owner_id  = owner_id,
-                    is_public = is_public,
-                    created_at = datetime.now(),
-                )
-                db.add(shared)
-                await db.commit()
-                await db.refresh(shared)
-                return shared
+        self, *, folder_id: int, owner_id: str, is_public: bool
+    ) -> DBSharedFolder:
+        async for db in get_async_db():
+            # 1) 查询是否已存在相同 folder_id 的记录
+            result = await db.execute(
+                select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+            )
+            existing = result.scalars().first()
+            if existing:
+                # 已存在，则直接返回，不重复插入
+                return existing
+
+            # 2) 不存在时，新增一条
+            shared = DBSharedFolder(
+                folder_id=folder_id,
+                owner_id=owner_id,
+                is_public=is_public,
+                created_at=datetime.utcnow(),
+            )
+            db.add(shared)
+            await db.commit()
+            await db.refresh(shared)
+            return shared
+
+        # 如果走不到上面 return，可抛错
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create shared folder"
+        )
     
     async def get_shared_folders(self) -> list[dict]:
         """

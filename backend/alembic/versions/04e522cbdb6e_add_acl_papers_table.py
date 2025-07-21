@@ -29,14 +29,21 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('paper_id')
     )
     op.create_index(op.f('ix_acl_papers_paper_id'), 'acl_papers', ['paper_id'], unique=False)
-    op.drop_column('email_list', 'created_at')
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    cols = {col["name"] for col in insp.get_columns("email_list")}
+    if "created_at" in cols:
+        op.drop_column('email_list', 'created_at')
     op.create_index(op.f('ix_feedback_user_id'), 'feedback', ['user_id'], unique=False)
     op.create_index(op.f('ix_folders_user_id'), 'folders', ['user_id'], unique=False)
     op.create_index(op.f('ix_sessions_user_id'), 'sessions', ['user_id'], unique=False)
     op.drop_constraint('sessions_user_uuid_fkey', 'sessions', type_='foreignkey')
     op.create_foreign_key(None, 'sessions', 'users', ['user_id'], ['id'])
     op.drop_index('ix_shared_folders_owner_created', table_name='shared_folders')
-    op.drop_column('users', 'user_id')
+    # 删除 users 表的 user_id 列前加判断
+    cols = {col["name"] for col in insp.get_columns("users")}
+    if "user_id" in cols:
+        op.drop_column('users', 'user_id')
     # ### end Alembic commands ###
 
 
