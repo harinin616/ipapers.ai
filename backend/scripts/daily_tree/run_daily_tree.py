@@ -3,7 +3,8 @@
 Daily Tree Generator - Create dendrograms from daily arXiv feed abstracts
 
 This script reads JSON data from daily_feed/data, generates embeddings for abstracts
-using SPECTER2 model, and performs Ward's agglomerative clustering to create dendrograms.
+using SPECTER2 model, and performs Ward's agglomerative clustering to create dendrograms
+for each subject category.
 """
 
 import json
@@ -48,6 +49,46 @@ def load_papers_data(date):
     print(f"   Papers with abstracts: {len(papers_with_abstracts)}")
     
     return papers_with_abstracts
+
+def categorize_papers_by_discipline(papers):
+    """Group papers by their primary discipline using the same logic as daily_feed"""
+    discipline_groups = {
+        'Computer Science (cs.)': [],
+        'Economics (econ.)': [],
+        'Electrical Engineering & Systems Science (eess.)': [],
+        'Mathematics (math.)': [],
+        'Statistics (stat.)': [],
+        'Quantitative Biology (q-bio.)': [],
+        'Quantitative Finance (q-fin.)': [],
+        'Physics': []
+    }
+    
+    for paper in papers:
+        categories = paper.get('categories', [])
+        if categories:
+            # Use first category to determine discipline
+            first_category = categories[0]
+            
+            # Categorize using the same logic as daily_feed
+            if first_category.startswith('cs.'):
+                discipline_groups['Computer Science (cs.)'].append(paper)
+            elif first_category.startswith('econ.'):
+                discipline_groups['Economics (econ.)'].append(paper)
+            elif first_category.startswith('eess.'):
+                discipline_groups['Electrical Engineering & Systems Science (eess.)'].append(paper)
+            elif first_category.startswith('math.'):
+                discipline_groups['Mathematics (math.)'].append(paper)
+            elif first_category.startswith('stat.'):
+                discipline_groups['Statistics (stat.)'].append(paper)
+            elif first_category.startswith('q-bio.'):
+                discipline_groups['Quantitative Biology (q-bio.)'].append(paper)
+            elif first_category.startswith('q-fin.'):
+                discipline_groups['Quantitative Finance (q-fin.)'].append(paper)
+            else:
+                discipline_groups['Physics'].append(paper)
+    
+    # Only return categories that have papers
+    return {k: v for k, v in discipline_groups.items() if v}
 
 def generate_embeddings(papers, model_name="allenai/specter2_base", batch_size=32):
     """Generate embeddings for paper abstracts using SPECTER2 model"""
@@ -106,9 +147,9 @@ def generate_embeddings(papers, model_name="allenai/specter2_base", batch_size=3
     
     return embeddings
 
-def create_dendrogram(embeddings, papers, date, method='ward'):
-    """Create dendrogram using Ward's hierarchical clustering"""
-    print(f"🌳 Creating dendrogram using {method} linkage")
+def create_dendrogram_for_category(embeddings, papers, category, date, method='ward'):
+    """Create dendrogram for a specific category using Ward's hierarchical clustering"""
+    print(f"🌳 Creating dendrogram for {category} using {method} linkage")
     
     # Calculate distance matrix
     distance_matrix = cosine_distances(embeddings)
@@ -123,7 +164,7 @@ def create_dendrogram(embeddings, papers, date, method='ward'):
     plt.figure(figsize=(20, 10))
     
     # Create labels from paper titles (truncated for readability)
-    labels = [f"{paper['arxiv_id']}: {paper['title'][:50]}..." for paper in papers]
+    labels = [f"{paper['arxiv_id']}: {paper['title'][:40]}..." for paper in papers]
     
     dendrogram_data = dendrogram(
         linkage_matrix,
@@ -135,8 +176,8 @@ def create_dendrogram(embeddings, papers, date, method='ward'):
         leaf_font_size=8
     )
     
-    plt.title(f'Hierarchical Clustering Dendrogram - {date}\n'
-              f'Papers: {len(papers)}, Method: {method.title()}, Model: SPECTER2', 
+    plt.title(f'Hierarchical Clustering Dendrogram - {category}\n'
+              f'Date: {date}, Papers: {len(papers)}, Method: {method.title()}, Model: SPECTER2', 
               fontsize=16, fontweight='bold')
     plt.xlabel('Paper Index / arXiv ID: Title', fontsize=12)
     plt.ylabel('Distance', fontsize=12)
@@ -144,36 +185,41 @@ def create_dendrogram(embeddings, papers, date, method='ward'):
     # Improve layout
     plt.tight_layout()
     
-    # Save the dendrogram
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
+    # Create category-specific output directory
+    category_output_dir = Path("output") / "each_subject" / category
+    category_output_dir.mkdir(parents=True, exist_ok=True)
     
-    dendrogram_path = output_dir / f"dendrogram_{date}.png"
+    # Save the dendrogram
+    dendrogram_path = category_output_dir / f"dendrogram_{date}.png"
     plt.savefig(dendrogram_path, dpi=300, bbox_inches='tight')
     print(f"   Saved dendrogram to: {dendrogram_path}")
     
     # Also save as PDF for vector graphics
-    dendrogram_pdf = output_dir / f"dendrogram_{date}.pdf"
+    dendrogram_pdf = category_output_dir / f"dendrogram_{date}.pdf"
     plt.savefig(dendrogram_pdf, bbox_inches='tight')
     print(f"   Saved dendrogram (PDF) to: {dendrogram_pdf}")
     
-    plt.show()
+    # Don't show the plot in non-interactive environments
+    # plt.show()
+    plt.close()  # Close to free memory
     
     return linkage_matrix, dendrogram_data
 
-def save_clustering_data(papers, embeddings, linkage_matrix, date):
-    """Save clustering data for further analysis"""
-    print("💾 Saving clustering data")
+def save_clustering_data_for_category(papers, embeddings, linkage_matrix, category, date):
+    """Save clustering data for a specific category"""
+    print(f"💾 Saving clustering data for {category}")
     
-    output_dir = Path("output")
+    # Create category-specific output directory
+    category_output_dir = Path("output") / "each_subject" / category
+    category_output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save embeddings
-    embeddings_path = output_dir / f"embeddings_{date}.npy"
+    embeddings_path = category_output_dir / f"embeddings_{date}.npy"
     np.save(embeddings_path, embeddings)
     print(f"   Saved embeddings to: {embeddings_path}")
     
     # Save linkage matrix
-    linkage_path = output_dir / f"linkage_matrix_{date}.npy"
+    linkage_path = category_output_dir / f"linkage_matrix_{date}.npy"
     np.save(linkage_path, linkage_matrix)
     print(f"   Saved linkage matrix to: {linkage_path}")
     
@@ -192,38 +238,41 @@ def save_clustering_data(papers, embeddings, linkage_matrix, date):
         paper_metadata.append(metadata)
     
     metadata_df = pd.DataFrame(paper_metadata)
-    metadata_path = output_dir / f"paper_metadata_{date}.csv"
+    metadata_path = category_output_dir / f"paper_metadata_{date}.csv"
     metadata_df.to_csv(metadata_path, index=False)
     print(f"   Saved paper metadata to: {metadata_path}")
     
     # Save clustering summary
     summary = {
         'date': date,
+        'category': category,
         'total_papers': len(papers),
         'embedding_dimension': embeddings.shape[1],
         'clustering_method': 'ward',
         'model_used': 'allenai/specter2_base',
         'files_generated': {
-            'dendrogram_png': str(output_dir / f"dendrogram_{date}.png"),
-            'dendrogram_pdf': str(output_dir / f"dendrogram_{date}.pdf"),
+            'dendrogram_png': str(category_output_dir / f"dendrogram_{date}.png"),
+            'dendrogram_pdf': str(category_output_dir / f"dendrogram_{date}.pdf"),
             'embeddings': str(embeddings_path),
             'linkage_matrix': str(linkage_path),
             'metadata': str(metadata_path)
         }
     }
     
-    summary_path = output_dir / f"clustering_summary_{date}.json"
+    summary_path = category_output_dir / f"clustering_summary_{date}.json"
     with open(summary_path, 'w') as f:
         json.dump(summary, f, indent=2)
     print(f"   Saved clustering summary to: {summary_path}")
 
 def main():
-    """Main function to orchestrate the daily tree generation"""
+    """Main function to orchestrate the daily tree generation for each subject"""
     # Set up argument parser (similar to collect_data.py)
-    parser = argparse.ArgumentParser(description='Generate hierarchical clustering dendrogram for daily arXiv papers')
+    parser = argparse.ArgumentParser(description='Generate hierarchical clustering dendrograms for daily arXiv papers by subject')
     parser.add_argument('--date', type=str, 
                        default=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
                        help='Date in YYYY-MM-DD format (default: yesterday)')
+    parser.add_argument('--min-papers', type=int, default=3,
+                       help='Minimum number of papers required per category to generate dendrogram (default: 3)')
     
     args = parser.parse_args()
     
@@ -234,9 +283,10 @@ def main():
         print("❌ Error: Invalid date format. Please use YYYY-MM-DD format.")
         return
     
-    print("🌳 Daily Tree Generator")
-    print("=" * 50)
+    print("🌳 Daily Tree Generator (By Subject)")
+    print("=" * 60)
     print(f"📅 Processing papers for date: {args.date}")
+    print(f"📊 Minimum papers per category: {args.min_papers}")
     
     try:
         # Load papers data
@@ -246,18 +296,78 @@ def main():
             print("❌ No papers with abstracts found for the given date.")
             return
         
-        # Generate embeddings
-        embeddings = generate_embeddings(papers)
+        # Categorize papers by discipline
+        print(f"\n📂 Categorizing papers by discipline...")
+        category_papers = categorize_papers_by_discipline(papers)
         
-        # Create dendrogram
-        linkage_matrix, dendrogram_data = create_dendrogram(embeddings, papers, args.date)
+        print(f"📊 Found {len(category_papers)} categories:")
+        for category, cat_papers in category_papers.items():
+            print(f"  - {category}: {len(cat_papers)} papers")
         
-        # Save all data for further analysis
-        save_clustering_data(papers, embeddings, linkage_matrix, args.date)
+        # Filter categories with enough papers
+        valid_categories = {k: v for k, v in category_papers.items() if len(v) >= args.min_papers}
         
-        print("\n✅ Daily tree generation completed successfully!")
-        print(f"   You can use the saved linkage matrix and embeddings for further analysis.")
-        print(f"   Files are saved in the 'output/' directory.")
+        if not valid_categories:
+            print(f"\n❌ No categories have at least {args.min_papers} papers. Cannot generate dendrograms.")
+            return
+        
+        print(f"\n🔄 Processing {len(valid_categories)} categories with sufficient papers...")
+        
+        # Process each category separately
+        all_results = {}
+        
+        for category, cat_papers in valid_categories.items():
+            print(f"\n{'='*50}")
+            print(f"📊 Processing category: {category} ({len(cat_papers)} papers)")
+            print(f"{'='*50}")
+            
+            # Generate embeddings for this category
+            embeddings = generate_embeddings(cat_papers)
+            
+            if embeddings is None:
+                print(f"❌ Failed to generate embeddings for {category}")
+                continue
+            
+            # Create dendrogram for this category
+            linkage_matrix, dendrogram_data = create_dendrogram_for_category(
+                embeddings, cat_papers, category, args.date
+            )
+            
+            # Save all data for this category
+            save_clustering_data_for_category(
+                cat_papers, embeddings, linkage_matrix, category, args.date
+            )
+            
+            all_results[category] = {
+                'papers_count': len(cat_papers),
+                'embedding_shape': embeddings.shape,
+                'linkage_shape': linkage_matrix.shape
+            }
+            
+            print(f"✅ Completed processing for {category}")
+        
+        # Save overall summary
+        overall_summary = {
+            'date': args.date,
+            'total_papers_processed': len(papers),
+            'categories_processed': len(all_results),
+            'min_papers_threshold': args.min_papers,
+            'model_used': 'allenai/specter2_base',
+            'clustering_method': 'ward',
+            'categories': all_results
+        }
+        
+        overall_output_dir = Path("output") / "each_subject"
+        overall_summary_path = overall_output_dir / f"overall_summary_{args.date}.json"
+        with open(overall_summary_path, 'w') as f:
+            json.dump(overall_summary, f, indent=2)
+        
+        print(f"\n✅ Daily tree generation completed successfully!")
+        print(f"📊 Processed {len(all_results)} categories:")
+        for category, results in all_results.items():
+            print(f"  - {category}: {results['papers_count']} papers")
+        print(f"💾 Results saved in 'output/each_subject/' directory")
+        print(f"📋 Overall summary saved to: {overall_summary_path}")
         
     except FileNotFoundError as e:
         print(f"❌ Error: {e}")
