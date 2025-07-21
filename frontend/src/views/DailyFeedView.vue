@@ -174,9 +174,9 @@
         <div class="right-column">
           <div class="papers-section">
             <h3 class="papers-title">
-              Recent Papers
+              {{ category.display_name }} Paper List
               <span v-if="category.papers && category.papers.length > 0" class="papers-count">
-                ({{ category.papers.length }})
+                ({{ category.papers.length }} {{ category.papers.length === 1 ? 'paper' : 'papers' }})
               </span>
             </h3>
             <div v-if="category.papers && category.papers.length > 0" class="papers-list">
@@ -892,7 +892,8 @@ onUnmounted(() => {
   padding: 1.5rem;
   border: 1px solid #e9ecef;
   min-height: 0; /* Allow proper flex behavior */
-  overflow: hidden; /* Prevent content from expanding beyond bounds */
+  max-height: 80vh; /* Match right column height */
+  overflow-y: auto; /* Enable scrolling for the entire left column */
 }
 
 .right-column {
@@ -964,6 +965,7 @@ onUnmounted(() => {
   border-top: 1px solid #e0e0e0;
   padding-top: 1rem;
   flex: 1;
+  min-height: 0; /* Important for flex children */
 }
 
 .summaries-title {
@@ -1299,6 +1301,34 @@ onUnmounted(() => {
   scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
+
+
+/* Custom scrollbar for left column */
+.left-column::-webkit-scrollbar {
+  width: 8px;
+}
+
+.left-column::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.left-column::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.left-column::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Firefox scrollbar styling for left column */
+.left-column {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
 /* Ensure paper cards in daily feed use natural size like home page */
 .papers-list .paper-card {
   height: auto !important; /* Override any height constraints */
@@ -1473,7 +1503,7 @@ onUnmounted(() => {
 
   .left-column {
     padding: 1rem;
-    min-height: 250px; /* Compact height for left on mobile */
+    max-height: 70vh; /* Match right column height on mobile */
   }
 
   .right-column {
