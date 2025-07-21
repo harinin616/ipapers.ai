@@ -13,3 +13,4 @@ backend/arxiv_search_page.html
 .venv
 backend/scripts/daily_feed/arxiv_search_page.html
 frontend/public/
+backend/arxiv_search_page.html
