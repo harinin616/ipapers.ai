@@ -39,6 +39,20 @@ def get_session() -> requests.Session:
     session.headers.update({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     })
+    # Configure retry strategy
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
     return session
 
 def get_conference_venue_ids(conference: str, year: int) -> List[str]:
@@ -91,7 +105,7 @@ def get_conference_venue_ids(conference: str, year: int) -> List[str]:
 def extract_paper_metadata_from_page(paper_url: str, session: requests.Session, platform: str, year: int) -> Optional[Paper]:
     """Extract metadata from a single paper page and return Paper object."""
     try:
-        response = session.get(paper_url, timeout=10)
+        response = session.get(paper_url, timeout=30)  # 增加超时时间到30秒
         if response.status_code != 200:
             logger.warning(f"Failed to fetch {paper_url}, status code: {response.status_code}")
             return None
@@ -169,6 +183,9 @@ def extract_paper_metadata_from_page(paper_url: str, session: requests.Session, 
         
         return paper
         
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error extracting metadata from {paper_url}: {str(e)}")
+        return None
     except Exception as e:
         logger.error(f"Error extracting metadata from {paper_url}: {str(e)}")
         return None
@@ -181,33 +198,44 @@ async def get_conference_paper_urls(conference: str, year: int, session: request
     for venue_id in venue_ids:
         logger.info(f"Checking venue: {venue_id}")
         
-        # Try to get the main conference page
+        # Try to get the main conference page with retries
         venue_url = f"https://aclanthology.org/volumes/{venue_id}/"
-        try:
-            response = session.get(venue_url, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.content, 'html.parser')
-                
-                # Find all paper links - only HTML pages, not PDF/BIB files
-                paper_links = soup.find_all('a', href=re.compile(rf'{venue_id}\.\d+/$'))
-                for link in paper_links:
-                    href = link.get('href')
-                    if href:
-                        full_url = urljoin(venue_url, href)
-                        # Filter out non-HTML pages (PDF, BIB, attachments, etc.)
-                        if not any(ext in full_url.lower() for ext in ['.pdf', '.bib', '.zip', 'attachment', 'software']):
-                            if full_url not in paper_urls:
-                                paper_urls.append(full_url)
-                
-                logger.info(f"Found {len(paper_links)} paper pages in {venue_id}")
-            else:
-                logger.warning(f"Could not access {venue_url}, status code: {response.status_code}")
-                
-        except Exception as e:
-            logger.error(f"Error fetching {venue_url}: {str(e)}")
+        max_retries = 3
         
-        # Add a small delay to be respectful to the server
-        await asyncio.sleep(0.5)
+        for attempt in range(max_retries):
+            try:
+                response = session.get(venue_url, timeout=30)  # 增加超时时间到30秒
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    # Find all paper links - only HTML pages, not PDF/BIB files
+                    paper_links = soup.find_all('a', href=re.compile(rf'{venue_id}\.\d+/$'))
+                    for link in paper_links:
+                        href = link.get('href')
+                        if href:
+                            full_url = urljoin(venue_url, href)
+                            # Filter out non-HTML pages (PDF, BIB, attachments, etc.)
+                            if not any(ext in full_url.lower() for ext in ['.pdf', '.bib', '.zip', 'attachment', 'software']):
+                                if full_url not in paper_urls:
+                                    paper_urls.append(full_url)
+                    
+                    logger.info(f"Found {len(paper_links)} paper pages in {venue_id}")
+                    break  # 成功获取，退出重试循环
+                else:
+                    logger.warning(f"Could not access {venue_url}, status code: {response.status_code}, attempt {attempt + 1}/{max_retries}")
+                    
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Network error fetching {venue_url} (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)  # 指数退避
+                else:
+                    logger.error(f"Failed to fetch {venue_url} after {max_retries} attempts")
+            except Exception as e:
+                logger.error(f"Unexpected error fetching {venue_url}: {str(e)}")
+                break
+        
+        # Add a longer delay to be more respectful to the server
+        await asyncio.sleep(1.0)  # 增加延迟到1秒
     
     # If no papers found using volume pages, try direct search
     if not paper_urls:
@@ -230,7 +258,7 @@ async def search_papers_directly(conference: str, year: int, session: requests.S
             paper_url = f"https://aclanthology.org/{paper_id}/"
             
             try:
-                response = session.get(paper_url, timeout=5)
+                response = session.get(paper_url, timeout=15)  # 增加超时时间
                 if response.status_code == 200:
                     paper_urls.append(paper_url)
                     if len(paper_urls) % 10 == 0:
@@ -242,12 +270,15 @@ async def search_papers_directly(conference: str, year: int, session: requests.S
                     # For other status codes, we might want to continue
                     continue
                     
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Network error checking {paper_url}: {str(e)}")
+                continue
             except Exception as e:
                 logger.warning(f"Error checking {paper_url}: {str(e)}")
                 continue
             
             # Add a small delay
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.2)  # 增加延迟
             
             # Stop if we haven't found papers in a while (likely reached the end)
             if paper_num > 100 and len(paper_urls) == 0:
@@ -286,8 +317,8 @@ async def fetch_conference_papers_via_web_scraping(conference: str, year: int, l
             else:
                 logger.warning(f"Failed to extract metadata from: {paper_url}")
             
-            # Add a small delay to be respectful to the server
-            await asyncio.sleep(0.5)
+            # Add a longer delay to be respectful to the server
+            await asyncio.sleep(1.0)  # 增加延迟到1秒
         
         return papers
         
