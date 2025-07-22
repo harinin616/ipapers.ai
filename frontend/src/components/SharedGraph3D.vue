@@ -9,9 +9,25 @@ import * as THREE from 'three'
 import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import * as d3 from 'd3-force'
 
+export interface Paper {
+  link?: string
+  cites?: string[] 
+
+  id: string
+  size: number
+  paper_id: string
+  title: string
+  pdf_url: string
+  abstract: string
+  authors: string[]
+  categories: string[]
+  published_date: string
+
+}
 /* Props */
 const props = defineProps<{
-  papers: { id: string; label: string; size: number; link?: string; cites?: string[] }[]
+  papers: Paper[]
+  modelValue: Paper | null
 }>()
 
 /* Refs */
@@ -21,10 +37,10 @@ let graphInst: any = null
 /* Build data */
 const buildData = () => ({
   nodes: props.papers.map(p => ({
-    id:   p.id,
-    name: p.label,
-    val:  Math.max(2, p.size),
-    link: p.link
+    id:    p.id,
+    name:  p.title,
+    val:   Math.max(2, p.size),
+    paper: p      // ← 这里把整条 Paper 绑到 node 上
   })),
   links: props.papers.flatMap(p =>
     (p.cites ?? []).map(t => ({ source: p.id, target: t, weight: 1 }))
@@ -47,23 +63,44 @@ function resizeGraph() {
 }
 
 onMounted(async () => {
-  await nextTick()
+    await nextTick()
   if (!container.value) return
+
+  const width  = container.value.offsetWidth
+  const height = container.value.offsetHeight
+  const centerX = width  / 2
+  const centerY = height / 2
 
   const FG = (ForceGraph3D as any).default ?? ForceGraph3D
 
   graphInst = FG()(container.value)
     .graphData(buildData())
+    .width(width)
+    .height(height)
+    // ... nodeThreeObject/linkWidth/linkColor 等保持不变 ...
 
-    // 设置尺寸，防止全屏
-    .width(container.value.offsetWidth)
-    .height(container.value.offsetHeight)
+  // 1. 让布局中心是容器正中央
+  graphInst.d3Force(
+    'center',
+    d3.forceCenter(centerX, centerY, 0)
+  )
 
-    // --- 立体小球节点 ---
-    .nodeThreeObject((n: any) => {
-      const radius = THREE.MathUtils.mapLinear(n.val, 2, 50, 10, 25)
-      const geo = new THREE.SphereGeometry(radius, 128, 128)
-      const col = new THREE.Color().setHSL(Math.random(), 0.6, 0.5).getStyle()
+  // 2. 可选：如果你还想让 radial 力也以容器中心为圆心，
+  //    且半径是容器最小边长的一半：
+  graphInst.d3Force(
+    'gravity',
+    d3.forceRadial(
+      Math.min(width, height) / 2,
+      centerX,
+      centerY
+    ).strength(0.005)
+  )
+
+  // --- 立体小球节点 ---
+  .nodeThreeObject((n: any) => {
+    const radius = THREE.MathUtils.mapLinear(n.val, 2, 50, 10, 25)
+    const geo = new THREE.SphereGeometry(radius, 128, 128)
+    const col = new THREE.Color().setHSL(Math.random(), 0.6, 0.5).getStyle()
       return new THREE.Mesh(geo, getSphereMat(col))
     })
 
@@ -73,7 +110,9 @@ onMounted(async () => {
     .linkOpacity(0.8)
 
     // 点击节点打开链接
-    .onNodeClick((n: any) => n.link && window.open(n.link, '_blank'))
+      .onNodeClick((n: any) => {
+        emit('update:modelValue', n.paper || null)
+      })
 
 const scene = graphInst.scene()
 
@@ -115,6 +154,20 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeGraph)
   graphInst?.destroy?.()
 })
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', val: Paper|null): void
+}>()
+
+// 点击节点时改成：
+function onNodeClick(node: Paper) {
+  emit('update:modelValue', node)
+}
+
+// 如果要取消选中，也可以发 null
+function clearSelection() {
+  emit('update:modelValue', null)
+}
 </script>
 
 <style scoped>

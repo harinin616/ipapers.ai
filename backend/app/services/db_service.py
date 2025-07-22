@@ -13,6 +13,8 @@ from app.models.paper import Paper
 from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
 from app.db.database import get_async_db
 
+from app.services.llm_service import llm_service 
+
 
 logger = logging.getLogger(__name__)
 
@@ -123,135 +125,108 @@ class DBService:
     
     async def add_papers(self, papers: List[Paper]) -> List[str]:
         """
-        Add papers list to the database
+        Add papers list to the database and generate+store embeddings.
         """
         if not papers:
             return []
-            
-        added_ids = []
-        async for db in get_async_db():
+
+        added_ids: List[str] = []
+
+        async for db in get_async_db():  # db: AsyncSession
             try:
-                # First, get all existing paper IDs to avoid unnecessary processing
-                existing_paper_ids = set()
-                paper_ids_to_check = [paper.paper_id for paper in papers]
-                
-                if paper_ids_to_check:
-                    result = await db.execute(
-                        select(DBPaper.paper_id).where(DBPaper.paper_id.in_(paper_ids_to_check))
-                    )
-                    existing_paper_ids = set(result.scalars().all())
-                
-                # Filter out papers that already exist
-                papers_to_add = [
-                    paper for paper in papers 
-                    if paper.paper_id not in existing_paper_ids
-                ]
-                
+                # 1. 查已有的 paper_id，过滤掉已有的
+                incoming_ids = [p.paper_id for p in papers]
+                result = await db.execute(
+                    select(DBPaper.paper_id).where(DBPaper.paper_id.in_(incoming_ids))
+                )
+                existing_ids = set(result.scalars().all())
+
+                papers_to_add = [p for p in papers if p.paper_id not in existing_ids]
                 if not papers_to_add:
-                    logger.info("All papers already exist in database, skipping")
+                    logger.info("All papers already exist, skipping insert.")
                     return []
-                
-                logger.info(f"Processing {len(papers_to_add)} new papers (skipped {len(papers) - len(papers_to_add)} existing papers)")
-                
-                # Collect all author and category names
-                all_author_names = set()
-                all_category_names = set()
-                
-                for paper in papers_to_add:
-                    all_author_names.update(paper.authors)
-                    all_category_names.update(paper.categories)
-                
-                # Query existing authors and categories
+
+                logger.info(f"{len(papers_to_add)} new papers to insert "
+                            f"(skipped {len(papers) - len(papers_to_add)})")
+
+                # 2. 批量生成 embeddings
+                texts = [f"{p.title}\n\n{p.abstract}" for p in papers_to_add]
+                embeddings = await llm_service.get_embeddings(texts)
+                if embeddings is None:
+                    logger.error("Embedding service returned None, "
+                                 "skipping embeddings for this batch.")
+                    embeddings = [None] * len(papers_to_add)
+
+                # 3. 预取所有 author/category 名并 sync 到数据库
+                all_authors = {a for p in papers_to_add for a in p.authors}
+                all_cats    = {c for p in papers_to_add for c in p.categories}
+
                 existing_authors = {}
-                if all_author_names:
-                    result = await db.execute(
-                        select(DBAuthor).where(DBAuthor.name.in_(all_author_names))
-                    )
-                    for author in result.scalars().all():
-                        existing_authors[author.name] = author
-                
-                existing_categories = {}
-                if all_category_names:
-                    result = await db.execute(
-                        select(DBCategory).where(DBCategory.name.in_(all_category_names))
-                    )
-                    for category in result.scalars().all():
-                        existing_categories[category.name] = category
-                
-                # Create non-existing authors and categories at once
-                authors_to_create = all_author_names - existing_authors.keys()
-                if authors_to_create:
-                    # Use VALUES clause to insert multiple authors at once
-                    author_objects = [DBAuthor(name=name) for name in authors_to_create]
-                    db.add_all(author_objects)
-                    # Immediately commit author data
+                if all_authors:
+                    res = await db.execute(select(DBAuthor).where(DBAuthor.name.in_(all_authors)))
+                    for a in res.scalars().all():
+                        existing_authors[a.name] = a
+                to_create = all_authors - existing_authors.keys()
+                if to_create:
+                    db.add_all([DBAuthor(name=n) for n in to_create])
                     await db.flush()
-                    
-                    # Query again to get all authors
-                    result = await db.execute(
-                        select(DBAuthor).where(DBAuthor.name.in_(all_author_names))
-                    )
-                    for author in result.scalars().all():
-                        existing_authors[author.name] = author
-                
-                categories_to_create = all_category_names - existing_categories.keys()
-                if categories_to_create:
-                    category_objects = [DBCategory(name=name) for name in categories_to_create]
-                    db.add_all(category_objects)
+                    res = await db.execute(select(DBAuthor).where(DBAuthor.name.in_(all_authors)))
+                    for a in res.scalars().all():
+                        existing_authors[a.name] = a
+
+                existing_cats = {}
+                if all_cats:
+                    res = await db.execute(select(DBCategory).where(DBCategory.name.in_(all_cats)))
+                    for c in res.scalars().all():
+                        existing_cats[c.name] = c
+                to_create = all_cats - existing_cats.keys()
+                if to_create:
+                    db.add_all([DBCategory(name=n) for n in to_create])
                     await db.flush()
-                    
-                    # Query again to get all categories
-                    result = await db.execute(
-                        select(DBCategory).where(DBCategory.name.in_(all_category_names))
+                    res = await db.execute(select(DBCategory).where(DBCategory.name.in_(all_cats)))
+                    for c in res.scalars().all():
+                        existing_cats[c.name] = c
+
+                # 4. 插入 papers + embedding + 关联表
+                for p, emb in zip(papers_to_add, embeddings):
+                    db_p = DBPaper(
+                        paper_id      = p.paper_id,
+                        title         = p.title,
+                        abstract      = p.abstract,
+                        pdf_url       = p.pdf_url.replace("http://", "https://"),
+                        published_date= p.published_date,
+                        updated_date  = p.updated_date,
+                        click_count   = 0,
+                        embedding     = emb   # ← 直接存 embedding 列
                     )
-                    for category in result.scalars().all():
-                        existing_categories[category.name] = category
-                
-                # add papers and their associations
-                for paper in papers_to_add:
-                    db_paper = DBPaper(
-                        paper_id=paper.paper_id,
-                        title=paper.title,
-                        abstract=paper.abstract,
-                        pdf_url=paper.pdf_url.replace("http://", "https://"),
-                        published_date=paper.published_date,
-                        updated_date=paper.updated_date,
-                        click_count=0  # Initialize click count to 0 for new papers
-                    )
-                    
-                    # Add category associations
-                    for category_name in paper.categories:
-                        db_paper.categories.append(existing_categories[category_name])
-                    
-                    db.add(db_paper)
-                    await db.flush()  # Flush to get the paper_id
-                    
-                    # Add author associations with order using PostgreSQL's ON CONFLICT DO UPDATE
-                    for order, author_name in enumerate(paper.authors):
+                    # 4.1 关联 categories
+                    for cat in p.categories:
+                        db_p.categories.append(existing_cats[cat])
+
+                    db.add(db_p)
+                    await db.flush()  # 以便有 paper_id
+
+                    # 4.2 关联 authors（保留顺序）
+                    for order, name in enumerate(p.authors):
                         await db.execute(
                             text("""
-                                INSERT INTO paper_authors (paper_id, author, author_order) 
-                                VALUES (:paper_id, :author, :author_order)
-                                ON CONFLICT (paper_id, author) DO UPDATE SET
-                                    author_order = EXCLUDED.author_order
+                              INSERT INTO paper_authors (paper_id, author, author_order)
+                              VALUES (:pid, :auth, :ord)
+                              ON CONFLICT (paper_id, author) DO UPDATE
+                              SET author_order = EXCLUDED.author_order
                             """),
-                            {
-                                "paper_id": paper.paper_id,
-                                "author": author_name,
-                                "author_order": order
-                            }
+                            {"pid": p.paper_id, "auth": name, "ord": order}
                         )
-                    
-                    added_ids.append(paper.paper_id)
-                
+                    added_ids.append(p.paper_id)
+
+                # 5. 提交事务
                 await db.commit()
-                logger.info(f"Added {len(added_ids)} papers to the database")
-                
-            except Exception as e:
+                logger.info(f"Inserted {len(added_ids)} papers with embeddings.")
+
+            except Exception:
                 await db.rollback()
-                logger.error(f"Failed to add papers: {e}")
+                logger.exception("Error adding papers")
                 raise
-            
         return added_ids
 
     async def get_all_papers(self) -> List[Paper]:
@@ -1451,29 +1426,42 @@ class DBService:
     async def get_files_by_folder_id(self, folder_id: int) -> list[dict]:
         """
         根据 folder_id 返回该文件夹下所有文件的扁平列表。
-
-        [{paper_id, filename, paper_URL, added_at, folder_id, selected}, ...]
+        每条记录除了 user_file 信息，还包含 paper 表里的详细字段和 authors 列表。
         """
         async for db in get_async_db():
             try:
-                # ① 预加载 paper，避免外部再触发 lazy‑load
+                # ① 预加载 paper 及其 authors，避免 N+1
                 stmt = (
                     select(DBUserFile)
-                    .options(selectinload(DBUserFile.paper))
+                    .options(
+                        selectinload(DBUserFile.paper)
+                            .selectinload(DBPaper.authors)  # 级联加载 authors
+                    )
                     .where(DBUserFile.folder_id == folder_id)
                     .order_by(DBUserFile.added_at)
                 )
                 result = await db.execute(stmt)
                 user_files: list[DBUserFile] = result.scalars().all()
 
+                # ② 拼装返回结构
                 return [
                     {
-                        "paper_id":  uf.paper_id,
-                        "filename":  uf.paper.title if uf.paper else "",
-                        "paper_URL": uf.paper.pdf_url if uf.paper else "",
-                        "added_at":  uf.added_at.isoformat(),
-                        "folder_id": uf.folder_id,
-                        "selected": bool(uf.selected),
+                        # 来自 user_files 表
+                        "paper_id":       uf.paper_id,
+                        "added_at":       uf.added_at.isoformat(),
+                        "folder_id":      uf.folder_id,
+                        "selected":       bool(uf.selected),
+
+                        # 来自 papers 表
+                        "title":          uf.paper.title,
+                        "abstract":       uf.paper.abstract,
+                        "pdf_url":        uf.paper.pdf_url,
+                        "published_date": uf.paper.published_date.isoformat(),
+                        "updated_date":   uf.paper.updated_date.isoformat() if uf.paper.updated_date else None,
+                        "click_count":    uf.paper.click_count,
+
+                        # 新增：authors 列表
+                        "authors":        [author.name for author in uf.paper.authors],
                     }
                     for uf in user_files
                 ]
@@ -1481,7 +1469,7 @@ class DBService:
             except SQLAlchemyError as e:
                 logger.error("DB error (get_files_by_folder_id): %s", e)
                 return []
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error in get_files_by_folder_id")
                 return []
 

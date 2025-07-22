@@ -4,9 +4,9 @@ from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignK
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID,JSONB
+from pgvector.sqlalchemy import Vector
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
 
 
 Base = declarative_base()
@@ -38,7 +38,6 @@ acl_paper_authors = Table(
 )
 
 class DBPaper(Base):
-    """Paper database model"""
     __tablename__ = "papers"
     
     paper_id = Column(String, primary_key=True, index=True)
@@ -48,9 +47,11 @@ class DBPaper(Base):
     published_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime, nullable=True)
     click_count = Column(Integer, nullable=False, default=0)
-    
-    
-    # Updated relationships with ordering for authors
+
+    # 新增：存768维向量
+    embedding = Column(Vector(768), nullable=True)
+
+    # 保持原有关系不变
     authors = relationship(
         "DBAuthor", 
         secondary=paper_authors, 
@@ -58,7 +59,7 @@ class DBPaper(Base):
         order_by=paper_authors.c.author_order
     )
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
-    
+
     def __repr__(self):
         return f"<Paper {self.paper_id}: {self.title}>"
 

@@ -333,4 +333,4 @@ export default defineComponent({
 .chat-button:hover {
   background-color: #303f9f;
 }
-</style> 
+</style>

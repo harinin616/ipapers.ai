@@ -254,12 +254,9 @@ class PdfService:
         generate embeddings for a paper and save to local directory
         """
         try:
-            
-            pdf_dir = paper_info_extractor.get_pdf_storage_directory
+            pdf_path = paper_info_extractor.get_pdf_storage_directory(paper_id) / f"{paper_id}.pdf"
 
-            pdf_path = pdf_dir / f"{paper_id}.pdf"
-
-            target_dir = paper_info_extractor.get_embedding_storage_directory
+            target_dir = paper_info_extractor.get_embedding_storage_directory(paper_id)
             local_path = target_dir / f"{paper_id}.json"
 
             if local_path.exists():

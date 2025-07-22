@@ -92,7 +92,25 @@ class PaperInfoExtractor:
         else:
             raise ValueError(f"Invalid conference paper ID format: {paper_id}")
     
+    def get_pdf_storage_path(self, paper_id: str) -> Path:
+        """
+        返回 PDF 文件的完整路径
+        """
+        return Path(self.pdf_base_dir) / f"{paper_id}.pdf"
 
+    def get_pdf_storage_directory(self, paper_id: str) -> Path:
+        """
+        返回存放 PDF 的目录
+        """
+        # 直接拿到 path.parent 就能得到目录
+        return self.get_pdf_storage_path(paper_id).parent
+
+    def get_embedding_storage_directory(self, paper_id: str) -> Path:
+        """
+        返回存放 embedding 的目录
+        """
+        # 类似地，如果你有 get_embedding_storage_path，也可用同样思路
+        return Path(self.embedding_base_dir)
     
     def get_pdf_storage_directory(self, paper_id: str) -> Path:
         """
