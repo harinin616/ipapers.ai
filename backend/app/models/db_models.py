@@ -249,17 +249,3 @@ class DBSharedFolder(Base):
         return f"<Share#{self.id} → Folder {self.folder_id}>"
 
 
-class DBACLPaper(Base):
-    """ACL Papers database model"""
-    __tablename__ = "acl_papers"
-    
-    paper_id = Column(String, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    abstract = Column(Text, nullable=False)
-    pdf_url = Column(String, nullable=False)
-    published_date = Column(DateTime, nullable=False)
-    conference = Column(String, nullable=False)
-    type = Column(String, nullable=True)  # Store paper type like 'long', 'short', etc.
-    
-    def __repr__(self):
-        return f"<ACLPaper {self.paper_id}: {self.title}>"
