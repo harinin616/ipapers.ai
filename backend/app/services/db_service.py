@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy import distinct
 
 from app.models.paper import Paper
-from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder,DBACLPaper
+from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
 from app.db.database import get_async_db
 
 from app.services.llm_service import llm_service 
@@ -227,73 +227,6 @@ class DBService:
                 await db.rollback()
                 logger.exception("Error adding papers")
                 raise
-        return added_ids
-
-    async def add_acl_papers(self, papers: List[Paper], conference: str) -> List[str]:
-        """
-        Add ACL papers list to the database.
-        
-        Args:
-            papers: List of Paper objects to add
-            conference: Conference name (e.g., "ACL2024", "EMNLP2023")
-            
-        Returns:
-            List of paper_ids that were successfully added
-        """
-        if not papers:
-            return []
-        
-        if not conference:
-            logger.warning("Conference parameter is required but empty")
-            return []
-
-        added_ids: List[str] = []
-
-        async for db in get_async_db():
-            try:
-                # 1. 查已有的 paper_id，过滤掉已有的
-                incoming_ids = [p.paper_id for p in papers]
-                result = await db.execute(
-                    select(DBACLPaper.paper_id).where(DBACLPaper.paper_id.in_(incoming_ids))
-                )
-                existing_ids = set(result.scalars().all())
-
-                papers_to_add = [p for p in papers if p.paper_id not in existing_ids]
-                if not papers_to_add:
-                    logger.info("All ACL papers already exist, skipping insert.")
-                    return []
-
-                logger.info(f"{len(papers_to_add)} new ACL papers to insert "
-                            f"(skipped {len(papers) - len(papers_to_add)})")
-
-                # 2. 插入 ACL papers
-                for p in papers_to_add:
-                    # 将作者列表转换为逗号分隔的字符串
-                    authors_str = ", ".join(p.authors) if p.authors else ""
-                    
-                    db_acl_paper = DBACLPaper(
-                        paper_id=p.paper_id,
-                        title=p.title,
-                        abstract=p.abstract,
-                        pdf_url=p.pdf_url.replace("http://", "https://"),
-                        published_date=p.published_date,
-                        conference=conference,
-                        type=None,  # 可以根据需要设置
-                        authors=authors_str
-                    )
-                    
-                    db.add(db_acl_paper)
-                    added_ids.append(p.paper_id)
-
-                # 3. 提交事务
-                await db.commit()
-                logger.info(f"Inserted {len(added_ids)} ACL papers for conference {conference}.")
-
-            except Exception:
-                await db.rollback()
-                logger.exception("Error adding ACL papers")
-                raise
-                
         return added_ids
 
     async def get_all_papers(self) -> List[Paper]:
