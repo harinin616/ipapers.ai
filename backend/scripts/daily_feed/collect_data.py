@@ -4,6 +4,17 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import json
 import argparse
+import sys
+import os
+
+# Add the backend directory to Python path to import app modules
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from app.db.database import get_async_db
+from app.models.db_models import DBPaper, DBAuthor, DBCategory
+import asyncio
 
 
 def parse_submitted_date(submitted_line):
@@ -182,26 +193,71 @@ def access_arxiv_search(url):
         return None
 
 
-def main():
-    # Set up argument parser
-    parser = argparse.ArgumentParser(description='Fetch arXiv papers for a specific date range')
-    parser.add_argument('--date', type=str, 
-                       default=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
-                       help='Start date in YYYY-MM-DD format (default: yesterday)')
-    
-    args = parser.parse_args()
-    
-    # Parse the input date and calculate to_date
+async def fetch_papers_from_database(target_date):
+    """Fetch papers from database by published_date"""
     try:
-        date_obj = datetime.strptime(args.date, '%Y-%m-%d')
-        to_date_obj = date_obj + timedelta(days=1)
+        # Parse the target date
+        date_obj = datetime.strptime(target_date, '%Y-%m-%d')
+        # Create date range for the entire day
+        start_datetime = date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_datetime = date_obj.replace(hour=23, minute=59, second=59, microsecond=999999)
         
-        date = date_obj.strftime('%Y-%m-%d')
-        to_date = to_date_obj.strftime('%Y-%m-%d')
+        print(f"🔍 Fetching papers from database for date range: {start_datetime} to {end_datetime}")
+        
+        papers = []
+        async for db in get_async_db():
+            try:
+                # Query papers within the date range
+                result = await db.execute(
+                    select(DBPaper)
+                    .options(
+                        selectinload(DBPaper.authors),
+                        selectinload(DBPaper.categories)
+                    )
+                    .where(
+                        DBPaper.published_date >= start_datetime,
+                        DBPaper.published_date <= end_datetime
+                    )
+                    .order_by(DBPaper.published_date.desc())
+                )
+                db_papers = result.scalars().all()
+                
+                print(f"📚 Found {len(db_papers)} papers in database for {target_date}")
+                
+                for db_paper in db_papers:
+                    paper_data = {
+                        'paper_id': db_paper.paper_id,
+                        'arxiv_id': db_paper.paper_id,  # Keep for compatibility
+                        'title': db_paper.title,
+                        'abstract': db_paper.abstract,
+                        'pdf_url': db_paper.pdf_url,
+                        'published_date': db_paper.published_date.isoformat(),
+                        'updated_date': db_paper.updated_date.isoformat() if db_paper.updated_date else None,
+                        'authors': [author.name for author in db_paper.authors],
+                        'categories': [cat.name for cat in db_paper.categories],
+                        'click_count': db_paper.click_count,
+                        'date_raw': db_paper.published_date.strftime('%Y-%m-%d %H:%M:%S'),  # Keep for compatibility
+                        'submitted_date_parsed': db_paper.published_date.isoformat(),  # Keep for compatibility
+                        'source': 'database'
+                    }
+                    papers.append(paper_data)
+                
+                return papers
+                
+            except Exception as e:
+                print(f"❌ Error querying database: {e}")
+                return []
+                
     except ValueError:
         print("❌ Error: Invalid date format. Please use YYYY-MM-DD format.")
-        return
-    
+        return []
+    except Exception as e:
+        print(f"❌ Error fetching papers from database: {e}")
+        return []
+
+
+async def fetch_papers_from_arxiv(date, to_date):
+    """Fetch papers from arXiv using the existing scraping method"""
     print("🔬 Accessing arXiv Search Results")
     print("=" * 40)
     print(f"📅 Fetching papers from {date} to {to_date}")
@@ -261,17 +317,66 @@ def main():
         
     else:
         print("\n❌ No papers were extracted from any pages.")
-        
+    
+    return all_papers
+
+
+async def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description='Fetch papers for a specific date')
+    parser.add_argument('--date', type=str, 
+                       default=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
+                       help='Date in YYYY-MM-DD format (default: yesterday)')
+    parser.add_argument('--method', type=str, choices=['database', 'arxiv'], 
+                       default='database',
+                       help='Method to fetch papers: database (default) or arxiv')
+    
+    args = parser.parse_args()
+    
+    # Parse the input date
+    try:
+        date_obj = datetime.strptime(args.date, '%Y-%m-%d')
+        date = date_obj.strftime('%Y-%m-%d')
+        to_date = (date_obj + timedelta(days=1)).strftime('%Y-%m-%d')
+    except ValueError:
+        print("❌ Error: Invalid date format. Please use YYYY-MM-DD format.")
+        return
+    
+    # Choose method based on argument
+    if args.method == 'database':
+        print("🗄️  Using Database Method")
+        print("=" * 40)
+        all_papers = await fetch_papers_from_database(date)
+    else:
+        print("🌐 Using arXiv Scraping Method")
+        print("=" * 40)
+        all_papers = await fetch_papers_from_arxiv(date, to_date)
+    
     # Save all papers to a JSON file
     import os
     os.makedirs("./data", exist_ok=True)
-    
+        
     save_path = f"./data/{date}-{to_date}.json"
+        
     with open(save_path, 'w') as f:
         json.dump(all_papers, f, indent=4)
     
     print(f"\n💾 Successfully saved {len(all_papers)} papers to {save_path}")
+    
+    # Display summary statistics
+    if all_papers:
+        print(f"\n📊 Summary Statistics:")
+        print(f"   Total papers: {len(all_papers)}")
+        print(f"   Method used: {args.method}")
+        print(f"   Date: {date}")
+        if args.method == 'database':
+            print(f"   Papers with click counts: {len([p for p in all_papers if p.get('click_count', 0) > 0])}")
+        else:
+            print(f"   Papers with titles: {len([p for p in all_papers if p['title'] != 'Not found'])}")
+            print(f"   Papers with abstracts: {len([p for p in all_papers if p['abstract'] != 'Not found'])}")
+    else:
+        print(f"\n⚠️  No papers found for {date} using {args.method} method.")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
