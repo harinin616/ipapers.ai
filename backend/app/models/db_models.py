@@ -4,9 +4,9 @@ from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignK
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID,JSONB
+from pgvector.sqlalchemy import Vector
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
 
 
 Base = declarative_base()
@@ -28,17 +28,7 @@ paper_authors = Table(
     Column('author_order', Integer, nullable=False, default=0)
 )
 
-# ACL Paper author association table with order
-acl_paper_authors = Table(
-    'acl_paper_authors',
-    Base.metadata,
-    Column('paper_id', String, ForeignKey('acl_papers.paper_id'), primary_key=True),
-    Column('author', String, ForeignKey('authors.name'), primary_key=True),
-    Column('author_order', Integer, nullable=False, default=0)
-)
-
 class DBPaper(Base):
-    """Paper database model"""
     __tablename__ = "papers"
     
     paper_id = Column(String, primary_key=True, index=True)
@@ -48,9 +38,11 @@ class DBPaper(Base):
     published_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime, nullable=True)
     click_count = Column(Integer, nullable=False, default=0)
-    
-    
-    # Updated relationships with ordering for authors
+
+    # 新增：存768维向量
+    embedding = Column(Vector(768), nullable=True)
+
+    # 保持原有关系不变
     authors = relationship(
         "DBAuthor", 
         secondary=paper_authors, 
@@ -58,7 +50,7 @@ class DBPaper(Base):
         order_by=paper_authors.c.author_order
     )
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
-    
+
     def __repr__(self):
         return f"<Paper {self.paper_id}: {self.title}>"
 
@@ -68,14 +60,6 @@ class DBAuthor(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True, index=True)
-    
-    # Relationships with both regular papers and ACL papers
-    acl_papers = relationship(
-        "DBACLPaper", 
-        secondary=acl_paper_authors, 
-        backref="authors",
-        order_by=acl_paper_authors.c.author_order
-    )
     
     def __repr__(self):
         return f"<Author {self.name}>"
@@ -248,17 +232,3 @@ class DBSharedFolder(Base):
         return f"<Share#{self.id} → Folder {self.folder_id}>"
 
 
-class DBACLPaper(Base):
-    """ACL Papers database model"""
-    __tablename__ = "acl_papers"
-    
-    paper_id = Column(String, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    abstract = Column(Text, nullable=False)
-    pdf_url = Column(String, nullable=False)
-    published_date = Column(DateTime, nullable=False)
-    conference = Column(String, nullable=False)
-    type = Column(String, nullable=True)  # Store paper type like 'long', 'short', etc.
-    
-    def __repr__(self):
-        return f"<ACLPaper {self.paper_id}: {self.title}>"

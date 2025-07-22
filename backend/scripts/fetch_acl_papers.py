@@ -6,12 +6,12 @@ Usage: python fetch_acl_papers.py --conference acl --year 2024
 """
 
 import argparse
-import json
 import os
 import sys
 import logging
 import requests
 import time
+import asyncio
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
@@ -27,12 +27,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger("fetch_acl_papers")
 
+# Import necessary services
+from app.models.paper import Paper
+from app.services.db_service import db_service
+from app.services.vector_search_service import vector_search_service
+from app.services.pdf_service import pdf_service
+
 def get_session() -> requests.Session:
     """Get a requests session with appropriate headers."""
     session = requests.Session()
     session.headers.update({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     })
+    # Configure retry strategy
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
     return session
 
 def get_conference_venue_ids(conference: str, year: int) -> List[str]:
@@ -82,29 +102,22 @@ def get_conference_venue_ids(conference: str, year: int) -> List[str]:
     
     return venue_ids
 
-def extract_paper_metadata_from_page(paper_url: str, session: requests.Session) -> Optional[Dict[str, Any]]:
-    """Extract metadata from a single paper page."""
+def extract_paper_metadata_from_page(paper_url: str, session: requests.Session, platform: str, year: int) -> Optional[Paper]:
+    """Extract metadata from a single paper page and return Paper object."""
     try:
-        response = session.get(paper_url, timeout=10)
+        response = session.get(paper_url, timeout=30)  # 增加超时时间到30秒
         if response.status_code != 200:
             logger.warning(f"Failed to fetch {paper_url}, status code: {response.status_code}")
             return None
         
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Extract basic metadata according to Paper model
-        metadata = {}
-        
         # Paper ID (from URL)
         paper_id = paper_url.rstrip('/').split('/')[-1]
-        metadata['paper_id'] = paper_id
         
         # Title
         title_elem = soup.find('h2', id='title')
-        if title_elem:
-            metadata['title'] = title_elem.get_text(strip=True)
-        else:
-            metadata['title'] = ""
+        title = title_elem.get_text(strip=True) if title_elem else ""
         
         # Authors
         authors = []
@@ -113,7 +126,6 @@ def extract_paper_metadata_from_page(paper_url: str, session: requests.Session) 
             author_name = author_elem.get_text(strip=True)
             if author_name and author_name not in authors:
                 authors.append(author_name)
-        metadata['authors'] = authors
         
         # Abstract - try multiple methods
         abstract = None
@@ -144,89 +156,41 @@ def extract_paper_metadata_from_page(paper_url: str, session: requests.Session) 
                     abstract = text
                     break
         
-        metadata['abstract'] = abstract or ""
-        
-        # Categories (extract from venue and conference info)
-        categories = []
-        venue_elem = soup.find('span', class_='badge badge-secondary')
-        if venue_elem:
-            venue_text = venue_elem.get_text(strip=True)
-            categories.append(venue_text)
-        
-        # Add more categories from anthology ID (track info)
-        if 'long' in paper_id:
-            categories.append('Long Paper')
-        elif 'short' in paper_id:
-            categories.append('Short Paper')
-        elif 'demo' in paper_id:
-            categories.append('Demo Paper')
-        elif 'industry' in paper_id:
-            categories.append('Industry Paper')
-        elif 'srw' in paper_id:
-            categories.append('Student Research Workshop')
-        elif 'findings' in paper_id:
-            categories.append('Findings')
-        
-        metadata['categories'] = categories
+        abstract = abstract or ""
         
         # PDF URL
         pdf_elem = soup.find('a', href=lambda x: x and x.endswith('.pdf'))
-        if pdf_elem:
-            metadata['pdf_url'] = urljoin(paper_url, pdf_elem.get('href'))
-        else:
-            metadata['pdf_url'] = ""
+        pdf_url = urljoin(paper_url, pdf_elem.get('href')) if pdf_elem else ""
         
-        # Published date (construct from year and month if available)
-        published_date = None
-        year_elem = soup.find('span', class_='badge badge-info')
-        month_text = None
+        # Published date - use the conference year, set to mid-year (July 1st)
+        # but not greater than current time
+        proposed_date = datetime(year, 7, 1)
+        current_time = datetime.now()
+        published_date = min(proposed_date, current_time)
         
-        # Try to extract month from venue details
-        venue_details = soup.find('dl', class_='acl-paper-details')
-        if venue_details:
-            dt_elements = venue_details.find_all('dt')
-            for dt in dt_elements:
-                key = dt.get_text(strip=True).lower()
-                dd = dt.find_next_sibling('dd')
-                if dd and 'month' in key:
-                    month_text = dd.get_text(strip=True)
-                    break
+        # Create Paper object
+        paper = Paper(
+            paper_id=paper_id,
+            title=title,
+            authors=authors,
+            abstract=abstract,
+            categories=[],  # Empty as requested
+            pdf_url=pdf_url,
+            published_date=published_date,
+            updated_date=published_date,  # Same as published_date as requested
+            platform=platform
+        )
         
-        # Construct published_date
-        if year_elem:
-            year_str = year_elem.get_text(strip=True)
-            try:
-                year_int = int(year_str)
-                if month_text:
-                    # Try to parse month
-                    month_mapping = {
-                        'january': 1, 'february': 2, 'march': 3, 'april': 4,
-                        'may': 5, 'june': 6, 'july': 7, 'august': 8,
-                        'september': 9, 'october': 10, 'november': 11, 'december': 12
-                    }
-                    month_lower = month_text.lower()
-                    month_int = month_mapping.get(month_lower, 1)
-                    published_date = datetime(year_int, month_int, 1).isoformat()
-                else:
-                    # Default to January if no month specified
-                    published_date = datetime(year_int, 1, 1).isoformat()
-            except ValueError:
-                published_date = datetime(2024, 1, 1).isoformat()  # Default fallback
-        else:
-            published_date = datetime(2024, 1, 1).isoformat()  # Default fallback
+        return paper
         
-        metadata['published_date'] = published_date
-        
-        # Updated date (set to None as requested)
-        metadata['updated_date'] = None
-        
-        return metadata
-        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error extracting metadata from {paper_url}: {str(e)}")
+        return None
     except Exception as e:
         logger.error(f"Error extracting metadata from {paper_url}: {str(e)}")
         return None
 
-def get_conference_paper_urls(conference: str, year: int, session: requests.Session) -> List[str]:
+async def get_conference_paper_urls(conference: str, year: int, session: requests.Session) -> List[str]:
     """Get all paper URLs for a given conference and year."""
     paper_urls = []
     venue_ids = get_conference_venue_ids(conference, year)
@@ -234,42 +198,53 @@ def get_conference_paper_urls(conference: str, year: int, session: requests.Sess
     for venue_id in venue_ids:
         logger.info(f"Checking venue: {venue_id}")
         
-        # Try to get the main conference page
+        # Try to get the main conference page with retries
         venue_url = f"https://aclanthology.org/volumes/{venue_id}/"
-        try:
-            response = session.get(venue_url, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.content, 'html.parser')
-                
-                # Find all paper links - only HTML pages, not PDF/BIB files
-                paper_links = soup.find_all('a', href=re.compile(rf'{venue_id}\.\d+/$'))
-                for link in paper_links:
-                    href = link.get('href')
-                    if href:
-                        full_url = urljoin(venue_url, href)
-                        # Filter out non-HTML pages (PDF, BIB, attachments, etc.)
-                        if not any(ext in full_url.lower() for ext in ['.pdf', '.bib', '.zip', 'attachment', 'software']):
-                            if full_url not in paper_urls:
-                                paper_urls.append(full_url)
-                
-                logger.info(f"Found {len(paper_links)} paper pages in {venue_id}")
-            else:
-                logger.warning(f"Could not access {venue_url}, status code: {response.status_code}")
-                
-        except Exception as e:
-            logger.error(f"Error fetching {venue_url}: {str(e)}")
+        max_retries = 3
         
-        # Add a small delay to be respectful to the server
-        time.sleep(0.5)
+        for attempt in range(max_retries):
+            try:
+                response = session.get(venue_url, timeout=30)  # 增加超时时间到30秒
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    # Find all paper links - only HTML pages, not PDF/BIB files
+                    paper_links = soup.find_all('a', href=re.compile(rf'{venue_id}\.\d+/$'))
+                    for link in paper_links:
+                        href = link.get('href')
+                        if href:
+                            full_url = urljoin(venue_url, href)
+                            # Filter out non-HTML pages (PDF, BIB, attachments, etc.)
+                            if not any(ext in full_url.lower() for ext in ['.pdf', '.bib', '.zip', 'attachment', 'software']):
+                                if full_url not in paper_urls:
+                                    paper_urls.append(full_url)
+                    
+                    logger.info(f"Found {len(paper_links)} paper pages in {venue_id}")
+                    break  # 成功获取，退出重试循环
+                else:
+                    logger.warning(f"Could not access {venue_url}, status code: {response.status_code}, attempt {attempt + 1}/{max_retries}")
+                    
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Network error fetching {venue_url} (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)  # 指数退避
+                else:
+                    logger.error(f"Failed to fetch {venue_url} after {max_retries} attempts")
+            except Exception as e:
+                logger.error(f"Unexpected error fetching {venue_url}: {str(e)}")
+                break
+        
+        # Add a longer delay to be more respectful to the server
+        await asyncio.sleep(1.0)  # 增加延迟到1秒
     
     # If no papers found using volume pages, try direct search
     if not paper_urls:
         logger.info("No papers found via volume pages, trying direct search...")
-        paper_urls = search_papers_directly(conference, year, session)
+        paper_urls = await search_papers_directly(conference, year, session)
     
     return paper_urls
 
-def search_papers_directly(conference: str, year: int, session: requests.Session) -> List[str]:
+async def search_papers_directly(conference: str, year: int, session: requests.Session) -> List[str]:
     """Search for papers directly using anthology IDs."""
     paper_urls = []
     venue_ids = get_conference_venue_ids(conference, year)
@@ -283,7 +258,7 @@ def search_papers_directly(conference: str, year: int, session: requests.Session
             paper_url = f"https://aclanthology.org/{paper_id}/"
             
             try:
-                response = session.get(paper_url, timeout=5)
+                response = session.get(paper_url, timeout=15)  # 增加超时时间
                 if response.status_code == 200:
                     paper_urls.append(paper_url)
                     if len(paper_urls) % 10 == 0:
@@ -295,12 +270,15 @@ def search_papers_directly(conference: str, year: int, session: requests.Session
                     # For other status codes, we might want to continue
                     continue
                     
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Network error checking {paper_url}: {str(e)}")
+                continue
             except Exception as e:
                 logger.warning(f"Error checking {paper_url}: {str(e)}")
                 continue
             
             # Add a small delay
-            time.sleep(0.1)
+            await asyncio.sleep(0.2)  # 增加延迟
             
             # Stop if we haven't found papers in a while (likely reached the end)
             if paper_num > 100 and len(paper_urls) == 0:
@@ -308,13 +286,14 @@ def search_papers_directly(conference: str, year: int, session: requests.Session
     
     return paper_urls
 
-def fetch_conference_papers_via_web_scraping(conference: str, year: int, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Fetch conference papers metadata using web scraping."""
+async def fetch_conference_papers_via_web_scraping(conference: str, year: int, limit: Optional[int] = None) -> List[Paper]:
+    """Fetch conference papers metadata using web scraping and return Paper objects."""
     session = get_session()
+    platform = conference.lower()  # Use simple lowercase conference name: "acl", "naacl", "emnlp"
     
     try:
         # Get all paper URLs
-        paper_urls = get_conference_paper_urls(conference, year, session)
+        paper_urls = await get_conference_paper_urls(conference, year, session)
         
         if not paper_urls:
             logger.warning(f"No papers found for {conference.upper()} {year}")
@@ -328,93 +307,77 @@ def fetch_conference_papers_via_web_scraping(conference: str, year: int, limit: 
             logger.info(f"Limited to {len(paper_urls)} papers for testing")
         
         # Extract metadata from each paper
-        papers_metadata = []
+        papers = []
         for i, paper_url in enumerate(paper_urls, 1):
             logger.info(f"Processing paper {i}/{len(paper_urls)}: {paper_url}")
             
-            metadata = extract_paper_metadata_from_page(paper_url, session)
-            if metadata:
-                papers_metadata.append(metadata)
+            paper = extract_paper_metadata_from_page(paper_url, session, platform, year)
+            if paper:
+                papers.append(paper)
             else:
                 logger.warning(f"Failed to extract metadata from: {paper_url}")
             
-            # Add a small delay to be respectful to the server
-            time.sleep(0.5)
+            # Add a longer delay to be respectful to the server
+            await asyncio.sleep(1.0)  # 增加延迟到1秒
         
-        return papers_metadata
+        return papers
         
     except Exception as e:
         logger.error(f"Error during web scraping: {str(e)}")
         return []
 
-def save_to_json(papers_metadata: List[Dict[str, Any]], output_file: str, conference: str, year: int):
-    """Save papers metadata to a JSON file."""
-    try:
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        
-        # Prepare the output data
-        output_data = {
-            "metadata": {
-                "conference": conference.upper(),
-                "year": year,
-                "total_papers": len(papers_metadata),
-                "extraction_date": datetime.now().isoformat(),
-                "source": "ACL Anthology Web Scraping"
-            },
-            "papers": papers_metadata
-        }
-        
-        # Save to JSON file
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"Successfully saved {len(papers_metadata)} papers to {output_file}")
-        
-    except Exception as e:
-        logger.error(f"Error saving to JSON: {str(e)}")
-
-def main():
+async def main():
     parser = argparse.ArgumentParser(description='Fetch ACL Anthology conference papers metadata for a given year')
     parser.add_argument('--conference', type=str, required=True, 
                        choices=['acl', 'naacl', 'emnlp'],
                        help='Conference type: acl, naacl, or emnlp')
     parser.add_argument('--year', type=int, required=True, 
                        help='Year of the conference (e.g., 2024)')
-    parser.add_argument('--output', type=str, 
-                       help='Output JSON file path (default: data/{conference}_papers_YYYY.json)')
     parser.add_argument('--limit', type=int, default=None,
                        help='Limit the number of papers to process (for testing)')
     
     args = parser.parse_args()
     
-    # Set default output file if not provided
-    if not args.output:
-        # Get the parent directory of the script (backend)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        backend_dir = os.path.dirname(script_dir)
-        data_dir = os.path.join(backend_dir, "data")
-        args.output = os.path.join(data_dir, f"{args.conference}_papers_{args.year}.json")
-    
     conference = args.conference
     year = args.year
-    output_file = args.output
     
     logger.info(f"Starting to fetch {conference.upper()} papers for year {year}")
-    logger.info(f"Output file: {output_file}")
     
     # Fetch papers using web scraping
-    papers_metadata = fetch_conference_papers_via_web_scraping(conference, year, args.limit)
+    papers = await fetch_conference_papers_via_web_scraping(conference, year, args.limit)
     
-    if not papers_metadata:
+    if not papers:
         logger.error("No papers found or extracted successfully")
         return
     
-    # Save to JSON file
-    save_to_json(papers_metadata, output_file, conference, year)
+    logger.info(f"Successfully fetched {len(papers)} papers for {conference.upper()} {year}")
     
-    logger.info(f"Successfully fetched {len(papers_metadata)} papers for {conference.upper()} {year}")
-    logger.info(f"Data saved to: {output_file}")
+    # Add papers to database
+    try:
+        added_db_ids = await db_service.add_papers(papers)
+        logger.info(f"Added {len(added_db_ids)} new papers to database")
+        
+        # Add papers to vector search index
+        await vector_search_service.add_papers(papers)
+        logger.info(f"Added {len(papers)} papers to vector search index")
+        
+        # Generate embeddings for new papers
+        if added_db_ids:
+            logger.info(f"Generating embeddings for {len(added_db_ids)} new papers")
+            for paper_id in added_db_ids:
+                try:
+                    success = await pdf_service.generate_embeddings_for_paper(paper_id)
+                    if success:
+                        logger.info(f"Generated embeddings for paper {paper_id}")
+                    else:
+                        logger.warning(f"Failed to generate embeddings for paper {paper_id}")
+                except Exception as e:
+                    logger.error(f"Error generating embeddings for paper {paper_id}: {e}", exc_info=True)
+        
+        logger.info(f"Successfully processed {len(papers)} papers from {conference.upper()} {year}")
+        
+    except Exception as e:
+        logger.error(f"Error saving papers to database or vector search: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 

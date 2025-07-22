@@ -56,12 +56,20 @@ interface ShareMeta {
   file_cnt: number
   created_at: string
 }
-interface Paper {
-  id: string
-  label: string
-  size: number
+export interface Paper {
   link?: string
-  cites?: string[]
+  cites?: string[] 
+
+  id: string
+  size: number
+  paper_id: string
+  title: string
+  pdf_url: string
+  abstract: string
+  authors: string[]
+  categories: string[]
+  published_date: string
+
 }
 
 // --- 响应式数据 ---
@@ -100,10 +108,16 @@ watch(activeId, async (id) => {
     // 将返回的文件对象映射成 Paper
     graphData.value = files.map((f: any) => ({
       id: f.paper_id,
-      label: f.filename,
       size: 10,               // 统一大小，或 f.size 字段
-      link: f.paper_URL,
-      cites: []               // 如果有引用关系可填这里
+      link: f.pdf_url,
+      cites: [],               // 如果有引用关系可填这里
+      categories: f.categories || [],
+      authors: f.authors || [],
+      published_date: f.published_date || '',
+      abstract: f.abstract || '',
+      pdf_url: f.pdf_url || '',
+      paper_id: f.paper_id,
+      title: f.title,
     }))
   }
 }, { immediate: true })
@@ -119,43 +133,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.share-manager {
-  display: flex;
-  height: calc(100vh - 4rem);
-}
 
-.left-sidebar {
-  width: 260px;
-  flex-shrink: 0;
-  border-right: 1px solid #e5e7eb;
-}
 
-.right-pane {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 内容区域：图 + 评论 */
-.content-wrap {
-  display: flex;
-  flex: 1;
-}
-
-/* 图（左边） */
-.graph-detail {
-  flex: 2;   /* 或者 flex: auto; 控制比例 */
-  overflow: hidden; /* 保证不会溢出 */
-}
-.comment-area {
-  flex: 1;
-  border-left: 1px solid #e5e7eb;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  background: #f9fafb;  /* 淡灰背景 */
-  overflow: hidden;
-}
 
 .comment-area h3 {
   margin: 0 0 0.5rem;
@@ -260,6 +239,55 @@ onBeforeUnmount(() => {
 .comment-input::placeholder {
   color: #9ca3af;               /* 淡灰提示词 */
   font-style: italic;
+}
+.share-manager {
+  display: flex;
+  height: calc(100vh - 4rem);
+}
+
+/* 左侧不变 */
+.left-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  border-right: 1px solid #e5e7eb;
+  /* 保证满高 */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 右侧要能在竖向上缩小 */
+.right-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;   /* 关键：允许向下收缩 */
+}
+
+/* content-wrap：横向两列，也要允许收缩 */
+.content-wrap {
+  display: flex;
+  flex: 1;
+  min-height: 0;  /* 关键：让下面的 graph-detail 可以收缩 */
+}
+
+/* graph-detail（放 3D 图的地方） */
+.graph-detail {
+  flex: 2;
+  overflow: hidden;
+  min-height: 0;  /* 关键：允许它收缩到父级给的高度 */
+}
+
+/* comment-area 保持原样，但也加上 min-height:0 */
+.comment-area {
+  flex: 1;
+  border-left: 1px solid #e5e7eb;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+  overflow: hidden;
+  min-height: 0;
 }
 
 </style>

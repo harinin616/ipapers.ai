@@ -8,6 +8,7 @@ from app.services.vector_search_service import vector_search_service
 from app.services.llm_service import llm_service
 from app.services.arxiv_search_service import arxivsearch_service
 from app.services import search_log_service
+from app.services.extract_info import paper_info_extractor
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,8 @@ async def search_papers(search_request: PaperSearchRequest):
                 categories=p.categories,
                 pdf_url=p.pdf_url.replace("http://", "https://"),
                 published_date=p.published_date,
-                updated_date=p.updated_date
+                updated_date=p.updated_date,
+                platform=paper_info_extractor.extract_platform(p.paper_id)
             ) for p in new_papers
         ]
         await search_log_service.append_record(

@@ -93,31 +93,47 @@ class PaperInfoExtractor:
             raise ValueError(f"Invalid conference paper ID format: {paper_id}")
     
 
-    
+
     def get_pdf_storage_directory(self, paper_id: str) -> Path:
-        """
-        Get PDF file storage directory (without filename)
+
+        platform = self.extract_platform(paper_id)
         
-        Args:
-            paper_id: Paper ID
+        if platform == "arxiv":
+            year, month = self.extract_arxiv_info(paper_id)
+ 
+            directory = self.pdf_base_dir / "arxiv" / year / month
+        else:
+            # For conference papers (acl, naacl, emnlp, etc.)
+            year, venue, track = self.extract_conference_info(paper_id)
+            directory = self.pdf_base_dir / venue / year
         
-        Returns:
-            PDF file storage directory path
-        """
-        return self.get_pdf_storage_path(paper_id).parent
-    
+        # Ensure directory exists
+        os.makedirs(directory, exist_ok=True)
+        return directory
+
     def get_embedding_storage_directory(self, paper_id: str) -> Path:
         """
-        Get embedding file storage directory (without filename)
+        Get embedding storage directory based on paper platform and date.
         
-        Args:
-            paper_id: Paper ID
-        
-        Returns:
-            Embedding file storage directory path
+        For arxiv papers: embedding_base_dir/arxiv/year/month/
+        For conference papers: embedding_base_dir/venue/year/
         """
-        return self.get_embedding_storage_path(paper_id).parent
+        platform = self.extract_platform(paper_id)
+        
+        if platform == "arxiv":
+            year, month = self.extract_arxiv_info(paper_id)
+            directory = self.embedding_base_dir / "arxiv" / year / month
+        else:
+            # For conference papers (acl, naacl, emnlp, etc.)
+            year, venue, track = self.extract_conference_info(paper_id)
+            directory = self.embedding_base_dir / venue / year
+        
+        # Ensure directory exists
+        os.makedirs(directory, exist_ok=True)
+        return directory
     
+
+
     def get_pdf_url(self, paper_id: str) -> str:
         platform = self.extract_platform(paper_id)
         
