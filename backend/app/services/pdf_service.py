@@ -169,7 +169,7 @@ class PdfService:
                     return True
                 
             file_dir=paper_info_extractor.get_pdf_storage_directory(paper_id)
-            file_path= file_dir/filename
+            file_path= file_dir/f"{paper_id}.pdf"
             pdf_url=paper_info_extractor.get_pdf_url(paper_id)
 
             file_info = {
@@ -255,6 +255,9 @@ class PdfService:
         """
         try:
             pdf_path = paper_info_extractor.get_pdf_storage_directory(paper_id) / f"{paper_id}.pdf"
+
+            if not pdf_path.exists():
+                await self.get_pdf(paper_id)
 
             target_dir = paper_info_extractor.get_embedding_storage_directory(paper_id)
             local_path = target_dir / f"{paper_id}.json"

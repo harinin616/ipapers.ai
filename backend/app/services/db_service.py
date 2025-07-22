@@ -14,30 +14,11 @@ from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSessio
 from app.db.database import get_async_db
 
 from app.services.llm_service import llm_service 
+from app.services.extract_info import paper_info_extractor
+
 
 
 logger = logging.getLogger(__name__)
-
-from contextlib import asynccontextmanager
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-
-# 先在模块级别创建一个 sessionmaker
-DATABASE_URL = "postgresql+asyncpg://postgres:1@localhost:5432/dlmonitor"
-
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,
-    future=True,
-    pool_size=50,
-    max_overflow=50,
-    pool_timeout=60,
-    pool_recycle=1800,
-    pool_pre_ping=True,
-)
-
-AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
-
 
 
 class DBService:
@@ -311,7 +292,7 @@ class DBService:
         return None
 
     async def get_papers_by_ids(self, paper_ids: List[str]) -> List[Paper]:
-        async with AsyncSessionLocal() as db:
+        async for db in get_async_db():
             stmt = (
                 select(
                     DBPaper.paper_id,
@@ -361,7 +342,7 @@ class DBService:
                     categories=row.category_names,
                     pdf_url=row.pdf_url.replace("http://", "https://"),
                     published_date=row.published_date,
-                    updated_date=row.updated_date,
+                    updated_date=row.updated_date
                 )
             )
         return papers
@@ -398,7 +379,8 @@ class DBService:
                     categories=[category.name for category in db_paper.categories],
                     pdf_url=db_paper.pdf_url.replace("http://", "https://"),
                     published_date=db_paper.published_date,
-                    updated_date=db_paper.updated_date
+                    updated_date=db_paper.updated_date,
+                    platform=paper_info_extractor.extract_platform(db_paper.paper_id)
                 ))
         
         return papers

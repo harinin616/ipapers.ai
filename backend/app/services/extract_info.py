@@ -92,50 +92,48 @@ class PaperInfoExtractor:
         else:
             raise ValueError(f"Invalid conference paper ID format: {paper_id}")
     
-    def get_pdf_storage_path(self, paper_id: str) -> Path:
-        """
-        返回 PDF 文件的完整路径
-        """
-        return Path(self.pdf_base_dir) / f"{paper_id}.pdf"
+
 
     def get_pdf_storage_directory(self, paper_id: str) -> Path:
-        """
-        返回存放 PDF 的目录
-        """
-        # 直接拿到 path.parent 就能得到目录
-        return self.get_pdf_storage_path(paper_id).parent
+
+        platform = self.extract_platform(paper_id)
+        
+        if platform == "arxiv":
+            year, month = self.extract_arxiv_info(paper_id)
+ 
+            directory = self.pdf_base_dir / "arxiv" / year / month
+        else:
+            # For conference papers (acl, naacl, emnlp, etc.)
+            year, venue, track = self.extract_conference_info(paper_id)
+            directory = self.pdf_base_dir / venue / year
+        
+        # Ensure directory exists
+        os.makedirs(directory, exist_ok=True)
+        return directory
 
     def get_embedding_storage_directory(self, paper_id: str) -> Path:
         """
-        返回存放 embedding 的目录
+        Get embedding storage directory based on paper platform and date.
+        
+        For arxiv papers: embedding_base_dir/arxiv/year/month/
+        For conference papers: embedding_base_dir/venue/year/
         """
-        # 类似地，如果你有 get_embedding_storage_path，也可用同样思路
-        return Path(self.embedding_base_dir)
+        platform = self.extract_platform(paper_id)
+        
+        if platform == "arxiv":
+            year, month = self.extract_arxiv_info(paper_id)
+            directory = self.embedding_base_dir / "arxiv" / year / month
+        else:
+            # For conference papers (acl, naacl, emnlp, etc.)
+            year, venue, track = self.extract_conference_info(paper_id)
+            directory = self.embedding_base_dir / venue / year
+        
+        # Ensure directory exists
+        os.makedirs(directory, exist_ok=True)
+        return directory
     
-    def get_pdf_storage_directory(self, paper_id: str) -> Path:
-        """
-        Get PDF file storage directory (without filename)
-        
-        Args:
-            paper_id: Paper ID
-        
-        Returns:
-            PDF file storage directory path
-        """
-        return self.get_pdf_storage_path(paper_id).parent
-    
-    def get_embedding_storage_directory(self, paper_id: str) -> Path:
-        """
-        Get embedding file storage directory (without filename)
-        
-        Args:
-            paper_id: Paper ID
-        
-        Returns:
-            Embedding file storage directory path
-        """
-        return self.get_embedding_storage_path(paper_id).parent
-    
+
+
     def get_pdf_url(self, paper_id: str) -> str:
         platform = self.extract_platform(paper_id)
         
