@@ -18,11 +18,13 @@ if [ $DAY_OF_WEEK -eq 1 ]; then
     # Get last Friday's date (3 days ago from Monday)
     LAST_FRIDAY=$(date -d "last Friday" +%Y-%m-%d)
     
-    /scratch2/zx283/ENV/pmo/bin/python run_full_pipeline.py --date $LAST_FRIDAY
+    /scratch2/zx283/ENV/pmo/bin/python run_full_pipeline.py --date $LAST_FRIDAY --skip-collect
+    unset LD_LIBRARY_PATH
     /scratch2/zx283/ENV/pmo/bin/python copy_to_frontend.py --date $LAST_FRIDAY
 else
     # Tuesday to Friday - run without --date parameter
-    /scratch2/zx283/ENV/pmo/bin/python run_full_pipeline.py
+    /scratch2/zx283/ENV/pmo/bin/python run_full_pipeline.py --skip-collect
+    unset LD_LIBRARY_PATH
     /scratch2/zx283/ENV/pmo/bin/python copy_to_frontend.py
 fi
 
