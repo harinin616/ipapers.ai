@@ -14,17 +14,42 @@
     <div class="right-pane">
       <template v-if="activeId !== null">
         <div class="content-wrap">
-          <!-- 图 -->
-          <GraphWithDetail :papers="graphData" class="graph-detail" />
-          
+          <!-- 3D 图 -->
+          <GraphWithDetail
+            :papers="graphData"
+            :selected="selected"
+            class="graph-detail"
+          />
+
           <!-- 评论区 -->
           <div class="comment-area">
             <h3>Comments</h3>
-            <textarea placeholder="Leave a comment..." class="comment-input"></textarea>
-            <button class="submit-btn">Submit</button>
+
+            <!-- 新评论输入 -->
+            <div class="comment-input-wrap">
+              <textarea
+                v-model="newComment"
+                placeholder="Leave a comment..."
+                class="comment-input"
+              ></textarea>
+              <button
+                class="submit-btn"
+                :disabled="!newComment.trim()"
+                @click="submitComment"
+              >
+                Submit
+              </button>
+            </div>
+
+            <!-- 评论列表 -->
             <ul class="comment-list">
-              <li>Example comment 1</li>
-              <li>Example comment 2</li>
+              <li v-for="c in comments" :key="c.id">
+                <div class="comment-author">{{ c.commenter_name }}:</div>
+                <div class="comment-content">{{ c.content }}</div>
+                <div class="comment-date">
+                  {{ formatDate(c.created_at) }}
+                </div>
+              </li>
             </ul>
           </div>
         </div>
@@ -34,14 +59,14 @@
       <div v-else class="empty-placeholder">
         Select a folder to view its papers.
       </div>
-    </div>
   </div>
+</div>
 </template>
 
 
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount,computed } from 'vue'
 import SharedSidebar   from '@/components/SharedSidebar.vue'
 import GraphWithDetail from '@/components/GraphWithDetail.vue'
 import api             from '@/services/api'
@@ -71,16 +96,35 @@ export interface Paper {
   published_date: string
 
 }
+function formatDate(timestamp: string): string {
+  const d = new Date(timestamp)
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
 
 // --- 响应式数据 ---
 const shares   = ref<ShareMeta[]>([])
 const activeId = ref<number|null>(null)
 const graphData = ref<Paper[]>([])
+const selected = ref<Paper|null>(null)
+const comments = ref<Array<{
+  id: number
+  content: string
+  commenter_name: string
+  created_at: string
+}>>([])
+const newComment = ref("")
 const userId = localStorage.getItem('X-User-ID') || ''
 
 // --- 加载分享列表 ---
 async function loadShares() {
   shares.value = await api.get_shared_folders()
+}
+async function loadComments(folderId: number) {
+  comments.value = await api.get_shared_comments(folderId)
 }
 
 // --- 删除分享 ---
@@ -96,10 +140,18 @@ async function handleRemove(folderId: number) {
 // --- 选中左侧文件夹 ---
 function onSelect(id: number) {
   activeId.value = id
+
+}
+async function submitComment() {
+  if (!activeId.value || !newComment.value.trim()) return
+  const saved = await api.add_shared_comment(activeId.value,newComment.value)
+  comments.value.push(saved)
+  newComment.value = ""
 }
 
 // --- 监听 activeId 变化，加载对应 papers ---
 watch(activeId, async (id) => {
+  selected.value = null
   if (id === null) {
     graphData.value = []
   } else {
@@ -119,6 +171,7 @@ watch(activeId, async (id) => {
       paper_id: f.paper_id,
       title: f.title,
     }))
+    await loadComments(id)
   }
 }, { immediate: true })
 

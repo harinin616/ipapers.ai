@@ -232,3 +232,61 @@ class DBSharedFolder(Base):
         return f"<Share#{self.id} → Folder {self.folder_id}>"
 
 
+
+shared_folder_comments = Table(
+    "shared_folder_comments",
+    Base.metadata,
+    Column(
+        "shared_folder_id",
+        Integer,
+        ForeignKey("shared_folders.id", ondelete="CASCADE"),
+        primary_key=True
+    ),
+    Column(
+        "comment_id",
+        Integer,
+        ForeignKey("comments.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+)
+
+# —— 2. 单独定义评论表 —— #
+class DBComment(Base):
+    __tablename__ = "comments"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    content    = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # 不在这里定义 shared_folder_id 外键
+        # —— 新增：评论者 ID 和 名字 —— #
+    commenter_id     = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    commenter_name   = Column(
+        String(100),
+        nullable=False,
+        server_default=""
+    )
+
+    # —— 外键关系 —— #
+    commenter        = relationship("DBUser", lazy="joined")
+
+    def __repr__(self):
+        return f"<Comment#{self.id}>"
+
+DBSharedFolder.comments = relationship(
+    "DBComment",
+    secondary=shared_folder_comments,
+    back_populates="shared_folders",
+    cascade="save-update, merge, delete",
+    passive_deletes=True
+)
+
+# 给 DBComment 添加 .shared_folders
+DBComment.shared_folders = relationship(
+    "DBSharedFolder",
+    secondary=shared_folder_comments,
+    back_populates="comments"
+)

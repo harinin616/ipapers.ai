@@ -75,6 +75,12 @@ export interface IApiService {
   get_files_by_folderId(folderId: number): Promise<any[]>;
 
   delete_shared_folder(folderId: number): Promise<void>;
+
+  get_shared_comments(folderId: number): Promise<any[]>;
+  add_shared_comment(
+    folderId: number,
+    content: string
+  ): Promise<any>;
 }
 /**
  * API Service implementation
@@ -693,6 +699,30 @@ async get_shared_folders(): Promise<any[]> {
       throw error
     }
   }
+  async get_shared_comments(folderId: number): Promise<any[]> {
+    try{
+      const resp=await this.api.get(`api/comments/shared/${folderId}`)
+      return resp.data
+    }catch(error){
+      console.error('Failed to get shared comments:', error)
+      throw error
+    }
+  }
+  async add_shared_comment(
+    folderId: number,
+    content: string
+  ): Promise<any> {
+    try {
+      const resp = await this.api.post(`/api/comments/shared`, {
+        folderId,
+        content
+      })
+      return resp.data
+    } catch (error) {
+      console.error('Failed to add shared comment:', error)
+      throw error
+    }
+  }
 }
 
 interface ChatFile {
@@ -711,4 +741,3 @@ export interface Folder {
   name: string
   files: ChatFile[]
 }
-

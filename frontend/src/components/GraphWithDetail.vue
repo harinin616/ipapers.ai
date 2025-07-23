@@ -3,26 +3,26 @@
     <!-- 上 40%：3D 图，双向绑定 selected -->
     <div class="graph-area">
       <SharedGraph3D
-        v-model="selected"
+        v-model="localSelected"
         :papers="papers"
       />
     </div>
 
     <!-- 下 60%：detail-area -->
     <div class="detail-area">
-      <div v-if="!selected" class="placeholder">
+      <div v-if="!localSelected " class="placeholder">
         Click a node above to see details here.
       </div>
       <div v-else class="selected-detail">
         <div class="paper-detail">
           <!-- 可点击标题 -->
           <h2 class="paper-title">
-            <a 
-              :href="selected.pdf_url" 
-              target="_blank" 
+            <a
+              :href="localSelected.pdf_url"
+              target="_blank"
               rel="noopener"
             >
-              {{ selected.title }}
+              {{ localSelected .title }}
             </a>
           </h2>
 
@@ -33,12 +33,12 @@
 
           <!-- 作者列表 -->
           <p class="paper-authors">
-            <strong>Authors:</strong> {{ selected.authors.join(', ') }}
+            <strong>Authors:</strong> {{ localSelected .authors.join(', ') }}
           </p>
 
           <!-- 摘要 -->
           <div class="paper-abstract">
-            {{ selected.abstract }}
+            {{ localSelected.abstract }}
           </div>
         </div>
       </div>
@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch} from 'vue'
 import SharedGraph3D from '@/components/SharedGraph3D.vue'
 
 export interface Paper {
@@ -65,17 +65,22 @@ export interface Paper {
   published_date: string
 }
 
-const props = defineProps<{ papers: Paper[] }>()
-const selected = ref<Paper|null>(null)
+const props = defineProps<{ papers: Paper[] ,selected: Paper|null }>()
+const localSelected = ref<Paper|null>(props.selected)
+
 const formattedDate = computed(() => {
-  if (!selected.value) return ''
-  const d = new Date(selected.value.published_date)
+  if (!localSelected.value) return ''
+  const d = new Date(localSelected.value.published_date)
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',   // February
     day: 'numeric',  // 24
   })
 })
+watch(
+  () => props.papers,
+  () => { localSelected.value = null }
+)
 </script>
 <style scoped>
 .col-wrap {
