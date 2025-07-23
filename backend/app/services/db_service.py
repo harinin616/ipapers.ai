@@ -11,6 +11,7 @@ from sqlalchemy import distinct
 
 from app.models.paper import Paper
 from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
+from app.models.db_models import DBComment,shared_folder_comments
 from app.db.database import get_async_db
 
 from app.services.llm_service import llm_service 
@@ -1584,5 +1585,125 @@ class DBService:
                 return False
 
         return False
+    
+    async def get_comments_by_folder_id(self, folder_id: int) -> List[dict[str, any]]:
+        """
+        根据 shared_folder_id 查评论，通过 pivot table。
+        """
+        try:
+            async for db in get_async_db():   # db 是 AsyncSession
+                # 1⃣️ 执行异步查询
+                result = await db.execute(
+                    select(
+                        DBComment.id,
+                        DBComment.content,
+                        DBComment.commenter_name,
+                        DBComment.created_at
+                    )
+                    .join(
+                        shared_folder_comments,
+                        DBComment.id == shared_folder_comments.c.comment_id
+                    )
+                    .where(shared_folder_comments.c.shared_folder_id == folder_id)
+                    .order_by(DBComment.created_at)  # 不用 asc() 也行
+                )
+
+                rows = result.all()
+            # 2⃣️ 构造并返回
+                return [
+                    {
+                        "id": row.id,
+                        "content": row.content,
+                        "commenter_name": row.commenter_name,
+                        "created_at": row.created_at.isoformat()
+                    }
+                    for row in rows
+                ]
+        except SQLAlchemyError as e:
+            logger.error(f"DB error getting comments for folder {folder_id}: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting comments for folder {folder_id}: {e}", exc_info=True)
+            return []
+
+        # 如果走不到上面 return，说明拿不到 db
+        return []
+
+    
+    async def add_comment_by_folder_id(
+        self,
+        user_id: uuid.UUID,
+        folder_id: int,
+        content: str,
+    ) -> Optional[dict[str, any]]:
+        """
+        添加一条评论到指定的共享文件夹。
+        返回:
+          {
+            "id": int,
+            "content": str,
+            "commenter_name": str,
+            "created_at": str,   # ISO 格式
+          }
+        如果失败或参数不合法，则返回 None。
+        """
+        content = content.strip()
+        if not content:
+            logger.warning("Attempted to add empty comment")
+            return None
+
+        async for db in get_async_db():  # type: AsyncSession
+            try:
+                # 1) 验证 folder 存在
+                folder = (
+                    await db.execute(
+                        select(DBSharedFolder)
+                        .where(DBSharedFolder.folder_id == folder_id)
+                    )
+                ).scalars().first()
+                if not folder:
+                    logger.warning(f"Shared folder {folder_id} not found")
+                    return None
+
+                # 2) 验证用户并获取名字
+                user = await db.get(DBUser, user_id)
+                commenter_name = user.name if user else ""
+
+                # 3) 创建评论对象
+                comment = DBComment(
+                    content=content,
+                    commenter_id=user_id,
+                    commenter_name=commenter_name,
+                    created_at=datetime.utcnow()
+                )
+                # 挂到 folder.comments（pivot table 会自动插入）
+                folder.comments.append(comment)
+                db.add(comment)
+
+                # 4) 提交并刷新
+                await db.commit()
+                await db.refresh(comment)
+
+                # 5) 构造返回值
+                return {
+                    "id": comment.id,
+                    "content": comment.content,
+                    "commenter_name": comment.commenter_name,
+                    "created_at": comment.created_at.isoformat()
+                }
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error adding comment to folder {folder_id}: {e}")
+                return None
+            except Exception as e:
+                await db.rollback()
+                logger.error(
+                    f"Unexpected error adding comment to folder {folder_id}: {e}",
+                    exc_info=True
+                )
+                return None
+
+        return None
 # Create a global instance
 db_service = DBService() 
