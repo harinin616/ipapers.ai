@@ -62,6 +62,8 @@ class TextProcessor:
                 "model llm",
                 "models llms",
                 "models llm",
+                "large language models llm",
+                "large language models llms",
             ],
             
             # Add more phrase clusters here as needed

@@ -90,7 +90,7 @@ Write a compelling news-style article that highlights the latest developments an
 - Use active voice and dynamic language
 
 **ARTICLE STRUCTURE:**
-1. **Opening Hook** (1 paragraph): Start with an exciting lead about the latest breakthroughs in "{phrase}" research
+1. **Opening Hook** (1 paragraph with 1-2 sentences): Start with an exciting lead about the latest breakthroughs in "{phrase}" research
 2. **Major Developments** (2-3 paragraphs): Highlight the most significant innovations and what makes them groundbreaking
 3. **Future Impact** (1-2 paragraphs): Discuss how these advances will change the field and benefit society
 
