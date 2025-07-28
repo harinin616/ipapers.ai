@@ -179,6 +179,17 @@
                 ({{ category.papers.length }} {{ category.papers.length === 1 ? 'paper' : 'papers' }})
               </span>
             </h3>
+            <div class="search-input-container">
+              <input 
+                type="text" 
+                @keyup.enter="handleSearchFromInput($event, category.display_name)" 
+                placeholder="Search papers in this category..."
+                class="search-input"
+              />
+              <svg viewBox="0 0 24 24" class="search-icon">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L23.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+              </svg>
+            </div>
             <div v-if="category.papers && category.papers.length > 0" class="papers-list">
               <PaperCard 
                 v-for="(rawPaper, index) in category.papers" 
@@ -200,6 +211,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import PaperCard from '../components/PaperCard.vue'
 import type { Paper } from '../types/paper'
+import { useRouter } from 'vue-router'
 
 // Enhanced type definitions for the new data structure
 interface SummaryData {
@@ -257,6 +269,9 @@ const audioPlaybackRate = ref(1.0)
 const audioProgress = ref(0) // 0-100 percentage
 const audioDuration = ref(0) // in seconds
 const audioCurrentTime = ref(0) // in seconds
+
+// Search functionality
+const router = useRouter()
 
 // Convert raw paper data from daily_feed.json to Paper interface
 const convertToPaper = (rawPaper: any): Paper => {
@@ -511,6 +526,30 @@ const getPageTitle = (): string => {
     return `${dailyFeedData.value.date} Daily Feed (${dailyFeedData.value.total_papers} ${paperText})`
   }
   return 'Daily Feed'
+}
+
+// Search functionality
+const handleSearch = (searchQuery: string, categoryName: string) => {
+  if (!searchQuery.trim()) return
+  
+  // Navigate to search page with the query and optional category filter
+  router.push({
+    path: '/search',
+    query: {
+      q: searchQuery.trim(),
+      category: categoryName
+    }
+  })
+}
+
+const handleSearchFromInput = (event: Event, categoryName: string) => {
+  const target = event.target as HTMLInputElement
+  const searchQuery = target.value
+  if (searchQuery.trim()) {
+    handleSearch(searchQuery, categoryName)
+    // Clear the input after search
+    target.value = ''
+  }
 }
 
 // Get category title with paper count
@@ -1246,7 +1285,46 @@ onUnmounted(() => {
   border: 1px solid #bbdefb;
 }
 
+.search-input-container {
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
+.search-input {
+  flex-grow: 1;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  outline: none;
+  background: transparent;
+}
+
+.search-input:focus {
+  outline: none;
+}
+
+.search-input-container:focus-within {
+  border-color: #3f51b5;
+  box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
+}
+
+.search-icon {
+  width: 20px;
+  height: 20px;
+  color: #666;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.search-input-container:focus-within .search-icon {
+  color: #3f51b5;
+}
 
 .no-papers {
   text-align: center;
@@ -1596,6 +1674,22 @@ onUnmounted(() => {
   }
 
   .close-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Mobile search input adjustments */
+  .search-input-container {
+    padding: 0.4rem 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .search-input {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .search-icon {
     width: 18px;
     height: 18px;
   }
