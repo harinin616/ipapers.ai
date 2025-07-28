@@ -36,11 +36,14 @@ let graphInst: any = null
 
 /* Build data */
 const buildData = () => ({
-  nodes: props.papers.map(p => ({
-    id:    p.id,
-    name:  p.title,
-    val:   Math.max(2, p.size),
-    paper: p      // ← 这里把整条 Paper 绑到 node 上
+  nodes: props.papers.map((p, idx) => ({
+    id   : p.id,
+    name : p.title,
+    val  : Math.max(2, p.size),
+    paper: p,
+    // ← 引用式标签：序号 + 第一作者姓 + 年份
+    line1: String(idx + 1),                               // ① 序号
+  line2: `${p.authors[0].split(' ')[0]} ${p.published_date.slice(0,4)}` // ② 姓+年
   })),
   links: props.papers.flatMap(p =>
     (p.cites ?? []).map(t => ({ source: p.id, target: t, weight: 1 }))
@@ -62,6 +65,60 @@ function resizeGraph() {
   }
 }
 
+function makeLabelSprite(line1: string, line2: string, radius: number) {
+  const DPR  = window.devicePixelRatio || 2
+
+  // —— 字体大小（行 1 略大，行 2 略小，可自行调整）
+  const font1 = 44 * DPR
+  const font2 = 32 * DPR
+  const gap   = 12 * DPR          // 行间距
+
+  /* ---------- 计算宽高 ---------- */
+  const cvs  = document.createElement('canvas')
+  const ctx  = cvs.getContext('2d')!
+
+  ctx.font = `600 ${font1}px sans-serif`
+  const w1 = ctx.measureText(line1).width
+
+  ctx.font = `500 ${font2}px sans-serif`
+  const w2 = ctx.measureText(line2).width
+
+  const W = Math.max(w1, w2)
+  const H = font1 + gap + font2
+
+  cvs.width  = W
+  cvs.height = H
+
+  /* ---------- 实际绘制 ---------- */
+  ctx.textAlign    = 'center'
+  ctx.textBaseline = 'top'
+
+  // 行 1
+  ctx.font      = `600 ${font1}px sans-serif`
+  ctx.fillStyle = '#000'
+  ctx.fillText(line1, W / 2, 0)
+
+  // 行 2
+  ctx.font      = `500 ${font2}px sans-serif`
+  ctx.fillText(line2, W / 2, font1 + gap)
+
+  /* ---------- 转成 Sprite ---------- */
+  const tex   = new THREE.CanvasTexture(cvs)
+  const mat   = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false   })
+  
+  const spr   = new THREE.Sprite(mat)
+  spr.userData.offset = radius + 1
+
+  const scale = radius * 0.8 / DPR          // 整体缩放
+  spr.scale.set(W / font1 * scale, H / font1 * scale, 1)
+
+  // 贴近球面（比以前低一点点）
+  spr.position.set(0, radius * 0.5, 0)
+
+  return spr
+}
+
+
 onMounted(async () => {
     await nextTick()
   if (!container.value) return
@@ -77,6 +134,7 @@ onMounted(async () => {
     .graphData(buildData())
     .width(width)
     .height(height)
+
     // ... nodeThreeObject/linkWidth/linkColor 等保持不变 ...
 
   // 1. 让布局中心是容器正中央
@@ -97,12 +155,28 @@ onMounted(async () => {
   )
 
   // --- 立体小球节点 ---
-  .nodeThreeObject((n: any) => {
-    const radius = THREE.MathUtils.mapLinear(n.val, 2, 50, 10, 25)
-    const geo = new THREE.SphereGeometry(radius, 128, 128)
-    const col = new THREE.Color().setHSL(Math.random(), 0.6, 0.5).getStyle()
-      return new THREE.Mesh(geo, getSphereMat(col))
-    })
+.nodeThreeObject((n: any) => {
+  const group  = new THREE.Group()
+
+  // 球
+  const radius = THREE.MathUtils.mapLinear(n.val, 2, 50, 10, 25)
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 32, 32),
+    getSphereMat(new THREE.Color().setHSL(Math.random(), 0.6, 0.5).getStyle())
+  )
+
+
+  sphere.renderOrder = 0
+group.add(sphere)
+
+// 标签
+const spr = makeLabelSprite(n.line1, n.line2, radius)
+spr.renderOrder = 1    // ★ 在本球之后绘制，但仍参与深度测试
+group.add(spr)
+  return group
+})
+.nodeThreeObjectExtend(true)   
+
 
     // --- 粗实线条 ---
     .linkWidth((l: any) => THREE.MathUtils.mapLinear(l.weight || 1, 1, 5, 0.2, 2))
@@ -112,7 +186,34 @@ onMounted(async () => {
     // 点击节点打开链接
       .onNodeClick((n: any) => {
         emit('update:modelValue', n.paper || null)
+         focusNode(n)
       })
+// 让每帧都把标签推到球正前方
+graphInst.scene().onBeforeRender = (_, __, camera) => {
+  const camPos = camera.position
+
+  graphInst.graphData().nodes.forEach((n: any) => {
+    const grp = n.__threeObj           // ForceGraph 给每个节点挂的 Group
+    if (!grp) return
+
+    // 找到 Group 里的 Sprite（假定你只有 球 + sprite 两个孩子）
+    const sprite = grp.children.find((c: any) => c.isSprite)
+    if (!sprite) return
+
+    // 球心的世界坐标
+    const worldPos = new THREE.Vector3()
+    grp.getWorldPosition(worldPos)
+
+    // 方向：球心 → 相机
+    const dir = new THREE.Vector3().subVectors(camPos, worldPos).normalize()
+
+    // 把 sprite 放到球面正向相机处
+   const targetW = worldPos.clone().add(dir.multiplyScalar(sprite.userData.offset)) // 世界坐标
+const targetL = grp.worldToLocal(targetW)     // ★ 转回 group 局部坐标
+sprite.position.copy(targetL)
+
+  })
+}
 
 const scene = graphInst.scene()
 
@@ -155,6 +256,7 @@ onBeforeUnmount(() => {
   graphInst?.destroy?.()
 })
 
+
 const emit = defineEmits<{
   (e: 'update:modelValue', val: Paper|null): void
 }>()
@@ -168,6 +270,42 @@ function onNodeClick(node: Paper) {
 function clearSelection() {
   emit('update:modelValue', null)
 }
+
+function focusNode(node: any) {
+  if (!graphInst || !node) return
+
+  // 距离系数：让相机在目标前方 distance 像素处
+  const distance = 200
+  const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z)
+
+  graphInst.cameraPosition(
+    {               // 相机位置
+      x: node.x * distRatio,
+      y: node.y * distRatio,
+      z: node.z * distRatio
+    },
+    node,           // 视线焦点
+    2000            // 动画时长（ms）
+  )
+}
+
+
+watch(
+  () => props.modelValue,
+  (p) => {
+    if (!p || !graphInst) return
+
+    const key = (p as any).id ?? (p as any).paper_id   // ★ 兼容两种字段
+    if (!key) return
+
+    const node = graphInst.graphData().nodes
+      .find((n: any) => n.id === key)
+
+    if (node) focusNode(node)
+  },
+  { immediate: true }
+)
+
 </script>
 
 <style scoped>

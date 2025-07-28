@@ -2,7 +2,8 @@ import logging
 import uuid
 from typing import List, Optional
 from sqlalchemy.future import select
-from sqlalchemy import func, text, update, delete
+from sqlalchemy import func, text, update, delete,insert
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import IntegrityError
@@ -1408,8 +1409,7 @@ class DBService:
 
     async def get_files_by_folder_id(self, folder_id: int) -> list[dict]:
         """
-        根据 folder_id 返回该文件夹下所有文件的扁平列表。
-        每条记录除了 user_file 信息，还包含 paper 表里的详细字段和 authors 列表。
+        根据 folder_id 返回该文件夹下所有文件的扁平列表，附带 embedding。
         """
         async for db in get_async_db():
             try:
@@ -1418,7 +1418,7 @@ class DBService:
                     select(DBUserFile)
                     .options(
                         selectinload(DBUserFile.paper)
-                            .selectinload(DBPaper.authors)  # 级联加载 authors
+                            .selectinload(DBPaper.authors)
                     )
                     .where(DBUserFile.folder_id == folder_id)
                     .order_by(DBUserFile.added_at)
@@ -1426,25 +1426,32 @@ class DBService:
                 result = await db.execute(stmt)
                 user_files: list[DBUserFile] = result.scalars().all()
 
-                # ② 拼装返回结构
+                # ② 拼装返回结构（新增 embedding）
                 return [
                     {
-                        # 来自 user_files 表
+                        # —— 来自 user_files 表 —— #
                         "paper_id":       uf.paper_id,
                         "added_at":       uf.added_at.isoformat(),
                         "folder_id":      uf.folder_id,
                         "selected":       bool(uf.selected),
 
-                        # 来自 papers 表
+                        # —— 来自 papers 表 —— #
                         "title":          uf.paper.title,
                         "abstract":       uf.paper.abstract,
                         "pdf_url":        uf.paper.pdf_url,
                         "published_date": uf.paper.published_date.isoformat(),
-                        "updated_date":   uf.paper.updated_date.isoformat() if uf.paper.updated_date else None,
+                        "updated_date":   (
+                            uf.paper.updated_date.isoformat()
+                            if uf.paper.updated_date else None
+                        ),
                         "click_count":    uf.paper.click_count,
 
-                        # 新增：authors 列表
-                        "authors":        [author.name for author in uf.paper.authors],
+                        # —— 新增字段 —— #
+                        "authors":        [a.name for a in uf.paper.authors],
+                        "embedding": (
+                            [float(x) for x in uf.paper.embedding]
+                            if uf.paper.embedding is not None else None
+                        ),
                     }
                     for uf in user_files
                 ]
@@ -1586,124 +1593,221 @@ class DBService:
 
         return False
     
-    async def get_comments_by_folder_id(self, folder_id: int) -> List[dict[str, any]]:
-        """
-        根据 shared_folder_id 查评论，通过 pivot table。
-        """
-        try:
-            async for db in get_async_db():   # db 是 AsyncSession
-                # 1⃣️ 执行异步查询
-                result = await db.execute(
-                    select(
-                        DBComment.id,
-                        DBComment.content,
-                        DBComment.commenter_name,
-                        DBComment.created_at
-                    )
-                    .join(
-                        shared_folder_comments,
-                        DBComment.id == shared_folder_comments.c.comment_id
-                    )
-                    .where(shared_folder_comments.c.shared_folder_id == folder_id)
-                    .order_by(DBComment.created_at)  # 不用 asc() 也行
+    async def get_comments_by_folder_id(self, folder_id: int) -> list[dict]:
+        async for db in get_async_db():
+            # ① 找到真正的 shared_folder.id
+            result = await db.execute(
+                select(DBSharedFolder.id)
+                .where(DBSharedFolder.folder_id == folder_id)
+            )
+            shared_row = result.first()
+            if not shared_row:
+                return []          # 说明这个文件夹没被分享
+
+            shared_id = shared_row.id
+
+            # ② 再去 pivot + comments 表查
+            result = await db.execute(
+                select(
+                    DBComment.id,
+                    DBComment.content,
+                    DBComment.commenter_name,
+                    DBComment.created_at,
+                    DBComment.commenter_id,
                 )
+                .join(
+                    shared_folder_comments,
+                    DBComment.id == shared_folder_comments.c.comment_id,
+                )
+                .where(shared_folder_comments.c.shared_folder_id == shared_id)
+                .order_by(DBComment.created_at)
+            )
+            rows = result.all()
 
-                rows = result.all()
-            # 2⃣️ 构造并返回
-                return [
-                    {
-                        "id": row.id,
-                        "content": row.content,
-                        "commenter_name": row.commenter_name,
-                        "created_at": row.created_at.isoformat()
-                    }
-                    for row in rows
-                ]
-        except SQLAlchemyError as e:
-            logger.error(f"DB error getting comments for folder {folder_id}: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error getting comments for folder {folder_id}: {e}", exc_info=True)
-            return []
-
-        # 如果走不到上面 return，说明拿不到 db
+            return [
+                {
+                    "id": r.id,
+                    "content": r.content,
+                    "commenter_name": r.commenter_name,
+                    "commenter_id": r.commenter_id,
+                    "created_at": r.created_at.isoformat(),
+                }
+                for r in rows
+            ]
         return []
 
-    
-    async def add_comment_by_folder_id(
-        self,
-        user_id: uuid.UUID,
-        folder_id: int,
-        content: str,
-    ) -> Optional[dict[str, any]]:
-        """
-        添加一条评论到指定的共享文件夹。
-        返回:
-          {
-            "id": int,
-            "content": str,
-            "commenter_name": str,
-            "created_at": str,   # ISO 格式
-          }
-        如果失败或参数不合法，则返回 None。
-        """
+        
+    async def add_comment_by_folder_id(self, user_id, folder_id, content):
         content = content.strip()
         if not content:
-            logger.warning("Attempted to add empty comment")
             return None
 
-        async for db in get_async_db():  # type: AsyncSession
+        async for db in get_async_db():
             try:
-                # 1) 验证 folder 存在
-                folder = (
-                    await db.execute(
-                        select(DBSharedFolder)
-                        .where(DBSharedFolder.folder_id == folder_id)
-                    )
-                ).scalars().first()
-                if not folder:
-                    logger.warning(f"Shared folder {folder_id} not found")
+                # 1) 查 SharedFolder（注意这里是 shared_folders.id <- folders.id）
+                result = await db.execute(
+                    select(DBSharedFolder)
+                    .where(DBSharedFolder.folder_id == folder_id)
+                )
+                shared = result.scalars().first()
+                if not shared:
                     return None
 
-                # 2) 验证用户并获取名字
+                # 2) 查 user 名称
                 user = await db.get(DBUser, user_id)
                 commenter_name = user.name if user else ""
 
-                # 3) 创建评论对象
+                # 3) 创建评论实体
                 comment = DBComment(
                     content=content,
                     commenter_id=user_id,
                     commenter_name=commenter_name,
                     created_at=datetime.utcnow()
                 )
-                # 挂到 folder.comments（pivot table 会自动插入）
-                folder.comments.append(comment)
                 db.add(comment)
+                # 拿到 comment.id
+                await db.flush()
 
-                # 4) 提交并刷新
+                # 4) 手动插入关系表
+                await db.execute(
+                    insert(shared_folder_comments).values(
+                        shared_folder_id=shared.id,
+                        comment_id=comment.id
+                    )
+                )
+
+                # 5) 提交并刷新
                 await db.commit()
                 await db.refresh(comment)
 
-                # 5) 构造返回值
                 return {
                     "id": comment.id,
                     "content": comment.content,
                     "commenter_name": comment.commenter_name,
+                    "commenter_id": comment.commenter_id,
                     "created_at": comment.created_at.isoformat()
                 }
 
-            except SQLAlchemyError as e:
+            except SQLAlchemyError:
                 await db.rollback()
-                logger.error(f"DB error adding comment to folder {folder_id}: {e}")
-                return None
-            except Exception as e:
-                await db.rollback()
-                logger.error(
-                    f"Unexpected error adding comment to folder {folder_id}: {e}",
-                    exc_info=True
-                )
                 return None
 
         return None
+    
+    async def delete_comment(
+        self,
+        cid: int,
+        user_id: Optional[uuid.UUID] = None, 
+    ) -> bool:
+        """
+        删除一条评论及其在 pivot 表中的关联行。  
+        - 若指定 `user_id`，则只有该用户本人才能删除；否则返回 False。  
+        - 成功返回 True；评论不存在或无权限返回 False。
+
+        Args:
+            cid (int): comments.id
+            user_id (UUID|None): 当前登录用户 ID（可选）
+
+        Returns:
+            bool: 删除成功 ➜ True；失败/无权限 ➜ False
+        """
+        async for db in get_async_db():        # type: AsyncSession
+            try:
+                # ① 先取评论
+                comment: DBComment | None = await db.get(DBComment, cid)
+                if comment is None:
+                    logger.warning(f"Comment {cid} not found")
+                    return False
+
+                # ② 权限校验（可选）
+                if user_id is not None and comment.commenter_id != user_id:
+                    logger.warning(
+                        f"User {user_id} tried to delete others' comment {cid}"
+                    )
+                    return False
+
+                # ③ 删 pivot 表行（若未设置 CASCADE）
+                await db.execute(
+                    delete(shared_folder_comments).where(
+                        shared_folder_comments.c.comment_id == cid
+                    )
+                )
+
+                # ④ 删评论本身
+                await db.delete(comment)
+                await db.commit()
+                logger.info(f"Deleted comment {cid} by user {user_id}")
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error deleting comment {cid}: {e}")
+                return False
+
+        # 理论到不了这里（除非 get_async_db() 无 db）
+        return False
+
+    async def get_folder_summary(
+        self,
+        folder_id: int,
+    ) -> Optional[str]:
+        """
+        根据 folder_id 取 shared_folders.summary。
+
+        - 若传入 user_id，则只返回该用户本人拥有的或公开分享的概要。
+        - 找不到记录返回 None（可区分“无记录” vs. “summary 为空字符串”）。
+        """
+        async for db in get_async_db():                 # type: AsyncSession
+            try:
+                stmt = select(DBSharedFolder.summary).where(
+                    DBSharedFolder.folder_id == folder_id
+                )
+
+                result = await db.execute(stmt)
+                summary = result.scalar_one_or_none()   # None 或 str
+
+                return summary
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error in get_folder_summary: {e}")
+                return None
+
+        # 理论上不会到这一步
+        return None
+    async def add_folder_summary(self,folder_id, summary):
+        """
+        添加或更新文件夹的概要信息。
+        如果已存在，则更新；否则插入新记录。
+        """
+        async for db in get_async_db():
+            try:
+                # 1) 检查是否已存在该 folder_id 的记录
+                existing = await db.execute(
+                    select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                )
+                shared_folder = existing.scalars().first()
+
+                if shared_folder:
+                    # 更新现有记录
+                    shared_folder.summary = summary
+                else:
+                    # 创建新记录
+                    shared_folder = DBSharedFolder(
+                        folder_id=folder_id,
+                        summary=summary,
+                        created_at=datetime.utcnow()
+                    )
+                    db.add(shared_folder)
+
+                await db.commit()
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error in add_folder_summary: {e}")
+                return False
+
+        return False
 # Create a global instance
 db_service = DBService() 

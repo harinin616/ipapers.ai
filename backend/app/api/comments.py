@@ -37,3 +37,16 @@ async def add_shared_comment(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/shared/{cid}")
+async def delete_shared_comment(
+    cid: int,
+):
+    try:
+        await db_service.delete_comment(cid)
+        return {"message": "Comment deleted successfully"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

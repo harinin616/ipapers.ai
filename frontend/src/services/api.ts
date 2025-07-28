@@ -81,6 +81,9 @@ export interface IApiService {
     folderId: number,
     content: string
   ): Promise<any>;
+  delete_shared_comment(cid: number): Promise<void>;
+  get_summary(folderId: number): Promise<string | null>;
+  regen_summary(folderId: number): Promise<string | null>;
 }
 /**
  * API Service implementation
@@ -721,6 +724,32 @@ async get_shared_folders(): Promise<any[]> {
     } catch (error) {
       console.error('Failed to add shared comment:', error)
       throw error
+    }
+  }
+  async delete_shared_comment(cid: number): Promise<void> {
+    try {
+      await this.api.delete(`/api/comments/shared/${cid}`);
+    } catch (error) {
+      console.error('Failed to delete shared comment:', error);
+      throw error;
+    }
+  }
+  async get_summary(folderId: number): Promise<string | null> {
+    try {
+      const resp = await this.api.get(`/api/folders/${folderId}/summary`);
+      return resp.data?.summary ?? null;
+    } catch (error) {
+      console.error('Failed to get folder summary:', error);
+      throw error;
+    }
+  }
+  async regen_summary(folderId: number): Promise<string | null> {
+    try {
+      const resp = await this.api.post(`/api/folders/${folderId}/summary/regenerate`);
+      return resp.data?.summary ?? null;
+    } catch (error) {
+      console.error('Failed to regenerate folder summary:', error);
+      throw error;
     }
   }
 }

@@ -18,10 +18,10 @@ if [ $DAY_OF_WEEK -eq 1 ]; then
     # Get last Friday's date (3 days ago from Monday)
     LAST_FRIDAY=$(date -d "last Friday" +%Y-%m-%d)
     
-    python collect_data.py --date $LAST_FRIDAY
+    /home/ec2-user/miniconda3/bin/python collect_data.py --date $LAST_FRIDAY 2>&1 >> "$LOGFILE"
 else
     # Tuesday to Friday - run without --date parameter
-    python collect_data.py
+    /home/ec2-user/miniconda3/bin/python collect_data.py 2>&1 >> "$LOGFILE"
 fi
 
 echo "[$(date '+%F %T')] collect_data.py 完成。" >> "$LOGFILE"

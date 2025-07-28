@@ -235,8 +235,8 @@ async def get_conference_paper_urls(conference: str, year: int, session: request
                 break
         
         # Add a longer delay to be more respectful to the server
-        await asyncio.sleep(1.0)  # 增加延迟到1秒
-    
+        await asyncio.sleep(0.1)  # 增加延迟到0.1秒
+
     # If no papers found using volume pages, try direct search
     if not paper_urls:
         logger.info("No papers found via volume pages, trying direct search...")
@@ -318,7 +318,7 @@ async def fetch_conference_papers_via_web_scraping(conference: str, year: int, l
                 logger.warning(f"Failed to extract metadata from: {paper_url}")
             
             # Add a longer delay to be respectful to the server
-            await asyncio.sleep(1.0)  # 增加延迟到1秒
+            await asyncio.sleep(0.1)  # 增加延迟到1秒
         
         return papers
         
@@ -354,7 +354,15 @@ async def main():
     
     # Add papers to database
     try:
-        added_db_ids = await db_service.add_papers(papers)
+        added_db_ids = []
+        skipped = 0
+        for p in papers:
+            ret = await db_service.add_papers([p])
+            if ret:
+                added_db_ids.extend(ret)
+            else:
+                skipped += 1
+        logger.info(f"Inserted {len(added_db_ids)} papers, skipped {skipped} already-exists.")
         logger.info(f"Added {len(added_db_ids)} new papers to database")
         
         # Add papers to vector search index

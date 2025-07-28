@@ -38,11 +38,7 @@ class DBPaper(Base):
     published_date = Column(DateTime, nullable=False)
     updated_date = Column(DateTime, nullable=True)
     click_count = Column(Integer, nullable=False, default=0)
-
-    # 新增：存768维向量
     embedding = Column(Vector(768), nullable=True)
-
-    # 保持原有关系不变
     authors = relationship(
         "DBAuthor", 
         secondary=paper_authors, 
@@ -50,9 +46,9 @@ class DBPaper(Base):
         order_by=paper_authors.c.author_order
     )
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
-
     def __repr__(self):
         return f"<Paper {self.paper_id}: {self.title}>"
+
 
 class DBAuthor(Base):
     """Paper author database model"""
@@ -200,7 +196,6 @@ class DBFeedback(Base):
     user_id    = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-
 class DBEmailList(Base):
     """A standalone table that stores unique email addresses only."""
     __tablename__ = "email_list"
@@ -224,6 +219,9 @@ class DBSharedFolder(Base):
                         server_default=sa.text("true"))
     created_at = Column(DateTime, nullable=False,
                         default=datetime.utcnow)
+
+    # 新增字段：概要，可为空
+    summary    = Column(Text, nullable=True)
 
     folder = relationship("DBFolder")
     owner  = relationship("DBUser")

@@ -177,6 +177,94 @@ class LLMService:
              logger.error(f"Error occurred when calling Gemini API for conversation: {e.__class__.__name__} - {e}")
              return None
 
+
+    async def get_conversation_completion_non_streaming(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        调用对话模型，非流式，一次性拿到完整文本。
+        返回值：生成的文本（str），失败返回 None
+        """
+        convo_model = model or self.conversation_model
+
+        try:
+            # ---- 限流逻辑（原样保留） ----
+            async with self.call_limit_lock:
+                current_hour = self.current_hour_str()
+                if current_hour != self.last_call_hour:
+                    if self.hourly_calls > 0:
+                        self.save_hourly_calls(self.last_call_hour, self.hourly_calls)
+                    self.hourly_calls = 0
+                    self.last_call_hour = current_hour
+
+                HOURLY_LIMIT = 100  # 你自己的常量
+                if self.hourly_calls >= HOURLY_LIMIT:
+                    logger.error("Hourly call limit exceeded")
+                    return None
+                self.hourly_calls += 1
+
+                current_date = datetime.now().strftime('%Y-%m-%d')
+                if current_date != self.last_call_date:
+                    if self.daily_calls > 0:
+                        self.save_daily_calls(self.last_call_date, self.daily_calls)
+                    self.daily_calls = 0
+                    self.last_call_date = current_date
+
+                DAILY_LIMIT = 1000  # 你自己的常量
+                if self.daily_calls >= DAILY_LIMIT:
+                    logger.error("Daily call limit exceeded")
+                    return None
+                self.daily_calls += 1
+            # ---- /限流逻辑 ----
+
+            # 转 Gemini 格式
+            gemini_contents = self._convert_messages_to_gemini_format(messages)
+
+            # **非流式调用**
+            resp = await self.llm_client.aio.models.generate_content(
+                model=convo_model,
+                contents=gemini_contents
+            )
+
+            # 提取纯文本
+            text = self._gemini_text(resp)
+            return text
+
+        except Exception as e:
+            logger.error(
+                f"Error occurred when calling Gemini API for conversation: "
+                f"{e.__class__.__name__} - {e}"
+            )
+            return None
+
+    # --------- 辅助函数 ---------
+    def _gemini_text(self, resp) -> str:
+        """
+        尝试从 Gemini 非流式返回对象中抽取文本。
+        兼容 resp.text / resp.candidates[].content.parts[].text 两种方式。
+        """
+        # 1) 大部分 SDK 都会有 resp.text
+        if hasattr(resp, "text") and isinstance(resp.text, str):
+            return resp.text
+
+        # 2) 兜底：从 candidates 结构里拼接
+        try:
+            parts = []
+            for c in getattr(resp, "candidates", []) or []:
+                content = getattr(c, "content", None)
+                if not content:
+                    continue
+                for p in getattr(content, "parts", []) or []:
+                    t = getattr(p, "text", None)
+                    if t:
+                        parts.append(t)
+            return "".join(parts)
+        except Exception:
+            # 再兜底直接 str()，以免把复杂对象抛回前端
+            return str(resp)
+
     def _convert_messages_to_gemini_format(self, messages: List[Dict[str, str]]) -> str:
         """
         Convert OpenAI format messages to Gemini format

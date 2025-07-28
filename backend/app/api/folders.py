@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.services.db_service import db_service   # 你之前的单例
 from app.services.chat_service import chat_service  # 你的 chat_service 单例
+from app.services.llm_service import llm_service  # 你的 LLM 服务单例
 router = APIRouter()
 
 # ────────────── Pydantic Output Schema ──────────────
@@ -196,3 +197,34 @@ async def get_files_by_folderId(
         return []
    # print(files)
     return files
+
+@router.get("/{folder_id}/summary")
+async def get_folder_summary(
+    folder_id: int,
+):
+    summary = await db_service.get_folder_summary(folder_id)
+
+    return {"summary": summary} 
+
+
+@router.post("/{folder_id}/summary/regenerate")
+async def regenerate_folder_summary(
+    folder_id: int,
+):
+    try:
+        tmp=await db_service.get_files_by_folder_id(folder_id)
+        message="please summarize the following files together in one paragraph:\n"+ "".join(
+            f"Title: {file['title']}\nAbstract: {file['abstract']}\n" for file in tmp
+        )
+        api_messages = [
+            {"role": "system", "content": "You are a helpful assistant that summarizes academic papers."},
+            {"role": "user", "content": message}
+        ]
+        summary = await llm_service.get_conversation_completion_non_streaming(
+            messages=api_messages
+        )
+        await db_service.add_folder_summary(folder_id, summary)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    # 返回生成的摘要
+    return {"summary": summary}

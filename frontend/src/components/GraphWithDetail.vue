@@ -63,23 +63,34 @@ export interface Paper {
   authors: string[]
   categories: string[]
   published_date: string
+    embedding?: number[]  // 可选的向量表示
 }
 
-const props = defineProps<{ papers: Paper[] ,selected: Paper|null }>()
-const localSelected = ref<Paper|null>(props.selected)
+const props = defineProps<{
+  papers: Paper[]
+  modelValue: Paper | null        /* v-model */
+}>()
+
+
+const emit = defineEmits<{
+  (e:'update:modelValue', val: Paper|null): void
+}>()
+
+const localSelected = computed({
+  get: () => props.modelValue,
+  set: (val: Paper|null) => emit('update:modelValue', val)
+})
 
 const formattedDate = computed(() => {
   if (!localSelected.value) return ''
   const d = new Date(localSelected.value.published_date)
   return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',   // February
-    day: 'numeric',  // 24
+    year: 'numeric', month: 'long', day: 'numeric'
   })
 })
 watch(
   () => props.papers,
-  () => { localSelected.value = null }
+  () => { localSelected.value = props.modelValue }
 )
 </script>
 <style scoped>
