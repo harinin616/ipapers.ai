@@ -180,7 +180,7 @@
               </span>
             </h3>
             <div v-if="category.papers && category.papers.length > 0" class="papers-list">
-              <PaperCard 
+              <SimplePaperCard 
                 v-for="(rawPaper, index) in category.papers" 
                 :key="rawPaper.arxiv_id || index" 
                 :paper="convertToPaper(rawPaper)" 
@@ -198,7 +198,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import PaperCard from '../components/PaperCard.vue'
+import SimplePaperCard from '../components/SimplePaperCard.vue'
 import type { Paper } from '../types/paper'
 
 // Enhanced type definitions for the new data structure
@@ -1329,8 +1329,8 @@ onUnmounted(() => {
   scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
-/* Ensure paper cards in daily feed use natural size like home page */
-.papers-list .paper-card {
+/* Ensure simple paper cards in daily feed use natural size */
+.papers-list .simple-paper-card {
   height: auto !important; /* Override any height constraints */
   min-height: auto !important;
   max-height: none !important;
