@@ -1268,7 +1268,7 @@ onUnmounted(() => {
 .papers-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.25rem;
   overflow-y: auto;
   flex: 1;
   padding-right: 0.5rem;
