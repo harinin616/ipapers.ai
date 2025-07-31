@@ -365,22 +365,27 @@ async def main():
         logger.info(f"Inserted {len(added_db_ids)} papers, skipped {skipped} already-exists.")
         logger.info(f"Added {len(added_db_ids)} new papers to database")
         
-        # Add papers to vector search index
-        await vector_search_service.add_papers(papers)
-        logger.info(f"Added {len(papers)} papers to vector search index")
+        # Add papers to vector search inde
         
-        # Generate embeddings for new papers
-        if added_db_ids:
-            logger.info(f"Generating embeddings for {len(added_db_ids)} new papers")
-            for paper_id in added_db_ids:
-                try:
-                    success = await pdf_service.generate_embeddings_for_paper(paper_id)
-                    if success:
-                        logger.info(f"Generated embeddings for paper {paper_id}")
-                    else:
-                        logger.warning(f"Failed to generate embeddings for paper {paper_id}")
-                except Exception as e:
-                    logger.error(f"Error generating embeddings for paper {paper_id}: {e}", exc_info=True)
+        new_papers = [p for p in papers if p.paper_id in added_db_ids]
+
+        if new_papers:
+            await vector_search_service.add_papers(new_papers)
+        else:
+            logger.info(f"Batch {len(papers)}: no new papers for vector index, skipping add_papers()")
+        logger.info(f"Added {len(new_papers)} papers to vector search index")
+        
+        logger.info(f"Generating embeddings for {len(added_db_ids)} new papers")
+        for p in papers:
+            try:
+                paper_id = p.paper_id
+                success = await pdf_service.generate_embeddings_for_paper(paper_id)
+                if success:
+                    logger.info(f"Generated embeddings for paper {paper_id}")
+                else:
+                    logger.warning(f"Failed to generate embeddings for paper {paper_id}")
+            except Exception as e:
+                logger.error(f"Error generating embeddings for paper {paper_id}: {e}", exc_info=True)
         
         logger.info(f"Successfully processed {len(papers)} papers from {conference.upper()} {year}")
         

@@ -280,6 +280,20 @@ class PdfService:
             all_embeddings = await llm_service.get_embeddings(
                 texts=chunks
             )
+            if all_embeddings is None:
+                logger.error(f"Embedding service returned None for paper {paper_id}")
+                return False
+
+            if not isinstance(all_embeddings, (list, tuple)):
+                logger.error(
+                    f"Embedding service returned an unexpected type "
+                    f"{type(all_embeddings)} for paper {paper_id}"
+                )
+                return False
+
+            if not all_embeddings:  # 空列表
+                logger.error(f"No embeddings generated for paper {paper_id}")
+                return False
 
             
             if len(all_embeddings) != len(chunks):

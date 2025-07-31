@@ -55,8 +55,18 @@ const routes: Array<RouteRecordRaw> = [
     meta: {
       title: 'Related Work Forum - iPapers',
       requiresAuth: false
-    }
+    },
+      props: { folderId: null } 
   },
+
+    /* 带参数：真正打开某个文件夹 */
+    {
+      path: '/rwf/:folderId(\\d+)',
+      name: 'shareFolder',
+      component: () => import('@/views/ShareView.vue'),
+      props: route => ({ folderId: Number(route.params.folderId) })   // 动态传
+    },
+
   {
     path: '/chat',
     name: 'chat',
@@ -147,8 +157,7 @@ const routes: Array<RouteRecordRaw> = [
       title: 'User Profile - iPapers',
       requiresAuth: false
     }
-  }
-
+  },
 ]
 
 // Create router instance

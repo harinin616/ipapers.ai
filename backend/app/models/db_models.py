@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID,JSONB
 from pgvector.sqlalchemy import Vector
 import uuid
+from sqlalchemy import event
 
 
 Base = declarative_base()
@@ -209,25 +210,34 @@ class DBSharedFolder(Base):
     __tablename__ = "shared_folders"
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
-    folder_id  = Column(Integer,
-                        ForeignKey("folders.id", ondelete="CASCADE"),
-                        nullable=False)
-    owner_id   = Column(UUID(as_uuid=True),
-                        ForeignKey("users.id", ondelete="CASCADE"),
-                        nullable=False)
-    is_public  = Column(Boolean, nullable=False,
-                        server_default=sa.text("true"))
-    created_at = Column(DateTime, nullable=False,
-                        default=datetime.utcnow)
+    folder_id  = Column(Integer, ForeignKey("folders.id", ondelete="CASCADE"), nullable=False)
+    owner_id   = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    is_public  = Column(Boolean, nullable=False, server_default=sa.text("true"))
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # 新增字段：概要，可为空
     summary    = Column(Text, nullable=True)
+
+    # ⭐ 新增字段：可访问用户列表（ARRAY<uuid>）
+    allowed_user_ids = Column(
+        ARRAY(UUID(as_uuid=True)),                        # 列类型
+        nullable=False,
+        server_default=sa.text("ARRAY[]::uuid[]")        # PG 侧空数组默认
+    )
 
     folder = relationship("DBFolder")
     owner  = relationship("DBUser")
 
     def __repr__(self):
         return f"<Share#{self.id} → Folder {self.folder_id}>"
+
+# ---- 自动把 owner_id 塞进 allowed_user_ids -------------------------
+@event.listens_for(DBSharedFolder, "before_insert")
+def _add_owner_to_allowed(mapper, connection, target):
+    if target.allowed_user_ids is None or len(target.allowed_user_ids) == 0:
+        target.allowed_user_ids = [target.owner_id]
+    elif target.owner_id not in target.allowed_user_ids:
+        target.allowed_user_ids.append(target.owner_id)
 
 
 

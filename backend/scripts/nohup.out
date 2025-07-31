@@ -64,3 +64,17 @@ Traceback (most recent call last):
   File "<frozen importlib._bootstrap_external>", line 1155, in get_code
   File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
 KeyboardInterrupt
+2025-07-30 01:06:07,118 - faiss.loader - INFO - Loading faiss with AVX512 support.
+2025-07-30 01:06:07,142 - faiss.loader - INFO - Successfully loaded faiss with AVX512 support.
+2025-07-30 01:06:07,146 - faiss - INFO - Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+2025-07-30 01:06:07,147 - app.services.vector_search_service - INFO - VectorSearchService initialized
+2025-07-30 01:06:07,247 - app.services.vector_search_service - INFO - Loaded FAISS index with 35214 vectors and 35214 IDs.
+usage: fetch_papers.py [-h] [--days DAYS]
+fetch_papers.py: error: argument --days: expected one argument
+2025-07-30 01:07:04,360 - faiss.loader - INFO - Loading faiss with AVX512 support.
+2025-07-30 01:07:04,384 - faiss.loader - INFO - Successfully loaded faiss with AVX512 support.
+2025-07-30 01:07:04,389 - faiss - INFO - Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+2025-07-30 01:07:04,389 - app.services.vector_search_service - INFO - VectorSearchService initialized
+2025-07-30 01:07:04,491 - app.services.vector_search_service - INFO - Loaded FAISS index with 35214 vectors and 35214 IDs.
+usage: fetch_papers.py [-h] [--days DAYS]
+fetch_papers.py: error: argument --days: expected one argument
