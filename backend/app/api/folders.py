@@ -213,8 +213,8 @@ async def regenerate_folder_summary(
 ):
     try:
         tmp=await db_service.get_files_by_folder_id(folder_id)
-        message="please summarize the following files together in one paragraph:\n"+ "".join(
-            f"Title: {file['title']}\nAbstract: {file['abstract']}\n" for file in tmp
+        message="please summarize the following files together in one paragraph. When mentioning specific papers, use citations in the format [1], [2], etc., where the number corresponds to the order of the papers below:\n"+ "".join(
+            f"Paper id: [{i+1}] Title: {file['title']}\nAbstract: {file['abstract']}\n" for i, file in enumerate(tmp)
         )
         api_messages = [
             {"role": "system", "content": "You are a helpful assistant that summarizes academic papers."},

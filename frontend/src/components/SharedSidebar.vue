@@ -67,13 +67,30 @@
 
   <!-- 指定用户输入框 -->
   <div v-if="panel.mode === 'specific'" class="users-input">
-    <textarea v-model="panel.usersText"
-              placeholder="Please enter the user email you want to share with."></textarea>
+  <!-- 单行输入 + Add -->
+  <div class="add-user-row">
+    <input v-model="panel.emailToAdd"
+           placeholder="user@example.com"
+           class="email-input" />
+    <button class="primary small"
+            :disabled="!panel.emailToAdd.trim()"
+            @click="addUser">
+      Add
+    </button>
   </div>
 
+  <!-- 已添加邮箱 -->
+  <ul class="users-list" v-if="panel.existing.length">
+    <li v-for="mail in panel.existing" :key="mail">
+      {{ mail }}
+      <button class="delete-user" @click="removeUser(mail)">✖</button>
+    </li>
+  </ul>
+</div>
+
   <div class="btn-row">
-    <button class="primary" @click="savePermission">Save</button>
-    <button class="danger"  @click="confirmDelete">Delete folder</button>
+    <button class="primary" @click="saveMode">Save</button>
+    <button class="danger" @click.stop="confirmDelete">Delete folder</button>
   </div>
 </div>
 
@@ -81,7 +98,7 @@
 
 <script setup lang="ts">
 import { reactive,ref, defineProps, defineEmits } from 'vue'
-
+import api from '../services/api'
 interface ShareMeta {
   folder_id: number
   owner_id : string
@@ -106,7 +123,16 @@ const emit = defineEmits<{
   (e:'load-papers', folder_id:number): void
   (e:'select', paper_id:string): void
   (e:'remove', folder_id:number): void
+  (e: 'update-mode', payload: { folder_id: number; is_public: boolean }): void
 }>()
+
+function saveMode() {
+  emit('update-mode', {
+    folder_id: panel.fid,
+    is_public: panel.mode === 'public',
+  })
+  panel.visible = false
+}
 
 function selectPaper(pid: string) {
   emit('select', pid)            // 告诉父组件
@@ -134,14 +160,41 @@ const panel = reactive({
   fid    : 0,
   mode   : 'public' as 'public' | 'specific',
   usersText: '',
-  style  : {} as Record<string,string>   // { left:'', top:'' }
+  existing: [] as string[],
+  style  : {} as Record<string,string>,   // { left:'', top:'' }
+  emailToAdd: '',
 })
 
-function openSetting(fid:number, e:MouseEvent){
+async function addUser() {
+  const email = panel.emailToAdd.trim()
+  if (!email) return
+  try {
+    await api.addShareUser(panel.fid, email)   // POST /api/share/{fid}/user
+    panel.existing.push(email)
+    panel.emailToAdd = ''
+  } catch (e) {
+    console.error(e)
+    alert('Failed to add user')
+  }
+}
+
+/* 移除用户邮箱 */
+async function removeUser(email: string) {
+  try {
+    await api.removeShareUser(panel.fid, email) // DELETE /api/share/{fid}/user/{email}
+    panel.existing = panel.existing.filter(m => m !== email)
+  } catch (e) {
+    console.error(e)
+    alert('Failed to remove user')
+  }
+}
+
+async function openSetting(fid:number, e:MouseEvent){
   panel.fid = fid
   panel.visible = true
   panel.mode = 'public'
   panel.usersText = ''
+  panel.existing = [] 
   // 定位到按钮正下方
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
   panel.style = {
@@ -150,6 +203,15 @@ function openSetting(fid:number, e:MouseEvent){
   }
   // 监听点击外部关闭
   document.addEventListener('click', onClickOutside, { once:true })
+    try {
+    const perm = await api.getSharePermission(fid)      // 见之前回
+    panel.existing  = perm       // 👈 填到只读列表
+    panel.mode = await api.getShareMode(fid) ? 'public' : 'specific' // 获取当前模式
+
+    // 可选：如果你想 textarea 里只编辑“新增”用户，就保持空；
+    // 如果想直接可编辑，把这行打开：
+    // panel.usersText = perm.users.join('\n')
+  } catch (e) { console.error(e) }
 }
 function onClickOutside(evt:MouseEvent){
   if(!(evt.target as HTMLElement).closest('.setting-pop')){
@@ -319,4 +381,24 @@ function confirmDelete(){
   position:absolute;left:-.35rem;top:0;bottom:0;width:3px;
   background:#6366f1;border-radius:0 3px 3px 0;
 }
+.users-list{
+  margin:.5rem 0 0; padding:0; list-style:none;
+}
+.users-list li{
+  font-size:.85rem; color:#374151;
+  padding:.12rem 0;
+}
+.add-user-row{
+  display:flex; gap:.4rem; align-items:center; margin-bottom:.4rem;
+}
+.email-input{
+  flex:1; padding:.3rem .5rem; border:1px solid #d1d5db; border-radius:4px;
+  font-size:.85rem;
+}
+.primary.small{ padding:.3rem .7rem; font-size:.8rem; }
+.delete-user{
+  background:none; border:none; color:#ef4444; cursor:pointer; margin-left:.5rem;
+}
+.delete-user:hover{ color:#b91c1c; }
+
 </style>

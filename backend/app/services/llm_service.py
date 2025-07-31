@@ -313,10 +313,35 @@ class LLMService:
              logger.error(f"Unknown error occurred when calling LLM API (Embeddings): {e.__class__.__name__} - {e}")
              return None
 
+    # llm_service.py
+    from typing import Sequence, List, Union
+    import torch
+
+    TextLike = Union[str, dict]  # 你也可能收到 dict
+
+    def _norm(self, texts: Sequence[TextLike]) -> List[str]:
+        """
+        只留下非空字符串；若元素是 dict，则用其 'text' 字段。
+        """
+        normed: List[str] = []
+        for i, t in enumerate(texts):
+            if isinstance(t, str):
+                s = t.strip()
+            elif isinstance(t, dict) and 'text' in t and isinstance(t['text'], str):
+                s = t['text'].strip()
+            else:
+                # 记录一下是哪条脏数据，然后跳过
+                logger.warning(f"Skip invalid chunk at idx {i}: {repr(t)[:120]}")
+                continue
+            if s:                      # 过滤空白
+                normed.append(s)
+        return normed
+
     async def get_embeddings(
         self,
         texts: List[str]
     ) -> Optional[List[List[float]]]:
+        texts = self._norm(texts)           # ★ 先归一化
         if not texts:
             return []
             

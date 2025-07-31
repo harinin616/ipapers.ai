@@ -18,7 +18,7 @@ from app.db.database import get_async_db
 from app.services.llm_service import llm_service 
 from app.services.extract_info import paper_info_extractor
 
-
+from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -1493,8 +1493,8 @@ class DBService:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create shared folder"
         )
-    
-    async def get_shared_folders(self) -> list[dict]:
+
+    async def get_shared_folders(self, user_id: uuid.UUID) -> list[dict]:
         """
         返回 [{share_id, folder_name, file_cnt, created_at}, ...]
         """
@@ -1506,6 +1506,15 @@ class DBService:
                     )
                 )
                 shared: list[DBSharedFolder] = result.scalars().all()
+                tmp=[]
+                for sf in shared:
+                    print(sf.is_public, user_id, sf.owner_id, sf.allowed_user_ids)
+                    if sf.is_public:  # 只返回公开的共享文件夹
+                        tmp.append(sf)
+                    elif str(user_id) == str(sf.owner_id):  # 只返回用户自己的共享文件夹
+                        tmp.append(sf)
+                    elif str(user_id) in str(sf.allowed_user_ids):  # 只返回用户有权限的共享文件夹
+                        tmp.append(sf)
 
                 return [
                     {
@@ -1517,7 +1526,7 @@ class DBService:
                         "folder_name": sf.folder.name if sf.folder else "Unknown",
                         "file_cnt":   len(sf.folder.files) if sf.folder else 0,
                     }
-                    for sf in shared
+                    for sf in tmp
                 ]
 
             except Exception as e:
@@ -1809,5 +1818,214 @@ class DBService:
                 return False
 
         return False
+
+    async def get_share_permission(self, folder_id: int) -> List[str]:
+        """
+        把 shared_folders.allowed_user_ids 映射成邮箱列表。
+
+        - 文件夹不存在 → 404
+        - is_public=True 或名单为空 → 返回 []
+        """
+        async for db in get_async_db():      # type: AsyncSession
+            try:
+                # ① 取 allowed_user_ids & is_public
+                stmt = select(
+                    DBSharedFolder.is_public,
+                    DBSharedFolder.allowed_user_ids
+                ).where(DBSharedFolder.folder_id == folder_id)
+
+                res = await db.execute(stmt)
+                row = res.one_or_none()
+
+                if row is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Shared folder #{folder_id} not found",
+                    )
+
+                is_public, allowed_ids = row
+                allowed_ids: List[UUID] = allowed_ids or []
+
+                if not allowed_ids:
+                    return []
+
+                # ② 根据 UUID -> email
+                email_res = await db.execute(
+                    select(DBUser.email).where(DBUser.id.in_(allowed_ids))
+                )
+                emails = [e for (e,) in email_res.all()]
+                return emails
+
+            except SQLAlchemyError as e:
+                logger.error(f"DB error in get_share_permission: {e}")
+                return []
+
+        return []       # 理论上不会到达
+
+    async def update_share_mode(
+        self,
+        folder_id: int,        # ← 原始 folder_id，而非 shared_folders.id
+        is_public: bool
+    ) -> bool:
+        """
+        更新共享文件夹的公开状态（is_public）。
+        返回 True 表示更新成功；False 表示未找到或出错。
+        """
+        async for db in get_async_db():
+            try:
+                # ① 用 folder_id 字段查询（假设唯一）
+                stmt = select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                res = await db.execute(stmt)
+                shared_folder: DBSharedFolder | None = res.scalar_one_or_none()
+
+                if not shared_folder:
+                    logger.info(f"Shared folder with folder_id={folder_id} not found")
+                    return False
+
+                # ② 更新 is_public
+                shared_folder.is_public = is_public
+                await db.commit()
+
+                logger.info(
+                    f"Updated share mode for folder_id={folder_id} → is_public={is_public}"
+                )
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(
+                    f"DB error updating share mode for folder_id={folder_id}: {e}"
+                )
+                return False
+
+            except Exception as e:
+                await db.rollback()
+                logger.error(
+                    f"Unexpected error updating share mode for folder_id={folder_id}: {e}",
+                    exc_info=True,
+                )
+                return False
+
+        return False   # 理论上不会走到这里
+
+    async def get_share_mode(self, folder_id: int) -> bool:
+        """
+        获取共享文件夹的公开状态（is_public）。
+        返回 True 表示公开；False 表示私有。
+        """
+        async for db in get_async_db():
+            try:
+                stmt = select(DBSharedFolder.is_public).where(DBSharedFolder.folder_id == folder_id)
+                res = await db.execute(stmt)
+                is_public = res.scalar_one_or_none()
+                return is_public
+
+            except SQLAlchemyError as e:
+                logger.error(f"DB error getting share mode for folder_id={folder_id}: {e}")
+                return False
+
+            except Exception as e:
+                logger.error(f"Unexpected error getting share mode for folder_id={folder_id}: {e}", exc_info=True)
+                return False
+
+
+    async def add_share_user(self, folder_id: int, user_id: uuid.UUID) -> bool:
+        """
+        向共享文件夹的 `allowed_user_ids` 中追加一个用户。
+        - 找不到 folder_id      → False
+        - 用户已在名单内        → False
+        - 其它异常 / 回滚失败    → False
+        - 成功写入并 commit     → True
+        """
+        async for db in get_async_db():                 # type: AsyncSession
+            try:
+                # ① 仍然按 folder_id 字段查询，而非主键
+                stmt = select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                res = await db.execute(stmt)
+                shared: DBSharedFolder | None = res.scalar_one_or_none()
+
+                if shared is None:
+                    logger.info(f"Shared folder with folder_id={folder_id} not found")
+                    return False
+
+                # ② 若列为 NULL，先初始化
+                if shared.allowed_user_ids is None:
+                    shared.allowed_user_ids = []
+
+                # ③ 幂等性检查
+                if user_id in shared.allowed_user_ids:
+                    logger.info(f"User {user_id} already exists in folder {folder_id}")
+                    return False
+
+        
+                new_ids = (shared.allowed_user_ids or []) + [user_id]
+                shared.allowed_user_ids = new_ids          # ★ 重新赋值，ORM 能检测到
+                await db.commit()
+
+                logger.info(f"Added user {user_id} to shared folder {folder_id}")
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error adding user {user_id} to folder {folder_id}: {e}")
+                return False
+
+            except Exception as e:
+                await db.rollback()
+                logger.error(
+                    f"Unexpected error adding user {user_id} to folder {folder_id}: {e}",
+                    exc_info=True,
+                )
+                return False
+
+        return False    # 理论上不会走到这里
+
+    async def remove_share_user(self, folder_id: int, user_id: uuid.UUID) -> bool:
+        """
+        从共享文件夹的 `allowed_user_ids` 中移除一个用户（无需 MutableList）。
+        - 找不到 folder_id          → False
+        - 用户本就不在名单内        → False
+        - 其它异常 / 回滚失败        → False
+        - 成功写入并 commit         → True
+        """
+        async for db in get_async_db():                 # type: AsyncSession
+            try:
+                # ① 用 folder_id 字段查询
+                stmt = select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                res = await db.execute(stmt)
+                shared: DBSharedFolder | None = res.scalar_one_or_none()
+
+                if shared is None:
+                    logger.info(f"Shared folder with folder_id={folder_id} not found")
+                    return False
+
+                curr_ids = shared.allowed_user_ids or []
+
+                if user_id not in curr_ids:
+                    logger.info(f"User {user_id} not in folder {folder_id}")
+                    return False
+
+                # ② 重新构造新列表并赋值（ORM 能检测到变化）
+                shared.allowed_user_ids = [uid for uid in curr_ids if uid != user_id]
+
+                # ③ 提交
+                await db.commit()
+                logger.info(f"Removed user {user_id} from shared folder {folder_id}")
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error removing user {user_id} from folder {folder_id}: {e}")
+                return False
+
+            except Exception as e:
+                await db.rollback()
+                logger.error(
+                    f"Unexpected error removing user {user_id} from folder {folder_id}: {e}",
+                    exc_info=True,
+                )
+                return False
+
+        return False    # 理论上不会走到这里
 # Create a global instance
 db_service = DBService() 

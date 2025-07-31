@@ -92,23 +92,28 @@ async def fetch_papers(days=None):
             
             if not added_db_ids:
                 logger.info(f"No new papers in batch {batch_num} added to DB. All papers already exist.")
-    
-            await vector_search_service.add_papers(batch_papers)
+
+            new_papers = [p for p in batch_papers if p.paper_id in added_db_ids]
+
+            if new_papers:
+                await vector_search_service.add_papers(new_papers)
+            else:
+                logger.info(f"Batch {batch_num}: no new papers for vector index, skipping add_papers()")
             total_added_db += len(added_db_ids)
             logger.info(f"Batch {batch_num}: Fetched {len(batch_papers)} papers, added {len(added_db_ids)} new papers to DB and vector search.")
 
             # --- 新增：生成 embeddings ---
-            if added_db_ids:
-                logger.info(f"Generating embeddings for {len(added_db_ids)} new papers")
-                for pid in added_db_ids:
-                    try:
-                        ok = await pdf_service.generate_embeddings_for_paper(pid)
-                        if ok:
-                            logger.info(f"Generated embeddings for paper {pid}")
-                        else:
-                            logger.warning(f"Failed to generate embeddings for paper {pid}")
-                    except Exception as e:
-                        logger.error(f"Error generating embeddings for paper {pid}: {e}", exc_info=True)
+            logger.info(f"Generating embeddings for {len(batch_papers)} new papers")
+            for p in batch_papers:
+                try:
+                    pid= p.paper_id
+                    ok = await pdf_service.generate_embeddings_for_paper(pid)
+                    if ok:
+                        logger.info(f"Generated embeddings for paper {pid}")
+                    else:
+                        logger.warning(f"Failed to generate embeddings for paper {pid}")
+                except Exception as e:
+                    logger.error(f"Error generating embeddings for paper {pid}: {e}", exc_info=True)
             # ---------------------------
 
             current_end_date = current_start_date - timedelta(days=1)

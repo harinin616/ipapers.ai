@@ -84,6 +84,10 @@ export interface IApiService {
   delete_shared_comment(cid: number): Promise<void>;
   get_summary(folderId: number): Promise<string | null>;
   regen_summary(folderId: number): Promise<string | null>;
+  getSharePermission(fid:number): Promise<string[]>;
+  updateShareMode(folderId: number, is_public: boolean): Promise<void>;
+  addShareUser(folderId: number, email: string): Promise<void>;
+  removeShareUser(folderId: number, email: string): Promise<void>;
 }
 /**
  * API Service implementation
@@ -704,7 +708,8 @@ async get_shared_folders(): Promise<any[]> {
   }
   async get_shared_comments(folderId: number): Promise<any[]> {
     try{
-      const resp=await this.api.get(`api/comments/shared/${folderId}`)
+      console.log('Fetching shared comments for folder ID:', folderId)
+      const resp=await this.api.get(`/api/comments/shared/${folderId}`)
       return resp.data
     }catch(error){
       console.error('Failed to get shared comments:', error)
@@ -749,6 +754,48 @@ async get_shared_folders(): Promise<any[]> {
       return resp.data?.summary ?? null;
     } catch (error) {
       console.error('Failed to regenerate folder summary:', error);
+      throw error;
+    }
+  }
+  async getSharePermission(fid:number): Promise<string[]> {
+    try {
+      const resp = await this.api.get(`/api/forum/${fid}/permission`);
+      return resp.data;
+    } catch (error) {
+      console.error('Failed to get share permission:', error);
+      throw error;
+    }
+  }
+  async updateShareMode(folderId: number, is_public: boolean): Promise<void> {
+    try {
+      await this.api.patch(`/api/forum/${folderId}/mode`, { is_public });
+    } catch (error) {
+      console.error('Failed to update share mode:', error);
+      throw error;
+    }
+  }
+  async getShareMode(folderId: number): Promise<boolean> {
+    try {
+      const resp = await this.api.get(`/api/forum/${folderId}/mode`);
+      return resp.data;
+    } catch (error) {
+      console.error('Failed to get share mode:', error);
+      throw error;
+    }
+  }
+  async addShareUser(folderId: number, email: string): Promise<void> {
+    try {
+      await this.api.post(`/api/forum/${folderId}/add_user`, { email });
+    } catch (error) {
+      console.error('Failed to add share user:', error);
+      throw error;
+    }
+  }
+  async removeShareUser(folderId: number, email: string): Promise<void> {
+    try {
+      await this.api.delete(`/api/forum/${folderId}/remove_user`, { data: { email } });
+    } catch (error) {
+      console.error('Failed to remove share user:', error);
       throw error;
     }
   }

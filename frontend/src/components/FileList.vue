@@ -41,20 +41,28 @@
     
     <div v-if="!showPdf || !currentPdfUrl" class="pdf-files-panel">
       <div class="panel-header">
-        <h3>File List</h3>
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <button class="new-folder-btn" @click="handleNewFolder" title="New Folder">
-               New Folder
+          <h3>File List</h3>
+
+          <!-- 统一放到 .panel-actions 容器中 -->
+          <div class="panel-actions">
+            <button class="btn new-folder" @click="handleNewFolder" title="New Folder">
+              New
             </button>
-          <!-- <button class="share-btn" @click="shareList" title="Share file list">
-           Share
-          </button>-->
-            <router-link to="/chat" class="chat-button-inside-sidebar">
+
+            <!-- Upload：使用 label + input 隐藏原生样式 -->
+          <!-- <label class="btn upload">
+              Upload
+              <input type="file" multiple hidden @change="handleUpload" />
+            </label>--> 
+
+            <router-link to="/chat" class="btn chat">
               Chat
-          </router-link>
-        <button class="close-btn" @click="toggleFilesList">×</button>
-      </div>
-       </div>
+            </router-link>
+
+            <button class="close-btn" @click="toggleFilesList">×</button>
+          </div>
+        </div>
+
 
        
       <div class="folders-list">
@@ -179,18 +187,28 @@
     </div>
     <transition name="fade">
 
-  <div v-if="showShareModal" class="confirm-overlay">
-    <div class="confirm-box">
-      <p>
-        Do you want to post it to the public Forum now?
-      </p>
+    <div v-if="showShareModal" class="confirm-overlay">
+      <div class="confirm-box">
+        <p>Choose the sharing mode:</p>
 
-      <div class="btn-row">
-        <button class="btn primary" @click="confirmShare">Confirm</button>
-        <button class="btn outline"  @click="cancelShare">Cancel</button>
+        <div class="btn-row">
+          <button class="btn primary"
+                  @click="confirmShare(true)">
+            Public
+          </button>
+
+          <button class="btn primary"
+                  @click="confirmShare(false)">
+            Private
+          </button>
+
+          <button class="btn outline"
+                  @click="cancelShare">
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
-  </div>
 </transition>
     
   </div>
@@ -252,16 +270,31 @@ export default defineComponent({
       pendingShare = { folder };
       showShareModal.value = true;     // open the 2‑button dialog
     };
+const handleUpload = async (e: Event) => {
+  const files = (e.target as HTMLInputElement).files
+  if (!files || !files.length) return
+
+  try {
+    // 👉 这里按你的接口实现批量上传
+    for (const f of Array.from(files)) {
+      await api.upload_file(f)          // 假设存在该接口
+    }
+    await loadFolders()                 // 刷新列表
+  } catch (err) {
+    console.error('upload failed', err)
+    alert('Upload failed, please retry.')
+  }
+}
 
   /* ---------- modal handlers ---------- */
-  const confirmShare = async () => {
+  const confirmShare = async (isPublic: boolean) => {
     if (!pendingShare) return;
 
     try {
       /* 1) 向后端创建 shared_folders 记录 */
       await api.share_folder({
         folder_id: Number(pendingShare.folder.id), // ⬅ 保证是整数
-        is_public: true,                             // ⬅ 布尔
+        is_public: isPublic,                             // ⬅ 布尔
       });
       window.dispatchEvent(new Event('share-folder-success'))
     } catch (e) {
@@ -902,19 +935,7 @@ const cancelEditFolder = () => {
   .files-sidebar { height: 380px; }
 }
 
-.chat-button-inside-sidebar {
-  background-color: #3f51b5;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  text-decoration: none;
-  transition: background-color 0.2s ease;
-}
 
-.chat-button-inside-sidebar:hover {
-  background-color: #303f9f;
-}
 .confirm-overlay {
   position: fixed; top: 0; left: 0; right:0; bottom:0;
   background: rgba(0,0,0,0.3);
@@ -1144,5 +1165,76 @@ const cancelEditFolder = () => {
   to   { opacity:1; transform:none; }
 }
 
+.btn-row { display: flex; gap: .6rem; justify-content: center; }
+.btn.primary     { background:#3b82f6; color:#fff; }
+.btn.primary:hover { background:#2563eb; }
+.btn.outline     { border:1px solid #d1d5db; color:#374151; }
+
+/* 按钮容器 */
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 通用按钮基类 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: #fff;
+}
+
+/* 具体色系 */
+.btn.new-folder { background: #4caf50; }       /* 绿色 */
+.btn.upload    { background: #ff9800; }        /* 橙色 */
+.btn.chat      { background: #3f51b5; }        /* 蓝紫色 */
+
+.btn.new-folder:hover { background: #43a047; }
+.btn.upload:hover    { background: #fb8c00; }
+.btn.chat:hover      { background: #303f9f; }
+
+/* 隐藏原生 file input */
+.btn.upload input[type="file"] {
+  display: none;
+}
+
+/* === Panel 顶部工具按钮统一样式 === */
+.btn {
+  /* 让 <a> 也当按钮渲染 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 统一尺寸：30 × 30 px，稍微小一点 */
+  height: 30px;
+  padding: 0 10px;        /* 左右小些即可 */
+  font-size: 0.8rem;
+
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+
+  /* 重要：去掉 a 默认下划线 */
+  text-decoration: none;
+
+  color: #fff;
+  transition: background 0.18s;
+}
+
+/* 颜色仍然按原来的 3 个类区分 */
+.btn.new-folder { background: #4caf50; }
+.btn.upload     { background: #ff9800; }
+.btn.chat       { background: #3f51b5; }
+
+.btn.new-folder:hover { background:#43a047; }
+.btn.upload:hover     { background:#fb8c00; }
+.btn.chat:hover       { background:#303f9f; }
 
 </style> 

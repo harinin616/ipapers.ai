@@ -1,0 +1,1 @@
+/home/ec2-user/miniconda3/bin/python fetch_papers.py --days 100000 > logs/output.log 2>&1 &

@@ -1,4 +1,4 @@
-<template>
+<template> 
   <div ref="container" class="graph3d">>
   </div>
 </template>
@@ -8,7 +8,13 @@ import ForceGraph3D from '3d-force-graph'
 import * as THREE from 'three'
 import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import * as d3 from 'd3-force'
+import { scaleOrdinal } from 'd3-scale'
+import { schemeCategory10, schemePastel1  } from 'd3-scale-chromatic'
+const palette = schemeCategory10  // ['#1f77b4', '#ff7f0e', …]
 
+// 建一个简单的“ID→颜色”映射
+
+const colorScale = scaleOrdinal<string,string>(schemePastel1)
 export interface Paper {
   link?: string
   cites?: string[] 
@@ -104,10 +110,9 @@ function makeLabelSprite(line1: string, line2: string, radius: number) {
 
   /* ---------- 转成 Sprite ---------- */
   const tex   = new THREE.CanvasTexture(cvs)
-  const mat   = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false   })
-  
+  const mat   = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest : true })
   const spr   = new THREE.Sprite(mat)
-  spr.userData.offset = radius + 1
+  spr.userData.offset = radius + 0.1
 
   const scale = radius * 0.8 / DPR          // 整体缩放
   spr.scale.set(W / font1 * scale, H / font1 * scale, 1)
@@ -135,6 +140,8 @@ onMounted(async () => {
     .width(width)
     .height(height)
 
+  
+
     // ... nodeThreeObject/linkWidth/linkColor 等保持不变 ...
 
   // 1. 让布局中心是容器正中央
@@ -160,22 +167,26 @@ onMounted(async () => {
 
   // 球
   const radius = THREE.MathUtils.mapLinear(n.val, 2, 50, 10, 25)
+
+   const clr = colorScale((n.id).toString())   
   const sphere = new THREE.Mesh(
     new THREE.SphereGeometry(radius, 32, 32),
-    getSphereMat(new THREE.Color().setHSL(Math.random(), 0.6, 0.5).getStyle())
+    getSphereMat(clr)
   )
+  group.add(sphere)
+
+   const sprite = makeLabelSprite(n.line1, n.line2, radius)
+  // **用真·半径做上方偏移**，比如贴在球顶端稍上
+  sprite.position.set(0, 0, 0)
+  // 存偏移
+  sprite.userData.offset = radius + 2
+  group.add(sphere)
+  group.add(sprite)
 
 
-  sphere.renderOrder = 0
-group.add(sphere)
-
-// 标签
-const spr = makeLabelSprite(n.line1, n.line2, radius)
-spr.renderOrder = 1    // ★ 在本球之后绘制，但仍参与深度测试
-group.add(spr)
   return group
 })
-.nodeThreeObjectExtend(true)   
+.nodeThreeObjectExtend(false)
 
 
     // --- 粗实线条 ---
@@ -186,34 +197,9 @@ group.add(spr)
     // 点击节点打开链接
       .onNodeClick((n: any) => {
         emit('update:modelValue', n.paper || null)
+          emit('node-click', n.paper || null)
          focusNode(n)
       })
-// 让每帧都把标签推到球正前方
-graphInst.scene().onBeforeRender = (_, __, camera) => {
-  const camPos = camera.position
-
-  graphInst.graphData().nodes.forEach((n: any) => {
-    const grp = n.__threeObj           // ForceGraph 给每个节点挂的 Group
-    if (!grp) return
-
-    // 找到 Group 里的 Sprite（假定你只有 球 + sprite 两个孩子）
-    const sprite = grp.children.find((c: any) => c.isSprite)
-    if (!sprite) return
-
-    // 球心的世界坐标
-    const worldPos = new THREE.Vector3()
-    grp.getWorldPosition(worldPos)
-
-    // 方向：球心 → 相机
-    const dir = new THREE.Vector3().subVectors(camPos, worldPos).normalize()
-
-    // 把 sprite 放到球面正向相机处
-   const targetW = worldPos.clone().add(dir.multiplyScalar(sprite.userData.offset)) // 世界坐标
-const targetL = grp.worldToLocal(targetW)     // ★ 转回 group 局部坐标
-sprite.position.copy(targetL)
-
-  })
-}
 
 const scene = graphInst.scene()
 
@@ -243,10 +229,62 @@ scene.background = texture
   window.addEventListener('resize', resizeGraph)
    graphInst.d3Force('center', d3.forceCenter(0, 0, 0))
   graphInst.d3Force('gravity', d3.forceRadial(0, 0, 0).strength(0.005))
-  
-  
-})
 
+ graphInst.onEngineTick(() => {
+  const camPos = graphInst.cameraPosition()!
+  graphInst.scene().traverse(obj => {
+    if ((obj as any).isSprite) {
+      const sprite = obj as THREE.Sprite
+      const group = sprite.parent!
+      // 球心 world 坐标
+      const worldCenter = new THREE.Vector3()
+      group.getWorldPosition(worldCenter)
+      // 计算摄像机指向球心的向量
+      const dir = new THREE.Vector3().subVectors(camPos, worldCenter).normalize()
+      // newWorldPos = worldCenter + dir * offset
+      const newWorldPos = worldCenter.clone().add(dir.multiplyScalar(sprite.userData.offset))
+      // 转回 local
+      const newLocal = group.worldToLocal(newWorldPos)
+      sprite.position.copy(newLocal)
+      // 保证朝向摄像机
+       obj.lookAt(camPos.x, camPos.y, camPos.z)
+    }
+  })
+})
+const controls = graphInst.controls()
+  if (controls) {
+    // 每次相机有变动，就重新贴标签
+    controls.addEventListener('change', updateLabelPositions)
+    // 也可以多贴一次，确保一开始就对齐
+    updateLabelPositions()
+  }
+})
+function updateLabelPositions() {
+  const camPos = graphInst.cameraPosition()!
+  graphInst.scene().traverse(obj => {
+    if ((obj as any).isSprite) {
+      const sprite = obj as THREE.Sprite
+      const group  = sprite.parent!           // group 内含 sphere + sprite
+      const offset = sprite.userData.offset   // 你事先存好的 radius + ε
+
+      // 球心 world 坐标
+      const worldCenter = new THREE.Vector3()
+      group.getWorldPosition(worldCenter)
+
+      // 计算方向并更新位置
+      const dir = new THREE.Vector3()
+        .subVectors(camPos, worldCenter)
+        .normalize()
+      const worldPos = worldCenter.clone().add(dir.multiplyScalar(offset))
+      // 转回 local
+      const localPos = group.worldToLocal(worldPos)
+      sprite.position.copy(localPos)
+
+      // 三维 Sprite 本身就是 billboard，不用自己 lookAt
+      // sprite.lookAt(camPos.x, camPos.y, camPos.z)
+    }
+  })
+}
 watch(() => props.papers, () => {
   if (graphInst) graphInst.graphData(buildData())
 }, { deep: true })
@@ -259,6 +297,7 @@ onBeforeUnmount(() => {
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: Paper|null): void
+    (e: 'node-click', paper: Paper|null): void
 }>()
 
 // 点击节点时改成：
@@ -319,4 +358,17 @@ watch(
 .graph3d {
   position: relative;  /* 重点：限制子元素绝对定位范围 */
 }
+/* 限制画布不要超出它的父容器高度 */
+.graph3d {
+  position: relative; /* 已有 */
+  overflow: hidden;   /* 新增：隐藏超出的部分 */
+}
+
+/* 强制画布铺满容器，而不是保持最初 mount 时的固定像素高度 */
+.graph3d canvas {
+  display: block;           /* 去掉默认 inline-block 间隙 */
+  width: 100%  !important;  /* 强制撑满宽度 */
+  height: 100% !important;  /* 强制撑满高度 */
+}
+
 </style>

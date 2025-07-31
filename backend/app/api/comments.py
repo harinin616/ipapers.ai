@@ -15,7 +15,9 @@ async def get_shared_comments(
     folderId: int ,
 ):
     try:
+       # print(f"Fetching comments for folder ID: {folderId}")
         comments = await db_service.get_comments_by_folder_id(folderId)
+        #print(f"Retrieved {len(comments)} comments for folder {folderId}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return comments
