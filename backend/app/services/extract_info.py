@@ -23,6 +23,10 @@ class PaperInfoExtractor:
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
         if re.match(r'^\d{4}\.\d+v?\d*$', paper_id):
             return "arxiv"
+            
+        # 旧格式的arXiv ID: 9 digits or less, with optional 'v' followed by version number (e.g., 9510064v1)
+        if re.match(r'^\d{5,9}v?\d*$', paper_id):
+            return "arxiv"
         
         # Conference format: YYYY.venue-track.N (e.g., 2023.acl-long.2)
         if '.' in paper_id:
@@ -39,7 +43,9 @@ class PaperInfoExtractor:
         if '_' in paper_id:
             return paper_id.split('_')[0].lower()
         
-        raise ValueError(f"Cannot determine platform from paper_id format: {paper_id}")
+        # 如果无法确定，默认返回arxiv
+        logger.warning(f"Cannot determine platform from paper_id format: {paper_id}, defaulting to 'arxiv'")
+        return "arxiv"
     
     def extract_arxiv_info(self, paper_id: str) -> Tuple[str, str]:
         """
