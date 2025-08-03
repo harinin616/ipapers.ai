@@ -10,13 +10,13 @@ export interface IApiService {
   countPapers(): Promise<number>;
   searchPapers(payload: { query: string, limit?: number }): Promise<any>;
   getUserId(): Promise<string>;
-  attach_paper(paperId: string): Promise<boolean>;
-  process_embeddings(paperId: string): Promise<boolean>;
+  attach_paper(paperId: string, platform?: string): Promise<boolean>;
+  process_embeddings(paperId: string, platform?: string): Promise<boolean>;
   get_user_files(): Promise<any[]>;
-  delete_file(paper_id: string): Promise<boolean>;
+  delete_file(paper_id: string, platform?: string): Promise<boolean>;
   stream_chat(payload: { session_id: string; message: string; selected_files: string[] }): Promise<Response>;
-  get_paper(paper_id: string): Promise<boolean>;
-  click_paper(paper_id: string): Promise<boolean>;
+  get_paper(paper_id: string, platform?: string): Promise<Paper | null>;
+  click_paper(paper_id: string, platform?: string): Promise<boolean>;
   shareFiles(payload: { files: string[] }): Promise<{ share_id: string }>;
   getShare(shareId: string): Promise<{ files: string[] }>;
   clear_user_files(): Promise<void>;
@@ -47,7 +47,7 @@ export interface IApiService {
   // RWS File upload
   upload_rws_file(session_id: string, file: File): Promise<any>;
   get_rws_session_files(session_id: string): Promise<any[]>;
-  remove_rws_session_file(session_id: string, paper_id: string): Promise<any>;
+  remove_rws_session_file(session_id: string, paper_id: string, platform?: string): Promise<any>;
   add_files_to_rws_session(session_id: string, paper_ids: string[]): Promise<any>;
   
   // Graph management methods
@@ -58,7 +58,7 @@ export interface IApiService {
   complete_graph(session_id: string): Promise<any>;
   
   // Target paper management methods
-  set_target_paper(session_id: string, paper_id: string): Promise<any>;
+  set_target_paper(session_id: string, paper_id: string, platform?: string): Promise<any>;
   get_target_paper(session_id: string): Promise<{ target_paper_id: string | null }>;
   clear_target_paper(session_id: string): Promise<any>;
 
@@ -218,9 +218,12 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
-  async attach_paper(paperId: string): Promise<boolean> {
+  async attach_paper(paperId: string, platform?: string): Promise<boolean> {
     try {
-      const response = await this.api.post(`/api/chat/attach_paper`, { paper_id: paperId });
+      const response = await this.api.post(`/api/chat/attach_paper`, {
+      "paper_id": paperId,
+      "platform": platform || "arxiv"
+    });
       return response.data;
     } catch (error) {
       console.error('Failed to associate paper with chat:', error);
@@ -228,9 +231,12 @@ async get_shared_folders(): Promise<any[]> {
     } 
   }
 
-  async process_embeddings(paperId: string): Promise<boolean> {
+  async process_embeddings(paperId: string, platform?: string): Promise<boolean> {
     try {
-      const response = await this.api.post(`/api/chat/process_embeddings`, { paper_id: paperId });
+      const response = await this.api.post(`/api/chat/process_embeddings`, { 
+        paper_id: paperId,
+        platform: platform
+      });
       return response.data;
     } catch (error) {
       console.error('Failed to process embeddings:', error);
@@ -248,9 +254,13 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
-  async delete_file(paper_id: string): Promise<boolean> {
+  async delete_file(paper_id: string, platform?: string): Promise<boolean> {
     try {
-      const response = await this.api.delete(`/api/chat/files/delete/${paper_id}`);
+      let url = `/api/chat/files/delete/${paper_id}`;
+      if (platform) {
+        url += `?platform=${platform}`;
+      }
+      const response = await this.api.delete(url);
       return response.data;
     } catch (error) {
       console.error('Failed to delete file:', error);
@@ -306,9 +316,12 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
-  async get_paper(paper_id: string): Promise<boolean> {
+  async get_paper(paper_id: string, platform?: string): Promise<Paper | null> {
     try {
-      const response = await this.api.post(`/api/chat/get_paper`, { paper_id: paper_id });
+      const response = await this.api.post(`/api/chat/get_paper`, {
+        "paper_id": paper_id,
+        "platform": platform || "arxiv"
+      });
       return response.data;
     } catch (error) {
       console.error('Failed to get paper:', error);
@@ -316,9 +329,13 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
-  async click_paper(paper_id: string): Promise<boolean> {
+  async click_paper(paper_id: string, platform?: string): Promise<boolean> {
     try {
-      const response = await this.api.post(`/api/papers/click/${paper_id}`);
+      let url = `/api/papers/click/${paper_id}`;
+      if (platform) {
+        url += `?platform=${platform}`;
+      }
+      const response = await this.api.post(url);
       return response.data;
     } catch (error) {
       console.error('Failed to click paper:', error);
@@ -385,7 +402,7 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
   
-  async update_file_selection(payload: { paper_id: string; selected: boolean }): Promise<any> {
+  async update_file_selection(payload: { paper_id: string; platform?: string; selected: boolean }): Promise<any> {
     const userId = localStorage.getItem('X-User-ID');
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -572,9 +589,13 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
-  async remove_rws_session_file(session_id: string, paper_id: string): Promise<any> {
+  async remove_rws_session_file(session_id: string, paper_id: string, platform?: string): Promise<any> {
     try {
-      const response = await this.api.delete(`/api/review/sessions/${session_id}/files/${paper_id}`);
+      let url = `/api/review/sessions/${session_id}/files/${paper_id}`;
+      if (platform) {
+        url += `?platform=${platform}`;
+      }
+      const response = await this.api.delete(url);
       return response.data;
     } catch (error) {
       console.error('Failed to remove RWS session file:', error);
@@ -604,9 +625,13 @@ async get_shared_folders(): Promise<any[]> {
 
   // ============ TARGET PAPER MANAGEMENT ============
   
-  async set_target_paper(session_id: string, paper_id: string): Promise<any> {
+  async set_target_paper(session_id: string, paper_id: string, platform?: string): Promise<any> {
     try {
-      const response = await this.api.post('/api/review/target_paper', { session_id, paper_id });
+      const response = await this.api.post('/api/review/target_paper', { 
+        session_id, 
+        paper_id,
+        platform
+      });
       return response.data;
     } catch (error) {
       console.error('Failed to set target paper:', error);
@@ -676,14 +701,19 @@ async get_shared_folders(): Promise<any[]> {
     const resp = await this.api.get('/api/folders')
     return resp.data  // [{id,name,files:[...]}, ...]
   }
-  async attach_to_folder(data: { folder_id: number; paper_id: string }) {
-  return await this.api.post(`/api/folders/${data.folder_id}/attach`, {
-    paper_id: data.paper_id
+  async attach_to_folder(data: { folder_id: number; paper_id: string; platform?: string }) {
+  return await this.api.post(`/api/folders/${data.folder_id}/files`, {
+    paper_id: data.paper_id,
+    platform: data.platform
   })
 }
-  async remove_file_from_folder(folderId: number, paperId: string): Promise<boolean> {
-    const resp = await this.api.delete(`/api/folders/${folderId}/files/${paperId}`)
-    return resp.status === 204
+  async remove_file_from_folder(folderId: number, paperId: string, platform?: string): Promise<boolean> {
+    let url = `/api/folders/${folderId}/files/${paperId}`;
+    if (platform) {
+      url += `?platform=${platform}`;
+    }
+    const resp = await this.api.delete(url);
+    return resp.status === 204;
   }
   async create_folder(payload: { name: string }) {
     try {
@@ -805,6 +835,7 @@ interface ChatFile {
   file_path: string
   filename:  string
   paper_id:  string
+  platform?: string
   paper_URL: string
   added_at:  string
   folder_id: number

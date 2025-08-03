@@ -1,8 +1,8 @@
 import logging
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Union, Tuple
 from sqlalchemy.future import select
-from sqlalchemy import func, text, update, delete,insert
+from sqlalchemy import func, text, update, delete, insert, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
@@ -241,113 +241,171 @@ class DBService:
                 ))
         return papers
         
-    async def get_paper_by_id(self, paper_id: str) -> Optional[Paper]:
+    async def get_paper_by_id(self, paper_id: str, platform: str = "arxiv") -> Optional[Paper]:
         """
         get paper Object by paper_id
         """
-        logger.info(f"Looking up paper in database with ID: {paper_id}")
-        
+        logger.info(f"Looking up paper in database with ID: {paper_id}, platform: {platform}")
+
         if not paper_id:
             logger.warning("Attempted to get paper with empty ID")
             return None
             
         try:
             async for db in get_async_db():
-                try:
-                    result = await db.execute(
-                        select(DBPaper)
-                        .options(
-                            selectinload(DBPaper.authors),
-                            selectinload(DBPaper.categories)
-                        )
-                        .where(DBPaper.paper_id == paper_id)
+                # 直接join一次性查到所有需要的字段
+                stmt = (
+                    select(
+                        DBPaper,
+                        func.array_agg(distinct(DBAuthor.name)).label("authors"),
+                        func.array_agg(distinct(DBCategory.name)).label("categories")
                     )
-                    db_paper = result.scalars().first()
-                    
-                    if not db_paper:
-                        logger.info(f"Paper with ID {paper_id} not found in database")
-                        return None
-                    
-                    # Convert to API model - authors will now be in correct order due to order_by in relationship
-                    paper = Paper(
-                        paper_id=db_paper.paper_id,
-                        title=db_paper.title,
-                        authors=[author.name for author in db_paper.authors],
-                        abstract=db_paper.abstract,
-                        categories=[category.name for category in db_paper.categories],
-                        pdf_url=db_paper.pdf_url.replace("http://", "https://"),
-                        published_date=db_paper.published_date,
-                        updated_date=db_paper.updated_date
-                    )
-                    
-                    logger.info(f"success get paper: {paper.title} (ID: {paper.paper_id})")
-                    return paper
-                    
-                except SQLAlchemyError as e:
-                    logger.error(f"Database error when getting paper by ID {paper_id}: {str(e)}")
+                    .outerjoin(paper_authors, and_(
+                        paper_authors.c.paper_id == DBPaper.paper_id,
+                        paper_authors.c.platform == DBPaper.platform
+                    ))
+                    .outerjoin(DBAuthor, paper_authors.c.author == DBAuthor.name)
+                    .outerjoin(paper_categories, and_(
+                        paper_categories.c.paper_id == DBPaper.paper_id,
+                        paper_categories.c.platform == DBPaper.platform
+                    ))
+                    .outerjoin(DBCategory, paper_categories.c.category == DBCategory.name)
+                    .where(and_(DBPaper.paper_id == paper_id, DBPaper.platform == platform))
+                    .group_by(DBPaper)
+                )
+                
+                result = await db.execute(stmt)
+                record = result.first()
+                
+                if not record:
+                    logger.info(f"Paper with ID {paper_id} and platform {platform} not found in database")
                     return None
+                    
+                db_paper = record[0]
+                authors = record[1] if record[1] and record[1][0] is not None else []
+                categories = record[2] if record[2] and record[2][0] is not None else []
+                
+                paper = Paper(
+                    paper_id=db_paper.paper_id,
+                    title=db_paper.title,
+                    authors=authors,
+                    abstract=db_paper.abstract,
+                    categories=categories,
+                    pdf_url=db_paper.pdf_url,
+                    published_date=db_paper.published_date,
+                    updated_date=db_paper.updated_date,
+                    platform=db_paper.platform
+                )
+                
+                logger.info(f"success get paper: {paper.title} (ID: {paper.paper_id}, platform: {paper.platform})")
+                return paper
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when getting paper by ID {paper_id} and platform {platform}: {str(e)}")
+            return None
         except Exception as e:
-            logger.error(f"Unexpected error when getting paper by ID {paper_id}: {str(e)}", exc_info=True)
+            logger.error(f"Unexpected error when getting paper by ID {paper_id} and platform {platform}: {str(e)}", exc_info=True)
             return None
         
-        logger.warning(f"Paper lookup completed with no result for ID: {paper_id}")
+        logger.warning(f"Paper lookup completed with no result for ID: {paper_id}, platform: {platform}")
         return None
 
-    async def get_papers_by_ids(self, paper_ids: List[str]) -> List[Paper]:
-        async for db in get_async_db():
-            stmt = (
-                select(
-                    DBPaper.paper_id,
-                    DBPaper.title,
-                    DBPaper.abstract,
-                    DBPaper.pdf_url,
-                    DBPaper.published_date,
-                    DBPaper.updated_date,
-                    # 把作者名聚成数组
-                    func.coalesce(
-                        func.array_agg(DBAuthor.name.op('ORDER BY')(paper_authors.c.author_order))
-                        .filter(paper_authors.c.paper_id == DBPaper.paper_id),
-                        []
-                    ).label("author_names"),
-                    # 把分类名聚成数组
-                    func.coalesce(
-                        func.array_agg(distinct(DBCategory.name))
-                        .filter(paper_categories.c.paper_id == DBPaper.paper_id),
-                        []
-                    ).label("category_names"),
+    async def get_papers_by_ids(self, paper_ids_data: List[Union[str, Tuple[str, str]]]) -> List[Paper]:
+        """
+        Get paper Objects by a list of paper_ids or tuples of (paper_id, platform)
+        """
+        if not paper_ids_data:
+            return []
+            
+        # 提取paper_id和platform
+        paper_ids = []
+        paper_platforms = {}
+        for item in paper_ids_data:
+            if isinstance(item, tuple) and len(item) == 2:
+                paper_id, platform = item
+                paper_ids.append(paper_id)
+                paper_platforms[paper_id] = platform
+            else:
+                paper_id = item
+                paper_ids.append(paper_id)
+                paper_platforms[paper_id] = "arxiv"  # 默认平台
+        
+        try:
+            async for db in get_async_db():
+                # 使用复杂的查询一次性获取所有论文及其作者、分类
+                stmt = (
+                    select(
+                        DBPaper.paper_id,
+                        DBPaper.platform,
+                        DBPaper.title,
+                        DBPaper.abstract,
+                        DBPaper.pdf_url,
+                        DBPaper.published_date,
+                        DBPaper.updated_date,
+                        func.array_agg(distinct(DBAuthor.name)).label("authors"),
+                        func.array_agg(distinct(DBCategory.name)).label("categories")
+                    )
+                    .outerjoin(paper_authors, and_(
+                        paper_authors.c.paper_id == DBPaper.paper_id,
+                        paper_authors.c.platform == DBPaper.platform
+                    ))
+                    .outerjoin(DBAuthor, paper_authors.c.author == DBAuthor.name)
+                    .outerjoin(paper_categories, and_(
+                        paper_categories.c.paper_id == DBPaper.paper_id,
+                        paper_categories.c.platform == DBPaper.platform
+                    ))
+                    .outerjoin(DBCategory, paper_categories.c.category == DBCategory.name)
+                    .where(or_(*[
+                        and_(
+                            DBPaper.paper_id == paper_id,
+                            DBPaper.platform == paper_platforms.get(paper_id, "arxiv")
+                        )
+                        for paper_id in paper_ids
+                    ]))
+                    .group_by(
+                        DBPaper.paper_id,
+                        DBPaper.platform,
+                        DBPaper.title,
+                        DBPaper.abstract,
+                        DBPaper.pdf_url,
+                        DBPaper.published_date,
+                        DBPaper.updated_date
+                    )
                 )
-                .outerjoin(paper_authors, paper_authors.c.paper_id == DBPaper.paper_id)
-                .outerjoin(DBAuthor, DBAuthor.name == paper_authors.c.author)
-                .outerjoin(paper_categories, paper_categories.c.paper_id == DBPaper.paper_id)
-                .outerjoin(DBCategory, DBCategory.name == paper_categories.c.category)
-                .where(DBPaper.paper_id.in_(paper_ids))
-                .group_by(
-                    DBPaper.paper_id,
-                    DBPaper.title,
-                    DBPaper.abstract,
-                    DBPaper.pdf_url,
-                    DBPaper.published_date,
-                    DBPaper.updated_date,
-                )
-            )
-            result = await db.execute(stmt)
-            rows = result.all()
-
-        papers: List[Paper] = []
-        for row in rows:
-            papers.append(
-                Paper(
-                    paper_id=row.paper_id,
-                    title=row.title,
-                    authors=row.author_names,
-                    abstract=row.abstract,
-                    categories=row.category_names,
-                    pdf_url=row.pdf_url.replace("http://", "https://"),
-                    published_date=row.published_date,
-                    updated_date=row.updated_date
-                )
-            )
-        return papers
+                
+                result = await db.execute(stmt)
+                records = result.all()
+                
+                # 将结果转换为Paper对象列表
+                papers = []
+                for record in records:
+                    paper_id = record[0]
+                    platform = record[1]
+                    authors = record[7] if record[7] and record[7][0] is not None else []
+                    categories = record[8] if record[8] and record[8][0] is not None else []
+                    
+                    paper = Paper(
+                        paper_id=paper_id,
+                        platform=platform,
+                        title=record[2],
+                        abstract=record[3],
+                        pdf_url=record[4],
+                        published_date=record[5],
+                        updated_date=record[6],
+                        authors=authors,
+                        categories=categories
+                    )
+                    papers.append(paper)
+                
+                return papers
+                
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when getting papers by IDs: {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error when getting papers by IDs: {str(e)}", exc_info=True)
+            return []
+        
+        return []
 
 
     
@@ -398,41 +456,41 @@ class DBService:
             return count
         return 0
     
-    async def click_paper(self, paper_id: str) -> bool:
+    async def click_paper(self, paper_id: str, platform: str = "arxiv") -> bool:
         """
-        Increment click count for a paper by 1 in a transaction
+        Record a click on a paper
         """
         if not paper_id:
-            logger.warning("Attempted to click paper with empty ID")
             return False
-        
-        async for db in get_async_db():
-            try:
-                result = await db.execute(
-                    update(DBPaper)
-                    .where(DBPaper.paper_id == paper_id)
-                    .values(click_count=DBPaper.click_count + 1)
-                )
+            
+        try:
+            async for db in get_async_db():
+                # First, check if paper exists
+                stmt = select(DBPaper).where(and_(
+                    DBPaper.paper_id == paper_id,
+                    DBPaper.platform == platform
+                ))
+                result = await db.execute(stmt)
+                paper = result.scalar_one_or_none()
                 
-                if result.rowcount == 0:
-                    logger.warning(f"Paper {paper_id} not found for click recording")
+                if not paper:
+                    logger.warning(f"Paper {paper_id} with platform {platform} not found for click recording")
                     return False
-                
+                    
+                # Update click count
+                paper.click_count += 1
                 await db.commit()
-                logger.info(f"Successfully recorded click for paper ID: {paper_id}")
+                
+                logger.info(f"Successfully recorded click for paper ID: {paper_id}, platform: {platform}")
                 return True
                 
-            except SQLAlchemyError as e:
-                await db.rollback()
-                logger.error(f"Database error when recording click for paper ID {paper_id}: {str(e)}")
-                return False
-            except Exception as e:
-                await db.rollback()
-                logger.error(f"Unexpected error when recording click for paper ID {paper_id}: {str(e)}", exc_info=True)
-                return False
-        
-        return False
-    
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when recording click for paper ID {paper_id}, platform {platform}: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error when recording click for paper ID {paper_id}, platform {platform}: {str(e)}", exc_info=True)
+            return False
+
     async def get_paper_click_count(self, paper_id: str) -> Optional[int]:
         """
         Get the current click count for a paper
@@ -803,11 +861,11 @@ class DBService:
         # 数据库连接意外中断
         return []
             
-    async def add_file_to_user(self, user_id: int, paper_id: str) -> bool:
+    async def add_file_to_user(self, user_id: int, paper_id: str, platform: str = "arxiv") -> bool:
         """
-        把 paper 放进用户的“默认文件夹”：
+        把 paper 放进用户的"默认文件夹"：
         1. 找到 user→folders.name=='default'；若不存在就创建
-        2. 在该 folder 内插入 (folder_id, paper_id)
+        2. 在该 folder 内插入 (folder_id, paper_id, platform)
         True  = 新增成功 / 已存在
         False = 参数错误或数据库异常
         """
@@ -826,10 +884,13 @@ class DBService:
                     return False
 
                 paper = (await db.execute(
-                    select(DBPaper).where(DBPaper.paper_id == paper_id))
+                    select(DBPaper).where(and_(
+                        DBPaper.paper_id == paper_id,
+                        DBPaper.platform == platform
+                    )))
                 ).scalars().first()
                 if not paper:
-                    logger.info(f"paper {paper_id} not found")
+                    logger.info(f"paper {paper_id} (platform: {platform}) not found")
                     return False
 
                 # -------- 2) 拿 / 建 default folder --------
@@ -843,8 +904,8 @@ class DBService:
                     db.add(folder)
                     await db.flush()          # 获得 folder.id
 
-                # -------- 3) 插入 (folder_id, paper_id) --------
-                entry = DBUserFile(folder_id=folder.id, paper_id=paper_id)
+                # -------- 3) 插入 (folder_id, paper_id, platform) --------
+                entry = DBUserFile(folder_id=folder.id, paper_id=paper_id, platform=platform)
                 db.add(entry)
                 await db.commit()
                 return True
@@ -853,7 +914,7 @@ class DBService:
                 # 同一 folder 已有这篇 paper，无需重复
                 await db.rollback()
                 logger.info(
-                    f"paper {paper_id} already in user {user_id}'s default folder"
+                    f"paper {paper_id} (platform: {platform}) already in user {user_id}'s default folder"
                 )
                 return True
 
@@ -861,7 +922,7 @@ class DBService:
                 await db.rollback()
                 logger.error(f"DB error adding file to default folder: {e}")
                 return False
-    async def add_file_to_folder(self,folder_id: int, paper_id: str) -> bool:
+    async def add_file_to_folder(self,folder_id: int, paper_id: str, platform: str = "arxiv") -> bool:
         # 检查 folder 属于 user
         async for db in get_async_db():
             folder = (await db.execute(
@@ -870,7 +931,7 @@ class DBService:
             )).scalars().first()
             if not folder:
                 return False
-            entry = DBUserFile(folder_id=folder_id, paper_id=paper_id)
+            entry = DBUserFile(folder_id=folder_id, paper_id=paper_id, platform=platform)
             db.add(entry)
             try:
                 await db.commit()
@@ -883,9 +944,9 @@ class DBService:
                 return False
         return False
 
-    async def remove_file_from_user(self, user_id: int, paper_id: str) -> bool:
+    async def remove_file_from_user(self, user_id: int, paper_id: str, platform: str = "arxiv") -> bool:
         """
-        删除 (paper_id) 在用户任意文件夹中的记录。
+        删除 (paper_id, platform) 在用户任意文件夹中的记录。
         · 找得到即删，可能删除多条（不同文件夹副本）
         · 若完全找不到，再尝试只删 default 文件夹里的记录
         """
@@ -899,63 +960,72 @@ class DBService:
                 # JOIN folders → 保证 folder 属于当前 user
                 stmt = (
                     delete(DBUserFile)
-                    .where(DBUserFile.paper_id == paper_id)
+                    .where(and_(
+                        DBUserFile.paper_id == paper_id,
+                        DBUserFile.platform == platform
+                    ))
                     .where(
                         DBUserFile.folder_id.in_(
-                            select(DBFolder.id).where(DBFolder.user_id == user_id)
+                            select(DBFolder.id)
+                            .where(DBFolder.user_id == user_id)
+                            .scalar_subquery()
                         )
                     )
                 )
+                    
                 result = await db.execute(stmt)
                 await db.commit()
-
-                if result.rowcount and result.rowcount > 0:
+                    
+                if result.rowcount > 0:
                     logger.info(
-                        f"removed paper {paper_id} ({result.rowcount} rows) "
+                        f"removed paper {paper_id} (platform: {platform}) ({result.rowcount} rows) "
                         f"from user {user_id}'s folders"
                     )
                     return True
-
-                # ---------- 2. 兼容旧数据：default 文件夹 ----------
+                
+                # ---------- 2. 只尝试 default 文件夹 ----------
+                # 看来所有文件夹里都没有，再尝试只找默认文件夹
                 default_id = (await db.execute(
                     select(DBFolder.id)
-                    .where(DBFolder.user_id == user_id,
-                        DBFolder.name == "default")
-                )).scalar_one_or_none()
-
-                if default_id is None:
-                    logger.info(f"file {paper_id} not found for user {user_id}")
+                    .where(DBFolder.user_id == user_id, DBFolder.name == "default")
+                )).scalar()
+                
+                if not default_id:
+                    logger.info(f"file {paper_id} (platform: {platform}) not found for user {user_id}")
                     return False
-
-                stmt_default = (
+                    
+                result = await db.execute(
                     delete(DBUserFile)
-                    .where(DBUserFile.folder_id == default_id,
-                        DBUserFile.paper_id == paper_id)
+                    .where(and_(
+                        DBUserFile.folder_id == default_id,
+                        DBUserFile.paper_id == paper_id,
+                        DBUserFile.platform == platform
+                    ))
                 )
-                res2 = await db.execute(stmt_default)
                 await db.commit()
-
-                if res2.rowcount and res2.rowcount > 0:
-                    logger.info(
-                        f"removed paper {paper_id} from user {user_id}'s default folder"
-                    )
+                    
+                if result.rowcount > 0:
+                    logger.info(f"removed paper {paper_id} (platform: {platform}) from user {user_id}'s default folder")
                     return True
-
-                logger.info(f"file {paper_id} not found for user {user_id}")
-                return False
-
+                else:
+                    logger.info(f"file {paper_id} (platform: {platform}) not found for user {user_id}")
+                    return False
+                    
             except SQLAlchemyError as e:
                 await db.rollback()
                 logger.error(
-                    f"DB error deleting paper {paper_id} for user {user_id}: {e}"
+                    f"DB error deleting paper {paper_id} (platform: {platform}) for user {user_id}: {e}"
                 )
                 return False
+        
+        return False
 
     async def remove_file_from_folder(
         self,
         user_id: int,
         folder_id: int,
-        paper_id: str
+        paper_id: str,
+        platform: str = "arxiv"
     ) -> bool:
         """
         从用户的指定文件夹移除一篇 paper。
@@ -983,17 +1053,18 @@ class DBService:
                     delete(DBUserFile)
                     .where(
                         DBUserFile.folder_id == folder_id,
-                        DBUserFile.paper_id  == paper_id
+                        DBUserFile.paper_id  == paper_id,
+                        DBUserFile.platform == platform
                     )
                 )
                 result = await db.execute(stmt)
                 await db.commit()
 
                 if result.rowcount and result.rowcount > 0:
-                    logger.info(f"removed paper {paper_id} from folder {folder_id}")
+                    logger.info(f"removed paper {paper_id} (platform: {platform}) from folder {folder_id}")
                     return True
                 else:
-                    logger.info(f"paper {paper_id} not in folder {folder_id}")
+                    logger.info(f"paper {paper_id} (platform: {platform}) not in folder {folder_id}")
                     return False
 
             except SQLAlchemyError as e:
@@ -1350,6 +1421,7 @@ class DBService:
                     "files": [
                         {
                             "paper_id":  uf.paper_id,
+                            "platform":  uf.platform,
                             "filename":  uf.paper.title,
                             "paper_URL": uf.paper.pdf_url,
                             "added_at":  uf.added_at.isoformat(),
@@ -1431,6 +1503,7 @@ class DBService:
                     {
                         # —— 来自 user_files 表 —— #
                         "paper_id":       uf.paper_id,
+                        "platform":       uf.platform,
                         "added_at":       uf.added_at.isoformat(),
                         "folder_id":      uf.folder_id,
                         "selected":       bool(uf.selected),
@@ -1554,12 +1627,12 @@ class DBService:
     async def update_file_selection(
         self,
         user_id: uuid.UUID,
-        paper_id: uuid.UUID,
-        selected: bool
+        paper_id: str,
+        selected: bool,
+        platform: str = "arxiv"
     ) -> bool:
         """
-        更新用户文件的选中状态。
-        返回 True 表示更新成功，False 表示未找到或出错。
+        Update the selected flag for a paper file
         """
         if not user_id or not paper_id:
             logger.warning("invalid user_id or paper_id")
@@ -1588,7 +1661,7 @@ class DBService:
                 # 2) 更新选中状态
                 file.selected = selected
                 await db.commit()
-                logger.info(f"Updated selection for paper {paper_id} to {selected} for user {user_id}")
+                logger.info(f"Updated selection for paper {paper_id} (platform: {platform}) to {selected} for user {user_id}")
                 return True
 
             except SQLAlchemyError as e:

@@ -40,7 +40,7 @@ def load_paper_ids(data_dir):
 
 async def process_single_paper(paper_id: str) -> bool:
     try:
-        success = await chat_service.process_embeddings(paper_id)
+        success = await chat_service.process_embeddings(paper_id, "arxiv")
         if not success:
             logger.warning(f"Failed to process: {paper_id}")
         return success

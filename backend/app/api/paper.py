@@ -5,6 +5,7 @@ import logging
 from app.models.paper import Paper
 from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
+from app.services.extract_info import extract_platform
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +35,13 @@ async def get_papers(
     
     papers = papers_1 + papers_2
     
-    # Manual deduplication using paper_id
-    seen_ids = set()
+    # Manual deduplication using paper_id and platform
+    seen_keys = set()
     unique_papers = []
     for paper in papers:
-        if paper.paper_id not in seen_ids:
-            seen_ids.add(paper.paper_id)
+        key = (paper.paper_id, paper.platform)
+        if key not in seen_keys:
+            seen_keys.add(key)
             unique_papers.append(paper)
     
     papers = unique_papers
@@ -57,21 +59,25 @@ async def count_papers():
 
 
 @router.post("/click/{paper_id}")
-async def click_paper(paper_id: str):
+async def click_paper(paper_id: str, platform: str = Query("arxiv")):
     """
     Click on a paper
     """
-    success = await db_service.click_paper(paper_id)
+    success = await db_service.click_paper(paper_id, platform)
     if not success:
         raise HTTPException(status_code=404, detail="Paper not found")
     return success
 
 @router.get("/{paper_id}", response_model=Paper)
-async def get_paper(paper_id: str):
+async def get_paper(paper_id: str, platform: str = None):
     """
-    Get paper by paper_id
+    Get paper by paper_id and optional platform
     """
-    paper = await db_service.get_paper_by_id(paper_id)
+    # 如果未提供platform，从paper_id推断
+    if platform is None:
+        platform = extract_platform(paper_id)
+        
+    paper = await db_service.get_paper_by_id(paper_id, platform)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
         
@@ -83,7 +89,8 @@ async def get_paper(paper_id: str):
         categories=paper.categories,
         pdf_url=paper.pdf_url.replace("http://", "https://"),
         published_date=paper.published_date,
-        updated_date=paper.updated_date
+        updated_date=paper.updated_date,
+        platform=paper.platform
     )
     
     return response 

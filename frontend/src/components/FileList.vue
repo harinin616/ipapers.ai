@@ -220,19 +220,20 @@ import { useRoute , useRouter } from 'vue-router'
 import api from '../services/api'
 import { fileSelectionStore } from '../stores/fileSelectionStore'
 
-interface ChatFile {
+export interface File {
   file_path: string;
   filename: string;
   paper_id: string;
+  platform?: string;
   paper_URL: string;
   added_at: string;
   folder_id: number;
-  selected?: boolean; // 可选属性，用于标记是否被选中
+  selected?: boolean;
 }
 export interface Folder {
   id: number
   name: string
-  files: ChatFile[]
+  files: File[]
 }
 
 export default defineComponent({
@@ -262,7 +263,7 @@ export default defineComponent({
   ],
   
   setup(props, { emit }) {
-    const pdfFiles = ref<ChatFile[]>([])
+    const pdfFiles = ref<File[]>([])
     const currentPdfUrl = ref<string | null>(null)
     const showShareModal = ref(false);
     let   pendingShare: { folder: Folder } | null = null;
@@ -277,9 +278,10 @@ const handleUpload = async (e: Event) => {
   try {
     // 👉 这里按你的接口实现批量上传
     for (const f of Array.from(files)) {
-      await api.upload_file(f)          // 假设存在该接口
+      // await api.upload_file(f)  // TODO: 实现文件上传接口
+      console.log("File upload not implemented yet:", f.name)
     }
-    await loadFolders()                 // 刷新列表
+    await loadFolders()  // 刷新列表
   } catch (err) {
     console.error('upload failed', err)
     alert('Upload failed, please retry.')
@@ -337,7 +339,7 @@ const cancelShare = () => {
     const fileListRoot = ref<HTMLElement | null>(null)
     const route = useRoute()
     const router = useRouter()
-    const pendingShared = ref<ChatFile[]>([])
+    const pendingShared = ref<File[]>([])
     const showConfirm = ref(false)
 
     const folders   = ref<Folder[]>([])
@@ -420,7 +422,7 @@ const cancelEditFolder = () => {
           openSet.value.add(folders.value[0].id)
           activeFid.value = folders.value[0].id
         }
-        const allFiles: ChatFile[] =
+        const allFiles: File[] =
           folders.value.flatMap(f => f.files)
         const selectedIds = allFiles
           .filter(f => (f as any).selected)
@@ -434,13 +436,13 @@ const cancelEditFolder = () => {
       }
     }
 
-    const currentFiles = computed<ChatFile[]>(() => {
+    const currentFiles = computed<File[]>(() => {
       const f = folders.value.find(x => x.id === activeFid.value)
       return f ? f.files : []
     })
 
     
-    const handleSelectFile = (file: ChatFile) => {
+    const handleSelectFile = (file: File) => {
       isPdfLoading.value = true
       currentFileName.value = file.filename
       currentPdfUrl.value = file.paper_URL
@@ -461,7 +463,7 @@ const cancelEditFolder = () => {
       return fileSelectionStore.isFileSelected(paperId)
     }
     
-   const deleteFile = async (file: ChatFile) => {
+   const deleteFile = async (file: File) => {
   try {
     // 1) 找到要删的 folderId
     const fid = file.folder_id ?? activeFid.value
@@ -547,24 +549,22 @@ const cancelEditFolder = () => {
       if (mode === 'replace') {
         await api.clear_user_files();
       } 
-      const existing = new Set(pdfFiles.value.map(f => f.paper_id));
+      const existingKeys = new Set(pdfFiles.value.map(f => `${f.paper_id}|${f.platform || 'arxiv'}`));
       const toAttach = mode === 'replace'
-      ? pendingShared.value
-      : pendingShared.value.filter(f => !existing.has(f.paper_id))
+        ? pendingShared.value
+        : pendingShared.value.filter(f => !existingKeys.has(`${f.paper_id}|${f.platform || 'arxiv'}`));
 
       for (const file of toAttach) {
-        await api.attach_paper(file.paper_id);
+        await api.attach_paper(file.paper_id, file.platform);
       }
-
-    //  await loadFiles();
 
       showConfirm.value = false
       pendingShared.value = []
       emit('files-updated', pdfFiles.value)
       emit('update-file-count', pdfFiles.value.length)
        
-  
-  // ← 在这里清掉 share_id 路由
+
+    // ← 在这里清掉 share_id 路由
       router.replace({ name: 'home' })
     }
 

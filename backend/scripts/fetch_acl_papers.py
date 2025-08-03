@@ -379,11 +379,12 @@ async def main():
         for p in papers:
             try:
                 paper_id = p.paper_id
-                success = await pdf_service.generate_embeddings_for_paper(paper_id)
+                platform = p.platform
+                success = await pdf_service.generate_embeddings_for_paper(paper_id, platform)
                 if success:
-                    logger.info(f"Generated embeddings for paper {paper_id}")
+                    logger.info(f"Generated embeddings for paper {paper_id} (platform: {platform})")
                 else:
-                    logger.warning(f"Failed to generate embeddings for paper {paper_id}")
+                    logger.warning(f"Failed to generate embeddings for paper {paper_id} (platform: {platform})")
             except Exception as e:
                 logger.error(f"Error generating embeddings for paper {paper_id}: {e}", exc_info=True)
         

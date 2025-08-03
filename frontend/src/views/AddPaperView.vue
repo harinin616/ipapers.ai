@@ -25,7 +25,10 @@ import { ref, onMounted } from 'vue'
 import api from '../services/api'
 import type { Folder } from '../components/FileList.vue'
 
-const props = defineProps<{ paperId: string }>()
+const props = defineProps<{ 
+  paperId: string;
+  platform?: string;
+}>()
 const emit  = defineEmits(['added', 'close'])
 
 const folders   = ref<Folder[]>([])
@@ -37,7 +40,11 @@ onMounted(async () => {
 
 const submit = async () => {
   for (const fid of selected.value) {
-    await api.attach_to_folder({ folder_id: fid, paper_id: props.paperId })
+    await api.attach_to_folder({ 
+      folder_id: fid, 
+      paper_id: props.paperId,
+      platform: props.platform 
+    })
   }
   emit('added')
   emit('close')

@@ -1,24 +1,35 @@
 <template>
   <div class="simple-paper-card">
     <h3 class="paper-title">
-      <a :href="`https://arxiv.org/abs/${paper.paper_id}`" target="_blank" rel="noopener">
+      <a :href="paperUrl" target="_blank" rel="noopener">
         {{ paper.title }}
       </a>
     </h3>
     
     <div class="paper-action">
-      <ChatButton :paper-id="paper.paper_id" />
+      <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Paper } from '../types/paper'
 import ChatButton from './ChatButton.vue'
 
-defineProps<{
+const props = defineProps<{
   paper: Paper
 }>()
+
+const paperUrl = computed(() => {
+  // 根据平台生成不同的URL
+  switch (props.paper.platform) {
+    case 'acl':
+      return `https://aclanthology.org/${props.paper.paper_id}`
+    default:
+      return `https://arxiv.org/abs/${props.paper.paper_id}`
+  }
+})
 </script>
 
 <style scoped>

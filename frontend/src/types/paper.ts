@@ -15,6 +15,6 @@ export interface Paper {
   
   updated_date?: string;
   
-  platform?: string;
+  platform: string;
 }
 

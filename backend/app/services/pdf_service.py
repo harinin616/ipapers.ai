@@ -34,7 +34,7 @@ class PdfService:
         self.pdf_dir = paper_info_extractor.pdf_base_dir
         self.embedding_dir = paper_info_extractor.embedding_base_dir
     
-    async def get_pdf(self,paper_id:str):
+    async def get_pdf(self, paper_id: str, platform: str = "arxiv"):
         """
         if the pdf file is not in the local directory, download it from arxiv website
         return the pdf file path
@@ -46,8 +46,9 @@ class PdfService:
             if await aiofiles.os.path.exists(local_path):
                 return local_path
 
-            if paper_id in self.downloading_processes:
-                while paper_id in self.downloading_processes:
+            key = f"{paper_id}_{platform}"
+            if key in self.downloading_processes:
+                while key in self.downloading_processes:
                     await asyncio.sleep(0.2)
                 
                 if await aiofiles.os.path.exists(local_path):
@@ -56,7 +57,7 @@ class PdfService:
                     logger.error(f"PDF file not found at: {local_path}")
                     return None
                 
-            self.downloading_processes.add(paper_id)
+            self.downloading_processes.add(key)
 
             await aiofiles.os.makedirs(target_dir, exist_ok=True)
 
@@ -71,10 +72,11 @@ class PdfService:
                         return str(local_path)
             return None
         except Exception as e:
-            logger.error(f"Error downloading PDF for paper {paper_id}: {str(e)}", exc_info=True)
+            logger.error(f"Error downloading PDF for paper {paper_id} (platform: {platform}): {str(e)}", exc_info=True)
             return None
         finally:
-            self.downloading_processes.discard(paper_id)
+            key = f"{paper_id}_{platform}"
+            self.downloading_processes.discard(key)
     
     async def extract_text_from_pdf(self, file_path: str) -> str:
         """
@@ -150,13 +152,12 @@ class PdfService:
         return chunks
     
     
-    async def update_chat_files(self, user_id: str, paper_id: str, paper_title: Optional[str] = None) -> Dict[str, Any]:
+    async def update_chat_files(self, user_id: str, paper_id: str, paper_title: Optional[str] = None, platform: str = "arxiv") -> bool:
         """
         update chat files for a user
         """
         from app.services.chat_service import chat_service
         try:
-            
             filename = f"{paper_id}.pdf"
             if paper_title:
                 if len(paper_title) > 100:
@@ -165,7 +166,7 @@ class PdfService:
             
             existing_files = chat_service.active_chats[user_id].get("files", [])
             for existing_file in existing_files:
-                if existing_file.get("paper_id") == paper_id:
+                if existing_file.get("paper_id") == paper_id and existing_file.get("platform", "arxiv") == platform:
                     return True
                 
             file_dir=paper_info_extractor.get_pdf_storage_directory(paper_id)
@@ -176,6 +177,7 @@ class PdfService:
                 "file_path": file_path,
                 "filename": filename,
                 "paper_id": paper_id,
+                "platform": platform,
                 "paper_URL":pdf_url,
                 "added_at": datetime.now().isoformat(),
                 "selected": True
@@ -249,7 +251,7 @@ class PdfService:
         logger.info(f"Retrieved {len(top_chunks)} relevant chunks for query in chat session: {user_id} (from {len(files)} files)")
         return top_chunks
 
-    async def generate_embeddings_for_paper(self, paper_id: str) -> bool:
+    async def generate_embeddings_for_paper(self, paper_id: str, platform: str = "arxiv") -> bool:
         """
         generate embeddings for a paper and save to local directory
         """
@@ -257,7 +259,7 @@ class PdfService:
             pdf_path = paper_info_extractor.get_pdf_storage_directory(paper_id) / f"{paper_id}.pdf"
 
             if not pdf_path.exists():
-                await self.get_pdf(paper_id)
+                await self.get_pdf(paper_id, platform)
 
             target_dir = paper_info_extractor.get_embedding_storage_directory(paper_id)
             local_path = target_dir / f"{paper_id}.json"
@@ -275,29 +277,29 @@ class PdfService:
             if not chunks:
                 return False
 
-            logger.info(f"Generating embeddings for {len(chunks)} chunks")
+            logger.info(f"Generating embeddings for {len(chunks)} chunks for paper {paper_id} (platform: {platform})")
             
             all_embeddings = await llm_service.get_embeddings(
                 texts=chunks
             )
             if all_embeddings is None:
-                logger.error(f"Embedding service returned None for paper {paper_id}")
+                logger.error(f"Embedding service returned None for paper {paper_id} (platform: {platform})")
                 return False
 
             if not isinstance(all_embeddings, (list, tuple)):
                 logger.error(
                     f"Embedding service returned an unexpected type "
-                    f"{type(all_embeddings)} for paper {paper_id}"
+                    f"{type(all_embeddings)} for paper {paper_id} (platform: {platform})"
                 )
                 return False
 
             if not all_embeddings:  # 空列表
-                logger.error(f"No embeddings generated for paper {paper_id}")
+                logger.error(f"No embeddings generated for paper {paper_id} (platform: {platform})")
                 return False
 
             
             if len(all_embeddings) != len(chunks):
-                logger.error(f"Generated embeddings count ({len(all_embeddings)}) doesn't match chunks count ({len(chunks)})")
+                logger.error(f"Generated embeddings count ({len(all_embeddings)}) doesn't match chunks count ({len(chunks)}) for paper {paper_id} (platform: {platform})")
                 return False
             
 
@@ -308,7 +310,7 @@ class PdfService:
             return True
             
         except Exception as e:
-            logger.error(f"Error generating embeddings for paper {paper_id}: {str(e)}", exc_info=True)
+            logger.error(f"Error generating embeddings for paper {paper_id} (platform: {platform}): {str(e)}", exc_info=True)
             return False
 
     async def save_uploaded_file(self, user_id: str, session_id: str, file: UploadFile, paper_id: str) -> str:

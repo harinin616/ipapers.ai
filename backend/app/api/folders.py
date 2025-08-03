@@ -1,5 +1,5 @@
 # app/routers/folders.py
-from fastapi import APIRouter, Header, HTTPException, Depends, status, Path, Request, Response
+from fastapi import APIRouter, Header, HTTPException, Depends, status, Path, Request, Response, Query
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -11,6 +11,7 @@ router = APIRouter()
 # ────────────── Pydantic Output Schema ──────────────
 class FileOut(BaseModel):
     paper_id:  str
+    platform: str = "arxiv"
     filename:  str
     paper_URL: str
     added_at:  str
@@ -68,8 +69,9 @@ async def rename_folder(
 
 class AttachPayload(BaseModel):
     paper_id: str
+    platform: Optional[str] = "arxiv"
 
-@router.post("/{folder_id}/attach", status_code=204)
+@router.post("/{folder_id}/files", status_code=204)
 async def attach_paper_to_folder(
     folder_id: int,
     payload: AttachPayload
@@ -77,7 +79,8 @@ async def attach_paper_to_folder(
     """Attach a paper to the given folder."""
     ok = await db_service.add_file_to_folder(
         folder_id=folder_id,
-        paper_id=payload.paper_id
+        paper_id=payload.paper_id,
+        platform=payload.platform
     )
     if not ok:
         raise HTTPException(400, "attach failed")
@@ -92,6 +95,7 @@ async def remove_paper_from_folder(
     request: Request,
     folder_id: int = Path(..., description="Folder ID"),
     paper_id: str = Path(..., description="Paper ID"),
+    platform: str = Query("arxiv", description="Paper platform"),
 ):
     # 从请求头获取当前用户
     user_id = request.headers.get("X-User-ID")
@@ -105,7 +109,8 @@ async def remove_paper_from_folder(
     ok = await db_service.remove_file_from_folder(
         user_id=user_id,
         folder_id=folder_id,
-        paper_id=paper_id
+        paper_id=paper_id,
+        platform=platform
     )
     if not ok:
         raise HTTPException(
