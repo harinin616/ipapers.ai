@@ -256,21 +256,33 @@ class PdfService:
         generate embeddings for a paper and save to local directory
         """
         try:
-            pdf_path = paper_info_extractor.get_pdf_storage_directory(paper_id) / f"{paper_id}.pdf"
+            # 获取PDF文件路径
+            pdf_dir = paper_info_extractor.get_pdf_storage_directory(paper_id)
+            pdf_path = pdf_dir / f"{paper_id}.pdf"
+            
+            # 异步检查PDF文件是否存在，如果不存在则下载
+            if not await aiofiles.os.path.exists(pdf_path):
+                logger.info(f"PDF file not found for paper {paper_id} (platform: {platform}), downloading...")
+                pdf_path = await self.get_pdf(paper_id, platform)
+                if not pdf_path:
+                    logger.error(f"Failed to download PDF for paper {paper_id} (platform: {platform})")
+                    return False
 
-            if not pdf_path.exists():
-                await self.get_pdf(paper_id, platform)
-
+            # 检查嵌入向量文件是否已存在
             target_dir = paper_info_extractor.get_embedding_storage_directory(paper_id)
             local_path = target_dir / f"{paper_id}.json"
 
-            if local_path.exists():
+            if await aiofiles.os.path.exists(local_path):
+                logger.info(f"Embeddings already exist for paper {paper_id} (platform: {platform})")
                 return True
 
+            # 创建目录
             await aiofiles.os.makedirs(target_dir, exist_ok=True)
             
+            # 提取文本内容
             text_content = await self.extract_text_from_pdf(pdf_path)
             if not text_content:
+                logger.error(f"Failed to extract text from PDF for paper {paper_id} (platform: {platform})")
                 return False
             
             chunks = self.chunk_text(text_content)

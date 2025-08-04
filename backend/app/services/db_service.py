@@ -106,7 +106,7 @@ class DBService:
         
         return False
     
-    async def add_papers(self, papers: List[Paper]) -> List[str]:
+    async def add_papers(self, papers: List[Paper], platform: str = None) -> List[str]:
         """
         Add papers list to the database and generate+store embeddings.
         """
@@ -120,7 +120,13 @@ class DBService:
                 # 1. 查已有的 paper_id，过滤掉已有的
                 incoming_ids = [p.paper_id for p in papers]
                 result = await db.execute(
-                    select(DBPaper.paper_id).where(DBPaper.paper_id.in_(incoming_ids))
+                    select(DBPaper.paper_id)
+                    .where(
+                        and_(
+                            DBPaper.paper_id.in_(incoming_ids),
+                            DBPaper.platform == (platform or "arxiv")
+                        )
+                    )
                 )
                 existing_ids = set(result.scalars().all())
 
@@ -172,6 +178,23 @@ class DBService:
 
                 # 4. 插入 papers + embedding + 关联表
                 for p, emb in zip(papers_to_add, embeddings):
+                    # 如果没有指定平台，则使用Paper对象自己的platform，或者使用extract_platform来推断
+                    paper_platform = platform or p.platform or paper_info_extractor.extract_platform(p.paper_id)
+                    
+                    # 检查论文是否已存在，考虑 paper_id 和 platform
+                    check_result = await db.execute(
+                        select(DBPaper.paper_id)
+                        .where(
+                            and_(
+                                DBPaper.paper_id == p.paper_id,
+                                DBPaper.platform == paper_platform
+                            )
+                        )
+                    )
+                    if check_result.scalar_one_or_none():
+                        logger.info(f"Paper {p.paper_id} with platform {paper_platform} already exists, skipping")
+                        continue
+                    
                     db_p = DBPaper(
                         paper_id      = p.paper_id,
                         title         = p.title,
@@ -180,7 +203,8 @@ class DBService:
                         published_date= p.published_date,
                         updated_date  = p.updated_date,
                         click_count   = 0,
-                        embedding     = emb   # ← 直接存 embedding 列
+                        embedding     = emb,   # ← 直接存 embedding 列
+                        platform      = paper_platform  # 使用确定的平台
                     )
                     # 4.1 关联 categories
                     for cat in p.categories:
@@ -191,15 +215,29 @@ class DBService:
 
                     # 4.2 关联 authors（保留顺序）
                     for order, name in enumerate(p.authors):
-                        await db.execute(
-                            text("""
-                              INSERT INTO paper_authors (paper_id, author, author_order)
-                              VALUES (:pid, :auth, :ord)
-                              ON CONFLICT (paper_id, author) DO UPDATE
-                              SET author_order = EXCLUDED.author_order
-                            """),
-                            {"pid": p.paper_id, "auth": name, "ord": order}
-                        )
+                        try:
+                            # 先检查是否已存在该作者记录
+                            check_result = await db.execute(
+                                text("""
+                                SELECT 1 FROM paper_authors 
+                                WHERE paper_id = :pid AND author = :auth 
+                                LIMIT 1
+                                """),
+                                {"pid": p.paper_id, "auth": name}
+                            )
+                            exists = check_result.scalar() is not None
+                            
+                            if not exists:
+                                await db.execute(
+                                    text("""
+                                    INSERT INTO paper_authors (paper_id, author, author_order, platform)
+                                    VALUES (:pid, :auth, :ord, :platform)
+                                    """),
+                                    {"pid": p.paper_id, "auth": name, "ord": order, "platform": paper_platform}
+                                )
+                        except Exception as e:
+                            logger.warning(f"Error inserting author {name} for paper {p.paper_id}: {e}")
+                    
                     added_ids.append(p.paper_id)
 
                 # 5. 提交事务

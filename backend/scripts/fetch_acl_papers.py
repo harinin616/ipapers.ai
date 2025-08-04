@@ -357,7 +357,7 @@ async def main():
         added_db_ids = []
         skipped = 0
         for p in papers:
-            ret = await db_service.add_papers([p])
+            ret = await db_service.add_papers([p], platform=p.platform)
             if ret:
                 added_db_ids.extend(ret)
             else:
