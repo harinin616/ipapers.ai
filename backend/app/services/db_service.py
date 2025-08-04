@@ -229,10 +229,8 @@ class DBService:
             )
             db_papers = result.scalars().all()
             for db_paper in db_papers:
-                if paper_info_extractor.extract_platform(db_paper.paper_id) != "arxiv":
-                    logger.warning(f"Paper {db_paper.paper_id} has unexpected platform "
-                                   f"{paper_info_extractor.extract_platform(db_paper.paper_id)}, "
-                                   f"expected 'arxiv'. Skipping.")
+                if db_paper.platform == "upload":
+                    logger.info(f"Paper {db_paper.paper_id} is uploaded, skipping")
                     continue
                 papers.append(Paper(
                     paper_id=db_paper.paper_id,
@@ -436,10 +434,8 @@ class DBService:
             db_papers = result.scalars().all()
             
             for db_paper in db_papers:
-                if paper_info_extractor.extract_platform(db_paper.paper_id) != "arxiv":
-                    logger.warning(f"Paper {db_paper.paper_id} has unexpected platform "
-                                   f"{paper_info_extractor.extract_platform(db_paper.paper_id)}, "
-                                   f"expected 'arxiv'. Skipping.")
+                if db_paper.platform == "upload":
+                    logger.info(f"Paper {db_paper.paper_id} is uploaded, skipping")
                     continue
                 papers.append(Paper(
                     paper_id=db_paper.paper_id,

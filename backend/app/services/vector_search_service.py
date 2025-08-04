@@ -42,23 +42,27 @@ class VectorSearchService:
             if os.path.exists(self.index_path) and os.path.exists(self.paper_ids_path):
                 self.index = faiss.read_index(self.index_path)
                
+                # Load paper_ids
                 with open(self.paper_ids_path, 'rb') as f:
-                    loaded_data = pickle.load(f)
-                    
-                # 检查是否已转换为新格式（元组列表）
-                if loaded_data and isinstance(loaded_data[0], tuple):
-                    # 新格式: [(paper_id, platform), ...]
-                    self.paper_ids = [item[0] for item in loaded_data]
-                    self.paper_platforms = [item[1] for item in loaded_data]
+                    self.paper_ids = pickle.load(f)
+                
+                # Load paper_platforms
+                if os.path.exists(self.paper_platforms_path):
+                    with open(self.paper_platforms_path, 'rb') as f:
+                        self.paper_platforms = pickle.load(f)
                 else:
-                    # 旧格式: [paper_id, ...]
-                    self.paper_ids = loaded_data
-                    # 尝试加载platforms文件，如果不存在则全部填充为"arxiv"
-                    if os.path.exists(self.paper_platforms_path):
-                        with open(self.paper_platforms_path, 'rb') as f:
-                            self.paper_platforms = pickle.load(f)
-                    else:
-                        self.paper_platforms = ["arxiv"] * len(self.paper_ids)
+                    # If platforms file doesn't exist, fill with "arxiv" as default
+                    self.paper_platforms = ["arxiv"] * len(self.paper_ids)
+                
+                # Ensure both lists have the same length
+                if len(self.paper_ids) != len(self.paper_platforms):
+                    logger.warning(f"Mismatch between paper_ids ({len(self.paper_ids)}) and platforms ({len(self.paper_platforms)}) count")
+                    # Pad platforms list if shorter
+                    if len(self.paper_platforms) < len(self.paper_ids):
+                        self.paper_platforms.extend(["arxiv"] * (len(self.paper_ids) - len(self.paper_platforms)))
+                    # Truncate platforms list if longer
+                    elif len(self.paper_platforms) > len(self.paper_ids):
+                        self.paper_platforms = self.paper_platforms[:len(self.paper_ids)]
                 
                 logger.info(f"Loaded FAISS index with {self.index.ntotal} vectors and {len(self.paper_ids)} IDs.")
                 if self.index.ntotal != len(self.paper_ids):
@@ -85,12 +89,11 @@ class VectorSearchService:
             os.makedirs(self.data_dir, exist_ok=True)
             faiss.write_index(self.index, self.index_path)
             
-            # 保存为元组列表格式
-            combined_data = list(zip(self.paper_ids, self.paper_platforms))
+            # Save paper_ids separately
             with open(self.paper_ids_path, 'wb') as f:
-                pickle.dump(combined_data, f)
+                pickle.dump(self.paper_ids, f)
                 
-            # 单独保存platforms以便兼容
+            # Save paper_platforms separately
             with open(self.paper_platforms_path, 'wb') as f:
                 pickle.dump(self.paper_platforms, f)
                 

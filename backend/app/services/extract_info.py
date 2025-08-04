@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 from typing import Tuple, Optional
 from pathlib import Path
 import logging
@@ -19,6 +20,13 @@ class PaperInfoExtractor:
         os.makedirs(self.embedding_base_dir, exist_ok=True)
     
     def extract_platform(self, paper_id: str) -> str:
+
+        # Check for UUID format first
+        try:
+            uuid.UUID(paper_id)
+            return "upload"
+        except (ValueError, TypeError):
+            pass
 
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
         arxiv_pattern = r"^\d{4}\.\d{4,5}(v\d+)?$"
