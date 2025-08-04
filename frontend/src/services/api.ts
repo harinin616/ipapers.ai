@@ -88,6 +88,7 @@ export interface IApiService {
   updateShareMode(folderId: number, is_public: boolean): Promise<void>;
   addShareUser(folderId: number, email: string): Promise<void>;
   removeShareUser(folderId: number, email: string): Promise<void>;
+  upload_file(formData: FormData): Promise<any>;
 }
 /**
  * API Service implementation
@@ -827,6 +828,19 @@ async get_shared_folders(): Promise<any[]> {
     } catch (error) {
       console.error('Failed to remove share user:', error);
       throw error;
+    }
+  }
+  async upload_file(formData: FormData): Promise<any> {
+    try {
+      const res = await this.api.post(`/api/upload/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      return res.data
+    } catch (err) {
+      console.error('Upload failed:', err)
+      throw err
     }
   }
 }

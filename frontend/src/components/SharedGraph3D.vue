@@ -1,5 +1,5 @@
 <template> 
-  <div ref="container" class="graph3d">>
+  <div ref="container" class="graph3d">
   </div>
 </template>
 
@@ -40,6 +40,23 @@ const props = defineProps<{
 const container = ref<HTMLDivElement>()
 let graphInst: any = null
 
+let ro: ResizeObserver | null = null
+let resizeRaf = 0
+
+function handleResize() {
+  if (!graphInst || !container.value) return
+  cancelAnimationFrame(resizeRaf)
+  resizeRaf = requestAnimationFrame(() => {
+    const rect = container.value!.getBoundingClientRect()
+    graphInst.width(rect.width).height(rect.height)
+    // 可选：同步像素比，避免模糊
+    const r = graphInst.renderer?.()
+    r?.setPixelRatio?.(Math.min(2, window.devicePixelRatio || 1))
+    // 标签重新贴边（你已有的方法）
+    updateLabelPositions?.()
+  })
+}
+
 /* Build data */
 const buildData = () => ({
   nodes: props.papers.map((p, idx) => ({
@@ -49,7 +66,9 @@ const buildData = () => ({
     paper: p,
     // ← 引用式标签：序号 + 第一作者姓 + 年份
     line1: String(idx + 1),                               // ① 序号
-  line2: `${p.authors[0].split(' ')[0]} ${p.published_date.slice(0,4)}` // ② 姓+年
+  line2: `${ p.authors.length > 0
+  ? p.authors[0].split(' ')[0]
+  : '' } ${p.published_date.slice(0,4)}` // ② 姓+年
   })),
   links: props.papers.flatMap(p =>
     (p.cites ?? []).map(t => ({ source: p.id, target: t, weight: 1 }))
@@ -130,8 +149,7 @@ onMounted(async () => {
 
   const width  = container.value.offsetWidth
   const height = container.value.offsetHeight
-  const centerX = width  / 2
-  const centerY = height / 2
+
 
   const FG = (ForceGraph3D as any).default ?? ForceGraph3D
 
@@ -143,24 +161,8 @@ onMounted(async () => {
   
 
     // ... nodeThreeObject/linkWidth/linkColor 等保持不变 ...
-
-  // 1. 让布局中心是容器正中央
-  graphInst.d3Force(
-    'center',
-    d3.forceCenter(centerX, centerY, 0)
-  )
-
-  // 2. 可选：如果你还想让 radial 力也以容器中心为圆心，
-  //    且半径是容器最小边长的一半：
-  graphInst.d3Force(
-    'gravity',
-    d3.forceRadial(
-      Math.min(width, height) / 2,
-      centerX,
-      centerY
-    ).strength(0.005)
-  )
-
+  graphInst.d3Force('center', d3.forceCenter(0, 0, 0))
+  graphInst.d3Force('gravity', d3.forceRadial(0, 0, 0).strength(0.005))
   // --- 立体小球节点 ---
 .nodeThreeObject((n: any) => {
   const group  = new THREE.Group()
@@ -180,7 +182,6 @@ onMounted(async () => {
   sprite.position.set(0, 0, 0)
   // 存偏移
   sprite.userData.offset = radius + 2
-  group.add(sphere)
   group.add(sprite)
 
 
@@ -258,7 +259,15 @@ const controls = graphInst.controls()
     // 也可以多贴一次，确保一开始就对齐
     updateLabelPositions()
   }
+   window.addEventListener('resize', resizeGraph)
+  // 用 ResizeObserver 监听容器尺寸变化
+  ro = new ResizeObserver(handleResize)
+  ro.observe(container.value)
+  // 首次强制同步一次
+  handleResize()
 })
+
+
 function updateLabelPositions() {
   const camPos = graphInst.cameraPosition()!
   graphInst.scene().traverse(obj => {
@@ -370,5 +379,7 @@ watch(
   width: 100%  !important;  /* 强制撑满宽度 */
   height: 100% !important;  /* 强制撑满高度 */
 }
+.graph3d { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+
 
 </style>
