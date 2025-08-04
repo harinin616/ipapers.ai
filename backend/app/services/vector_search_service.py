@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import faiss
 import asyncio 
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 import pickle
 from pathlib import Path
 import json
@@ -24,11 +24,13 @@ class VectorSearchService:
              
         self.index = None
         self.paper_ids = []
+        self.paper_platforms = []
         
         self.project_root = Path(__file__).parent.parent.parent
         self.data_dir = self.project_root / "data"
         self.index_path = str(self.data_dir / "paper_index.faiss")
         self.paper_ids_path = str(self.data_dir / "paper_ids.pkl")
+        self.paper_platforms_path = str(self.data_dir / "paper_platforms.pkl")
         
         logger.info(f"VectorSearchService initialized")
         
@@ -41,10 +43,26 @@ class VectorSearchService:
                 self.index = faiss.read_index(self.index_path)
                
                 with open(self.paper_ids_path, 'rb') as f:
-                    self.paper_ids = pickle.load(f)
+                    loaded_data = pickle.load(f)
+                    
+                # 检查是否已转换为新格式（元组列表）
+                if loaded_data and isinstance(loaded_data[0], tuple):
+                    # 新格式: [(paper_id, platform), ...]
+                    self.paper_ids = [item[0] for item in loaded_data]
+                    self.paper_platforms = [item[1] for item in loaded_data]
+                else:
+                    # 旧格式: [paper_id, ...]
+                    self.paper_ids = loaded_data
+                    # 尝试加载platforms文件，如果不存在则全部填充为"arxiv"
+                    if os.path.exists(self.paper_platforms_path):
+                        with open(self.paper_platforms_path, 'rb') as f:
+                            self.paper_platforms = pickle.load(f)
+                    else:
+                        self.paper_platforms = ["arxiv"] * len(self.paper_ids)
+                
                 logger.info(f"Loaded FAISS index with {self.index.ntotal} vectors and {len(self.paper_ids)} IDs.")
                 if self.index.ntotal != len(self.paper_ids):
-                        logger.warning("Index vector count and ID count mismatch")
+                    logger.warning("Index vector count and ID count mismatch")
             else:
                 self.create_new_index()
         except Exception as e:
@@ -55,6 +73,7 @@ class VectorSearchService:
         """Create a new empty FAISS index"""
         self.index = faiss.IndexFlatIP(self.embedding_dim)
         self.paper_ids = []
+        self.paper_platforms = []
         logger.info(f"Created new empty FAISS index")
 
     def save_index(self):
@@ -65,8 +84,16 @@ class VectorSearchService:
                  return
             os.makedirs(self.data_dir, exist_ok=True)
             faiss.write_index(self.index, self.index_path)
+            
+            # 保存为元组列表格式
+            combined_data = list(zip(self.paper_ids, self.paper_platforms))
             with open(self.paper_ids_path, 'wb') as f:
-                pickle.dump(self.paper_ids, f)
+                pickle.dump(combined_data, f)
+                
+            # 单独保存platforms以便兼容
+            with open(self.paper_platforms_path, 'wb') as f:
+                pickle.dump(self.paper_platforms, f)
+                
             logger.info(f"Saved FAISS index with {self.index.ntotal} vectors and {len(self.paper_ids)} IDs.")
         except Exception as e:
             logger.error(f"Error saving index: {e}")
@@ -93,20 +120,27 @@ class VectorSearchService:
         """
         add papers to the index
         """
-        processed_paper_ids = set(self.paper_ids) 
+        # 使用元组(paper_id, platform)作为去重键
+        processed_paper_keys = set((paper_id, platform) for paper_id, platform in zip(self.paper_ids, self.paper_platforms))
         
         texts_to_embed = []
-        paper_ids_for_texts = [] 
+        new_paper_ids = [] 
+        new_paper_platforms = []
 
         # filter out papers already in index and prepare texts
         for paper in papers:
-            if paper.paper_id not in processed_paper_ids:
+            paper_id = paper.paper_id
+            # 确保获取platform属性，如果不存在则默认为"arxiv"
+            platform = getattr(paper, 'platform', 'arxiv')
+            
+            if (paper_id, platform) not in processed_paper_keys:
                 text = f"{paper.title} {paper.abstract or ''}".strip()
                 if text: 
                      texts_to_embed.append(text)
-                     paper_ids_for_texts.append(paper.paper_id)
+                     new_paper_ids.append(paper_id)
+                     new_paper_platforms.append(platform)
                 else:
-                     logger.warning(f"Paper {paper.paper_id} has no text to embed. Skipping.")
+                     logger.warning(f"Paper {paper_id} (platform: {platform}) has no text to embed. Skipping.")
                      
         if not texts_to_embed:
             logger.info("No new papers to add to the index")
@@ -126,16 +160,20 @@ class VectorSearchService:
 
         try:
             self.index.add(embeddings_array)
-            self.paper_ids.extend(paper_ids_for_texts)
+            self.paper_ids.extend(new_paper_ids)
+            self.paper_platforms.extend(new_paper_platforms)
             self.save_index()
              
         except Exception as e:
             logger.error(f"Error adding vectors to index or saving: {e}")
             raise
     
-    async def vector_search(self, query: str, k: int = 50) -> List[str]:
+    async def vector_search(self, query: str, k: int = 50) -> List[Tuple[str, str]]:
         """
         vector search by a certain query
+        
+        Returns:
+            List of tuples (paper_id, platform)
         """
         try:
             logger.info(f"Starting vector search for query: '{query}' with k={k}")
@@ -155,18 +193,24 @@ class VectorSearchService:
                  
             query_embedding = query_embedding_list[0].reshape(1, -1) 
                  
-            scores , indices = self.index.search(query_embedding, k)
-                 
-            result_ids = {self.paper_ids[idx] for idx in indices[0] if idx >= 0 and idx < len(self.paper_ids)}
+            scores, indices = self.index.search(query_embedding, k)
             
-            logger.debug(f"Search query'{query}' found {len(result_ids)} results.")
-            return result_ids
+            # 返回(paper_id, platform)元组列表
+            result_tuples = []
+            for idx in indices[0]:
+                if idx >= 0 and idx < len(self.paper_ids):
+                    paper_id = self.paper_ids[idx]
+                    platform = self.paper_platforms[idx]
+                    result_tuples.append((paper_id, platform))
+            
+            logger.debug(f"Search query'{query}' found {len(result_tuples)} results.")
+            return result_tuples
             
         except Exception as e:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
             
-    async def search(self, query: str, k: int = 80) -> list[str]:
+    async def search(self, query: str, k: int = 80) -> List[Tuple[str, str]]:
             system_prompt = (
                 "You are a professional information-retrieval assistant. Given a user query, generate a concise and semantically faithful reformulation for vector search. The output should be a single line containing a few meaningful keywords or short phrases, separated by commas.\n\n"
                 "Requirements:\n\n"
@@ -194,8 +238,8 @@ class VectorSearchService:
                 reformulated = query
 
             # 用重写后的（或原始）文本搜索
-            result_ids = await self.vector_search(reformulated, k=k)
+            result_tuples = await self.vector_search(reformulated, k=k)
 
-            return list(result_ids)
+            return result_tuples
                 
 vector_search_service = VectorSearchService() 

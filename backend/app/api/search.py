@@ -6,9 +6,7 @@ from app.models.paper import PaperSearchRequest, PaperSearchResponse, Paper
 from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
 from app.services.llm_service import llm_service
-from app.services.arxiv_search_service import arxivsearch_service
 from app.services import search_log_service
-from app.services.extract_info import paper_info_extractor
 
 logger = logging.getLogger(__name__)
 
@@ -17,32 +15,23 @@ router = APIRouter()
 @router.post("/", response_model=PaperSearchResponse)
 async def search_papers(search_request: PaperSearchRequest):
     """
-    get results from local vector search and arxiv search
+    get results from local vector search
     then rerank the results by LLM
     """
     try:
         logger.info(f"Received search request: {search_request.query}")
 
-        vec_task   = asyncio.create_task(vector_search_service.search(query=search_request.query))
-        arxiv_task = asyncio.create_task(arxivsearch_service.search(query=search_request.query))
-        paper_ids, arxiv_papers = await asyncio.gather(vec_task, arxiv_task)
+        # 只使用vector search
+        paper_id_platform_pairs = await vector_search_service.search(query=search_request.query)
         
-        if not paper_ids:
+        if not paper_id_platform_pairs:
             return PaperSearchResponse(results=[], count=0)
         
-        logger.info(f"Found {len(paper_ids)} paper IDs from vector search")
-        logger.info(f"Found {len(arxiv_papers)} papers from arxiv search")
+        logger.info(f"Found {len(paper_id_platform_pairs)} paper IDs from vector search")
 
-        papers = await db_service.get_papers_by_ids(paper_ids)
+        papers = await db_service.get_papers_by_ids(paper_id_platform_pairs)
 
-        existing_paper_ids = {p.paper_id for p in papers}
-        
-        for arxiv_paper in arxiv_papers:
-            if arxiv_paper.paper_id not in existing_paper_ids:
-                papers.append(arxiv_paper)
-                existing_paper_ids.add(arxiv_paper.paper_id)
-
-
+        # 去重
         unique = []
         seen_titles = set()
 
@@ -68,7 +57,7 @@ async def search_papers(search_request: PaperSearchRequest):
                 pdf_url=p.pdf_url.replace("http://", "https://"),
                 published_date=p.published_date,
                 updated_date=p.updated_date,
-                platform=paper_info_extractor.extract_platform(p.paper_id)
+                platform=p.platform  # 直接使用返回的platform属性
             ) for p in new_papers
         ]
         await search_log_service.append_record(

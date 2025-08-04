@@ -21,31 +21,41 @@ class PaperInfoExtractor:
     def extract_platform(self, paper_id: str) -> str:
 
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
-        if re.match(r'^\d{4}\.\d+v?\d*$', paper_id):
+        arxiv_pattern = r"^\d{4}\.\d{4,5}(v\d+)?$"
+        # 旧 arXiv 格式 (e.g., hep-th/9901001)
+        old_arxiv_pattern = r"^[a-zA-Z\-]+\/\d{7}$"
+        
+        if re.match(arxiv_pattern, paper_id) or re.match(old_arxiv_pattern, paper_id):
             return "arxiv"
+
+        # Conference paper format: YYYY.venue-track.ID (e.g., 2023.acl-long.123)
+        conference_pattern = r"^\d{4}\.([\w\-]+)\.\d+$"
+        match = re.match(conference_pattern, paper_id)
+        
+        if match:
+            venue_track = match.group(1)
             
-        # 旧格式的arXiv ID: 9 digits or less, with optional 'v' followed by version number (e.g., 9510064v1)
-        if re.match(r'^\d{5,9}v?\d*$', paper_id):
-            return "arxiv"
+            # 处理带有"findings-"前缀的特殊情况
+            if venue_track.startswith("findings-"):
+                # 返回主要的会议平台，如"acl"、"naacl"等
+                main_venue = venue_track.split("-")[1] 
+                return main_venue
+            
+            # 提取主要的会议平台 (acl, naacl, emnlp, etc.)
+            venue = venue_track.split("-")[0]
+            return venue
+            
+        # 尝试从paper_id中提取其他可能的平台
+        if "acl" in paper_id.lower():
+            return "acl"
+        elif "naacl" in paper_id.lower():
+            return "naacl"
+        elif "emnlp" in paper_id.lower():
+            return "emnlp"
         
-        # Conference format: YYYY.venue-track.N (e.g., 2023.acl-long.2)
-        if '.' in paper_id:
-            parts = paper_id.split('.')
-            if len(parts) >= 3:
-                venue_track = parts[1]
-                if '-' in venue_track:
-                    venue = venue_track.split('-')[0].lower()
-                    return venue
-                else:
-                    return venue_track.lower()
-        
-        # If no pattern matches, try to extract from filename-like patterns
-        if '_' in paper_id:
-            return paper_id.split('_')[0].lower()
-        
-        # 如果无法确定，默认返回arxiv
-        logger.warning(f"Cannot determine platform from paper_id format: {paper_id}, defaulting to 'unknown'")
-        return "unknown"
+        # 默认为arxiv
+        logger.warning(f"Could not determine platform from paper_id: {paper_id}, defaulting to 'arxiv'")
+        return "arxiv"
     
     def extract_arxiv_info(self, paper_id: str) -> Tuple[str, str]:
         """
@@ -148,6 +158,10 @@ class PaperInfoExtractor:
             return f"https://arxiv.org/pdf/{paper_id}"
         
         elif platform in ["acl", "emnlp", "naacl", "eacl", "coling"]:
+            # 检查是否是findings论文
+            if "findings" in paper_id.lower():
+                # ACL Anthology URL format for findings papers: https://aclanthology.org/{paper_id}.pdf
+                return f"https://aclanthology.org/{paper_id}.pdf"
             # ACL Anthology URL format: https://aclanthology.org/{paper_id}.pdf
             return f"https://aclanthology.org/{paper_id}.pdf"
         
@@ -168,6 +182,9 @@ class PaperInfoExtractor:
         
         else:
             # For unknown platforms, return a generic format
+            # 使用ACL Anthology格式作为后备
+            if paper_id.startswith("20"):  # 如果ID以年份开始，尝试ACL Anthology格式
+                return f"https://aclanthology.org/{paper_id}.pdf"
             raise ValueError(f"PDF URL format not supported for platform: {platform}")
 
 

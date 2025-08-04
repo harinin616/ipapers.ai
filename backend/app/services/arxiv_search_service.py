@@ -187,6 +187,7 @@ class ArxivSearchService:
                     
                     paper_data = {
                         'arxiv_id': arxiv_id,
+                        'platform': 'arxiv',
                         'categories': categories,
                         'title': title,
                         'authors': authors,
@@ -223,6 +224,7 @@ class ArxivSearchService:
             for pre_paper in preliminary_papers[:max_results]:
                 paper = Paper(
                     paper_id=pre_paper['arxiv_id'],
+                    platform="arxiv",
                     title=pre_paper['title'],
                     authors=pre_paper['authors'],
                     abstract=pre_paper['abstract'],
