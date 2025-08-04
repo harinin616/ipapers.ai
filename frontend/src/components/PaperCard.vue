@@ -1,7 +1,7 @@
 <template>
   <div :class="['paper-card', { expanded }]">
     <h3 class="paper-title">
-      <a :href="`https://arxiv.org/abs/${paper.paper_id}`" target="_blank" rel="noopener">
+      <a :href="paperUrl" target="_blank" rel="noopener">
         {{ paper.title }}
       </a>
     </h3>
@@ -44,7 +44,7 @@
       <button @click="goToPaperDetail" class="action-button">
         Details
       </button>
-      <ChatButton :paper-id="paper.paper_id" />
+      <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
     </div>
   </div>
 </template>
@@ -78,6 +78,20 @@ export default defineComponent({
     const toggleExpand = () => {
       expanded.value = !expanded.value;
     };
+    
+    // Generate appropriate URL based on platform
+    const paperUrl = computed(() => {
+      const platform = props.paper.platform || 'arxiv';
+      const paperId = props.paper.paper_id;
+      
+      if (platform === 'arxiv') {
+        return `https://arxiv.org/abs/${paperId}`;
+      } else if (['acl', 'emnlp', 'naacl', 'eacl', 'coling'].includes(platform)) {
+        return `https://aclanthology.org/${paperId}`;
+      } else {
+        return props.paper.pdf_url;
+      }
+    });
     
     // Format the authors list (show first 3 names, then "et al" if more)
     const authorText = computed(() => {
@@ -116,7 +130,7 @@ export default defineComponent({
     // Handle PDF click with tracking
     const handlePdfClick = async () => {
       try {
-        await api.click_paper(props.paper.paper_id);
+        await api.click_paper(props.paper.paper_id, props.paper.platform);
       } catch (error) {
         console.error('Failed to record PDF click:', error);
       }
@@ -124,18 +138,31 @@ export default defineComponent({
     
     const goToPaperDetail = async () => {
       try {
-        await api.click_paper(props.paper.paper_id);
+        await api.click_paper(props.paper.paper_id, props.paper.platform);
         
         paperStore.setCurrentPaper(props.paper);
-        router.push({ name: 'paper-detail' });
+        router.push({ 
+          name: 'paper-detail',
+          params: {
+            id: props.paper.paper_id,
+            platform: props.paper.platform || 'arxiv'
+          }
+        });
       } catch (error) {
         console.error('Failed to record details click:', error);
         paperStore.setCurrentPaper(props.paper);
-        router.push({ name: 'paper-detail' });
+        router.push({ 
+          name: 'paper-detail',
+          params: {
+            id: props.paper.paper_id,
+            platform: props.paper.platform || 'arxiv'
+          }
+        });
       }
     };
     
     return {
+      paperUrl,
       authorText,
       formattedDate,
       truncatedAbstract,

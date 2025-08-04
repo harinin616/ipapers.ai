@@ -2,37 +2,41 @@ import { reactive } from 'vue'
 import api from '../services/api'
 
 interface FileSelectionState {
-  selectedFiles: Set<string>
+  selectedFiles: Map<string, string> // paperId -> platform
 }
 
 const fileSelectionState = reactive<FileSelectionState>({
-  selectedFiles: new Set<string>()
+  selectedFiles: new Map<string, string>()
 })
 
 export const fileSelectionStore = {
-  getSelectedFiles: (): string[] => {
-    return Array.from(fileSelectionState.selectedFiles)
+  getSelectedFiles: (): Array<{id: string, platform: string}> => {
+    return Array.from(fileSelectionState.selectedFiles.entries()).map(([id, platform]) => ({
+      id,
+      platform
+    }))
   },
   
   isFileSelected: (paperId: string): boolean => {
     return fileSelectionState.selectedFiles.has(paperId)
   },
   
-  toggleFileSelection: async (paperId: string) => {
+  toggleFileSelection: async (paperId: string, platform: string = "arxiv") => {
     const isSelected = fileSelectionState.selectedFiles.has(paperId)
     if (isSelected) {
       fileSelectionState.selectedFiles.delete(paperId)
     } else {
-      fileSelectionState.selectedFiles.add(paperId)
+      fileSelectionState.selectedFiles.set(paperId, platform)
     }
     await api.update_file_selection({
       paper_id: paperId,
+      platform: platform,
       selected: !isSelected
     })
   },
-  setSelection: (ids: string[]) => {
+  setSelection: (items: Array<{id: string, platform: string}>) => {
     fileSelectionState.selectedFiles.clear()
-    ids.forEach(id => fileSelectionState.selectedFiles.add(id))
+    items.forEach(item => fileSelectionState.selectedFiles.set(item.id, item.platform))
   }
   
 } 

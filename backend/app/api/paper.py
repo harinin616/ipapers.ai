@@ -5,6 +5,7 @@ import logging
 from app.models.paper import Paper
 from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
+from app.services.extract_info import extract_platform
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +22,27 @@ async def get_papers(
     """
     if keyword:
         papers_1 = await db_service.get_recent_papers(limit=10, keyword=keyword, offset=offset)
-        paper_ids_2 = await vector_search_service.vector_search(keyword, 10)
+        paper_tuples_2 = await vector_search_service.vector_search(keyword, 10)
     else:
         #print("No keyword")
         papers_1 = await db_service.get_recent_papers(limit=30, keyword=keyword, offset=offset)
-        paper_ids_2 = None
+        paper_tuples_2 = None
     
-    # Convert paper_ids to Paper objects
+    # Convert paper_tuples to Paper objects
     papers_2 = []
-    if paper_ids_2:
-        papers_2 = await db_service.get_papers_by_ids(list(paper_ids_2))
+    if paper_tuples_2:
+        # paper_tuples_2 contains (paper_id, platform) tuples
+        papers_2 = await db_service.get_papers_by_ids(paper_tuples_2)
     
     papers = papers_1 + papers_2
     
-    # Manual deduplication using paper_id
-    seen_ids = set()
+    # Manual deduplication using paper_id and platform
+    seen_keys = set()
     unique_papers = []
     for paper in papers:
-        if paper.paper_id not in seen_ids:
-            seen_ids.add(paper.paper_id)
+        key = (paper.paper_id, paper.platform)
+        if key not in seen_keys:
+            seen_keys.add(key)
             unique_papers.append(paper)
     
     papers = unique_papers
@@ -57,21 +60,25 @@ async def count_papers():
 
 
 @router.post("/click/{paper_id}")
-async def click_paper(paper_id: str):
+async def click_paper(paper_id: str, platform: str = Query("arxiv")):
     """
     Click on a paper
     """
-    success = await db_service.click_paper(paper_id)
+    success = await db_service.click_paper(paper_id, platform)
     if not success:
         raise HTTPException(status_code=404, detail="Paper not found")
     return success
 
 @router.get("/{paper_id}", response_model=Paper)
-async def get_paper(paper_id: str):
+async def get_paper(paper_id: str, platform: str = None):
     """
-    Get paper by paper_id
+    Get paper by paper_id and optional platform
     """
-    paper = await db_service.get_paper_by_id(paper_id)
+    # 如果未提供platform，从paper_id推断
+    if platform is None:
+        platform = extract_platform(paper_id)
+        
+    paper = await db_service.get_paper_by_id(paper_id, platform)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
         
@@ -83,7 +90,8 @@ async def get_paper(paper_id: str):
         categories=paper.categories,
         pdf_url=paper.pdf_url.replace("http://", "https://"),
         published_date=paper.published_date,
-        updated_date=paper.updated_date
+        updated_date=paper.updated_date,
+        platform=paper.platform
     )
     
     return response 

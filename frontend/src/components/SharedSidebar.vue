@@ -1,56 +1,104 @@
 <template>
-  <aside class="shared-sidebar" role="navigation" aria-label="Shared folders">
-    <header class="shared-sidebar__header">
-      <h3>Public Shared Folders</h3>
-    </header>
+   <aside
+  class="shared-sidebar"
+  :class="{ collapsed: isCollapsed }"
+  role="navigation"
+  aria-label="Shared folders"
+>
+  <!-- ── Header ───────────────────────────── -->
+  <header class="shared-sidebar__header">
+    <!-- 折叠/展开按钮 -->
+    <button
+      class="collapse-btn"
+      @click="toggleSidebar"
+      :title="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+    >
+      <!-- 简单汉堡图标，可换成你自己的 -->
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+      </svg>
+    </button>
 
-    <template v-if="shares.length">
-      <ul class="shared-sidebar__list">
+    <!-- 标题只在展开时显示 -->
+    <h3 v-if="!isCollapsed">Related Work Folders</h3>
+  </header>
 
-        <li v-for="s in shares" :key="s.folder_id">
-          <!-- ── 文件夹行 ───────────────────── -->
-          <div
-            class="shared-sidebar__item folder-main"
-            :class="{ 'is-open': expandedId === s.folder_id }"
-            @click="toggleFolder(s.folder_id)"
+  <!-- ── 列表 ─────────────────────────────── -->
+  <template v-if="shares.length">
+    <ul class="shared-sidebar__list">
+      <li v-for="s in shares" :key="s.folder_id">
+        <!-- 文件夹行 -->
+        <div
+          class="shared-sidebar__item folder-main"
+          :class="{
+            'is-open': expandedId === s.folder_id,
+            collapsed: isCollapsed
+          }"
+          @click=" toggleFolder(s.folder_id)"
+          :title=" s.folder_name "
+        >
+          <!-- 展开箭头（收缩时隐藏） -->
+          <span
+            v-if="!isCollapsed"
+            class="chevron"
+            :class="{ open: expandedId === s.folder_id }"
+          >▸</span>
+
+          <!-- 文件夹名 & 计数（收缩时隐藏） -->
+          <span v-if="!isCollapsed" class="shared-sidebar__name">
+            {{ s.folder_name }}
+          </span>
+              <button
+            v-if="!isCollapsed && s.owner_id === currentUserId"
+            class="setting-btn"
+            @click.stop="openSetting(s.folder_id, $event)"
+            title="Folder settings"
+          >⚙</button>
+
+          <span v-if="!isCollapsed" class="shared-sidebar__count">
+            {{ s.file_cnt }}
+          </span>
+          <span
+            v-if="!isCollapsed"
+            class="folder-tag"
+              :class="getTagClass(s)"
+  :title="getTagFull(s)"      
+>
+  {{ getTagShort(s) }}        
+          </span>
+
+        </div>
+
+        <!-- 子论文列表：仅在展开且侧栏未折叠时显示 -->
+        <ul
+          v-if="!isCollapsed && expandedId === s.folder_id"
+          class="paper-wrap"
+        >
+          <li
+            v-if="!papersMap[s.folder_id]?.length"
+            class="paper-empty"
+          >Loading…</li>
+
+          <li
+            v-for="(p, idx) in papersMap[s.folder_id] || []"
+            :key="p.paper_id"
+            class="paper-row"
+            :class="{ 'is-selected': props.activePaperId === p.paper_id }"
+            @click.stop="selectPaper(p.paper_id)"
+            :title="p.title"
           >
-            <span class="chevron" :class="{ open: expandedId === s.folder_id }">▸</span>
-            <span class="shared-sidebar__name">{{ s.folder_name }}</span>
-            <span class="shared-sidebar__count">{{ s.file_cnt }}</span>
-
-                <button
-                v-if="s.owner_id === currentUserId"
-                class="setting-btn"
-                @click.stop="openSetting(s.folder_id, $event)"
-                title="Folder settings"
-    >⚙</button>
-          </div>
-
-          <!-- ── 论文子列表 ────────────────── -->
-          <ul v-if="expandedId === s.folder_id" class="paper-wrap">
-            <li v-if="!papersMap[s.folder_id]?.length" class="paper-empty">
-              Loading…
-            </li>
-
-            <li v-for="(p, idx) in papersMap[s.folder_id] || []"
-              :key="p.paper_id"
-              class="paper-row"
-              :class="{ 'is-selected': props.activePaperId === p.paper_id }"
-              @click.stop="selectPaper(p.paper_id)"
-              :title="p.title">
             <span class="row-no">{{ idx + 1 }}.</span>
             {{ p.title }}
           </li>
+        </ul>
+      </li>
+    </ul>
+  </template>
 
-
-          </ul>
-        </li>
-
-      </ul>
-    </template>
-
-    <div v-else class="shared-sidebar__empty">No shared folders yet.</div>
-  </aside>
+  <div v-else class="shared-sidebar__empty" :class="{ collapsed: isCollapsed }">
+    No shared folders yet.
+  </div>
+</aside>
 
 
 
@@ -100,10 +148,13 @@
 import { reactive,ref, defineProps, defineEmits } from 'vue'
 import api from '../services/api'
 interface ShareMeta {
+  id: number
   folder_id: number
-  owner_id : string
+  owner_id: string
+  is_public: boolean
   folder_name: string
-  file_cnt  : number
+  file_cnt: number
+  created_at: string
 }
 interface Paper {
   paper_id: string
@@ -125,6 +176,23 @@ const emit = defineEmits<{
   (e:'remove', folder_id:number): void
   (e: 'update-mode', payload: { folder_id: number; is_public: boolean }): void
 }>()
+const isCollapsed = ref(false)
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value
+}
+
+function getTagFull(s: ShareMeta) {
+  if (s.owner_id === props.currentUserId) return 'OWNER'
+  return s.is_public ? 'PUBLIC' : 'SHARED'
+}
+function getTagShort(s: ShareMeta) {
+  return getTagFull(s).charAt(0)           // O / P / S
+}
+
+function getTagClass(s: ShareMeta) {
+  if (s.owner_id === props.currentUserId) return 'owner'
+  return s.is_public ? 'public' : 'shared'
+}
 
 function saveMode() {
   emit('update-mode', {
@@ -334,7 +402,7 @@ function confirmDelete(){
 
 .setting-pop{
   position:fixed; z-index:1000;
-  min-width:220px; max-width:260px;
+  min-width:220px; max-width:280px;
   background:#fff; border:1px solid #d1d5db; border-radius:8px;
   box-shadow:0 4px 14px rgba(0,0,0,.1);
   padding:1rem;
@@ -400,5 +468,139 @@ function confirmDelete(){
   background:none; border:none; color:#ef4444; cursor:pointer; margin-left:.5rem;
 }
 .delete-user:hover{ color:#b91c1c; }
+.shared-sidebar {
+  width: 280px;
+  transition: width 0.3s ease;
+  /* 其他现有样式 */
+}
+.shared-sidebar.collapsed {
+  width: 0;
+  overflow: hidden;
+}
+.collapse-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  /* 可根据需要调整位置和样式 */
+}
+
+
+.shared-sidebar.collapsed {
+  width: 60px;        /* 收缩宽度 */
+  min-width: 60px;
+  max-width: 60px;
+}
+
+/* 头部布局微调 */
+.collapse-btn {
+  background: none;
+  border: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-right: 4px;
+}
+.collapse-btn:hover { background: #f0f0f0; }
+
+/* 收缩时隐藏标题文本 */
+.shared-sidebar.collapsed .shared-sidebar__header h3 {
+  display: none;
+}
+
+/* 文件夹行在收缩时居中显示小圆点或自定义图标 */
+.shared-sidebar__item.collapsed {
+  justify-content: center;
+  padding: .45rem 0;
+}
+/* 收缩时隐藏名称、计数、箭头 */
+.shared-sidebar.collapsed .shared-sidebar__name,
+.shared-sidebar.collapsed .shared-sidebar__count,
+.shared-sidebar.collapsed .chevron,
+.shared-sidebar.collapsed .setting-btn {
+  display: none;
+}
+
+/* 隐藏子论文列表 */
+.shared-sidebar.collapsed .paper-wrap {
+  display: none;
+}
+
+/* “没有数据”提示也隐藏文字，留空白即可 */
+.shared-sidebar__empty.collapsed {
+  display: none;
+}
+/* 收缩宽度保持 60px */
+.shared-sidebar.collapsed { width: 60px; }
+
+/* 收缩时的文件夹行：居中 + 指针提示 */
+.shared-sidebar.collapsed .shared-sidebar__item {
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* 给收缩状态下的每条文件夹行加一个圆点指示 */
+.shared-sidebar.collapsed .shared-sidebar__item::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;       /* 灰色小点，按需改色 */
+  display: block;
+}
+
+/* Hover / 选中时把圆点和背景同步高亮（可选） */
+.shared-sidebar.collapsed .shared-sidebar__item:hover::after,
+.shared-sidebar.clas .shared-sidebar__item.is-open::after {
+  background: #6366f1;       /* 与选中高亮色保持一致 */
+}
+
+/* 已有的隐藏规则继续生效 —— 名称 / 计数 / 箭头 / 设置钮都隐藏 */
+.shared-sidebar.collapsed .shared-sidebar__item {
+  padding: 0.9rem 0;   /* ↑↑ 行高 ≈ 0.9rem×2 + 字体行高 */
+  justify-content: center;
+}
+.folder-tag{
+  font-size:.65rem;
+  font-weight:600;
+  padding:.1rem .35rem;
+  border-radius:4px;
+  text-transform:uppercase;
+  margin-left:.4rem;
+  line-height:1.2;
+  letter-spacing:.3px;
+}
+
+.folder-tag.owner  { background:#2563eb; color:#fff; }   /* 亮蓝 */
+.folder-tag.public { background:#10b981; color:#fff; }   /* 绿 */
+.folder-tag.shared { background:#e2e8f0; color:#374151;} /* 灰 */
+
+.shared-sidebar__item.is-open .folder-tag { filter:brightness(0.9); }
+.shared-sidebar__item:hover  .folder-tag { filter:brightness(0.95); }
+/* 让 header 成为 flex 容器 */
+.shared-sidebar__header{
+  display: flex;
+  align-items: center;
+  padding: .75rem 1rem .5rem;   /* 你原来的内边距保留 */
+  border-bottom: 1px solid #e3e7ef;
+}
+
+/* 折叠按钮保持原样即可，位置在最左 */
+
+/* 标题占满剩余宽度 + 居中 */
+.shared-sidebar__header h3{
+  flex: 1;              /* 把剩余空间都给 h3 */
+  text-align: center;   /* 水平居中 */
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #374151;
+}
 
 </style>

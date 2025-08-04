@@ -603,7 +603,7 @@ const modalContent = ref<HTMLElement|null>(null)
 
 /* 左侧 Sidebar：固定宽度，带滚动 */
 .share-manager > *:first-child {
-  flex: 0 0 260px;
+  flex: 0 0 auto;
   border-right: 1px solid #e5e7eb;
   overflow-y: auto;
 }
@@ -657,6 +657,11 @@ const modalContent = ref<HTMLElement|null>(null)
   flex-direction: column;
   background: #f9fafb;
   overflow-y: auto;
+}
+.comment-area {
+  min-width: 300px;    /* 被压缩到极窄时仍保持 300px */
+  position: relative;  /* 建立新层级 */
+  z-index: 20;         /* 把 canvas 压在下面 */
 }
 
 .modal-overlay {
@@ -977,13 +982,6 @@ const modalContent = ref<HTMLElement|null>(null)
   min-height: 0; /* 允许图区域收缩 */
 }
 
-/* 顶部图区域：撑满剩余，但不超出 */
-.graph-area {
-  flex: 1;         /* 占 main-column 的所有剩余空间 */
-  min-height: 0;   /* 关键：让它别撑破父容器 */
-  overflow: hidden;/* 隐藏超出部分 */
-}
-
 /* 强制画布铺满 graph-area */
 .graph-area canvas,
 .graph-area .graph-detail {
@@ -999,4 +997,37 @@ const modalContent = ref<HTMLElement|null>(null)
   border-top: 1px solid #e5e7eb;
   background: #f8fafc;
 }
+.graph-area {
+  flex: 1;
+  min-width: 0;        /* 允许被压缩 */
+  min-height: 0;
+  overflow: hidden;
+  position: relative;  /* ➜ canvas 的绝对定位以此为界 */
+  z-index: 0;          /* 保证在 comment-area 之下 */
+}
+
+/* 让 3D 画布最多占满自己，不再保留老宽度 */
+.graph-area canvas {
+  position: absolute !important; /* ForceGraph3D 自己就是 absolute */
+  inset: 0;                      /* 铺满父容器 */
+  width: 100%  !important;
+  height: 100% !important;
+  max-width: 100%;
+}
+/* 把内容两栏改成网格：左自适应，右固定 300px */
+.content-wrap{
+  display: grid;
+  grid-template-columns: 1fr 300px;  /* 300 可调 */
+  width: 100%;
+  min-width: 0;   /* 关键：允许整体收缩 */
+  min-height: 0;  /* 允许子元素再收缩 */
+}
+
+/* 主列、评论列都要能收缩或固定 */
+.main-column { min-width: 0; overflow: hidden; }
+.comment-area{
+  min-width: 0;          /* grid 已固定宽，再加一次保险 */
+  overflow-y: auto;      /* 纵向滚动 */
+}
+
 </style>

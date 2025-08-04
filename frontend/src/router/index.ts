@@ -31,9 +31,13 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/paper',
+    path: '/paper/:id/:platform?',
     name: 'paper-detail',
     component: () => import('../views/PaperDetailView.vue'),
+    props: route => ({
+      id: route.params.id,
+      platform: route.params.platform || 'arxiv'
+    }),
     meta: {
       title: 'Paper Details - iPapers',
       requiresAuth: false

@@ -16,23 +16,28 @@ Base = declarative_base()
 paper_categories = Table(
     'paper_categories',
     Base.metadata,
-    Column('paper_id', String, ForeignKey('papers.paper_id'), primary_key=True),
-    Column('category', String, ForeignKey('categories.name'), primary_key=True)
+    Column('paper_id', String, primary_key=True),
+    Column('platform', String, primary_key=True, default='arxiv'),
+    Column('category', String, ForeignKey('categories.name'), primary_key=True),
+    sa.ForeignKeyConstraint(['paper_id', 'platform'], ['papers.paper_id', 'papers.platform'], ondelete='CASCADE')
 )
 
 # Paper author association table with order
 paper_authors = Table(
     'paper_authors',
     Base.metadata,
-    Column('paper_id', String, ForeignKey('papers.paper_id'), primary_key=True),
+    Column('paper_id', String, primary_key=True),
+    Column('platform', String, primary_key=True, default='arxiv'),
     Column('author', String, ForeignKey('authors.name'), primary_key=True),
-    Column('author_order', Integer, nullable=False, default=0)
+    Column('author_order', Integer, nullable=False, default=0),
+    sa.ForeignKeyConstraint(['paper_id', 'platform'], ['papers.paper_id', 'papers.platform'], ondelete='CASCADE')
 )
 
 class DBPaper(Base):
     __tablename__ = "papers"
     
     paper_id = Column(String, primary_key=True, index=True)
+    platform = Column(String, primary_key=True, nullable=False, server_default='arxiv')
     title = Column(String, nullable=False)
     abstract = Column(Text, nullable=False)
     pdf_url = Column(String, nullable=False)
@@ -48,7 +53,7 @@ class DBPaper(Base):
     )
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
     def __repr__(self):
-        return f"<Paper {self.paper_id}: {self.title}>"
+        return f"<Paper {self.paper_id} ({self.platform}): {self.title}>"
 
 
 class DBAuthor(Base):
@@ -97,20 +102,25 @@ class DBUserFile(Base):
 
     id        = Column(Integer, primary_key=True, autoincrement=True)
     folder_id = Column(Integer, ForeignKey('folders.id', ondelete='CASCADE'), nullable=False, index=True)
-    paper_id  = Column(String,  ForeignKey('papers.paper_id', ondelete='CASCADE'), nullable=False, index=True)
+    paper_id  = Column(String, nullable=False, index=True)
+    platform  = Column(String, nullable=False, server_default=sa.text("'arxiv'"))
     added_at  = Column(DateTime, nullable=False, default=datetime.utcnow)
     selected  = Column(Boolean, nullable=False, server_default=sa.text("false"))
 
     # 关系
     folder = relationship('DBFolder', back_populates='files')
-    paper  = relationship('DBPaper')
+    paper  = relationship('DBPaper', foreign_keys=[paper_id, platform], 
+                         primaryjoin="and_(DBUserFile.paper_id==DBPaper.paper_id, "
+                                    "DBUserFile.platform==DBPaper.platform)")
 
     __table_args__ = (
-        sa.UniqueConstraint('folder_id', 'paper_id', name='uq_folder_paper'),
+        sa.UniqueConstraint('folder_id', 'paper_id', 'platform', name='uq_folder_paper_platform'),
+        sa.ForeignKeyConstraint(['paper_id', 'platform'], ['papers.paper_id', 'papers.platform'], 
+                              name='fk_user_files_paper_platform', ondelete='CASCADE'),
     )
 
     def __repr__(self):
-        return f"<UserFile folder={self.folder_id} paper={self.paper_id}>"
+        return f"<UserFile folder={self.folder_id} paper={self.paper_id} ({self.platform})>"
 
 
 

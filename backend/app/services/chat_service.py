@@ -160,74 +160,79 @@ class ChatService:
         if user_id in self.active_chats and session_id in self.active_chats[user_id]["sessions"]:
             del self.active_chats[user_id]["sessions"][session_id]
     
-    async def attach_paper(self, user_id: str, paper_id: str) -> bool:
-        await self.load_user_history(user_id)
-        user_id = str(user_id)
-        """attach paper to chat"""
-        if user_id not in self.active_chats:
-            self.active_chats[user_id] = {"files": [], "sessions": {}}
+    async def attach_paper(self, user_id: str, paper_id: str, platform: str = "arxiv") -> bool:
+        """
+        Attach a paper to a chat session
+        """
+        if not user_id or not paper_id:
+            logger.warning("Invalid user_id or paper_id")
+            return False
+        
         try:
             paper_title = paper_id
             paper = await db_service.get_paper_by_id(paper_id)
             if paper:
                 paper_title = paper.title
-
-
-            success = await pdf_service.update_chat_files(user_id, paper_id, paper_title)
-
+            
+            # Update chat files
+            success = await pdf_service.update_chat_files(user_id, paper_id, paper_title, platform)
             if not success:
+                logger.warning(f"Failed to update chat files for user {user_id} with paper {paper_id}")
                 return False
-            #如果user_id完全由数字构成的话
-            await db_service.add_file_to_user(uuid.UUID(user_id), paper_id)
-
-            logger.info(f"Added paper {paper_id} to chat session {user_id}.")
+            
+            # Add the paper to the user's default folder if needed
+            await db_service.add_file_to_user(uuid.UUID(user_id), paper_id, platform)
+            
+            logger.info(f"Added paper {paper_id} (platform: {platform}) to chat session {user_id}.")
             return True
-                
         except Exception as e:
-            logger.error(f"Error attaching paper {paper_id} for chat session {user_id}: {str(e)}", exc_info=True)
-            return False
-    
-    async def get_paper(self, user_id: str, paper_id: str) -> bool:
-        await self.load_user_history(user_id)
-        user_id = str(user_id)
-        """get paper pdf"""
-        if user_id not in self.active_chats:
-            return None
-        try:
-            file_path = await pdf_service.get_pdf(paper_id)
-
-            if file_path:
-                return file_path
-            else:
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error getting PDF for paper {paper_id} for chat session {user_id}: {str(e)}", exc_info=True)
+            logger.error(f"Error attaching paper {paper_id} (platform: {platform}) for chat session {user_id}: {str(e)}", exc_info=True)
             return False
 
-    async def process_embeddings(self, paper_id: str) -> bool:
+    async def get_paper(self, user_id: str, paper_id: str, platform: str = "arxiv") -> bool:
         """
-        generate embeddings for a paper and save to local directory
+        Get a paper for chat session
+        """
+        if not user_id or not paper_id:
+            logger.warning("Invalid user_id or paper_id")
+            return False
+        
+        try:
+            file_path = await pdf_service.get_pdf(paper_id, platform)
+            if not file_path:
+                logger.warning(f"Failed to get PDF for paper {paper_id} (platform: {platform})")
+                return False
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error getting PDF for paper {paper_id} (platform: {platform}) for chat session {user_id}: {str(e)}", exc_info=True)
+            return False
+
+    async def process_embeddings(self, paper_id: str, platform: str = "arxiv") -> bool:
+        """
+        Process embeddings for a paper
         """
         try:
-            # if the paper is already being processed, wait for it to finish
-            if paper_id in self.processing_files:
-                while paper_id in self.processing_files:
-                    await asyncio.sleep(0.2)
+            key = f"{paper_id}_{platform}"
+            
+            if key in self.processing_files:
+                while key in self.processing_files:
+                    await asyncio.sleep(0.5)
                 return True
             
-            self.processing_files.add(paper_id)
-            logger.info(f"Processing embeddings for paper {paper_id}")
-
-            await pdf_service.generate_embeddings_for_paper(paper_id)
-
-            self.processing_files.discard(paper_id)
-            logger.info(f"Successfully processed embeddings for paper {paper_id}")
-            
+            self.processing_files.add(key)
+            logger.info(f"Processing embeddings for paper {paper_id} (platform: {platform})")
+                
+            await pdf_service.generate_embeddings_for_paper(paper_id, platform)
+                
+            self.processing_files.discard(key)
+            logger.info(f"Successfully processed embeddings for paper {paper_id} (platform: {platform})")
             return True
         except Exception as e:
-            self.processing_files.discard(paper_id)
-            logger.error(f"Error processing embeddings for paper {paper_id}: {str(e)}", exc_info=True)
+            if platform is not None:
+                key = f"{paper_id}_{platform}"
+                self.processing_files.discard(key)
+            logger.error(f"Error processing embeddings for paper {paper_id} (platform: {platform}): {str(e)}", exc_info=True)
             return False
     
     async def format_messages(self, user_id: str, session_id: str) -> List[Dict[str, str]]:

@@ -216,7 +216,8 @@ async def fetch_papers_from_database(target_date):
                     )
                     .where(
                         DBPaper.published_date >= start_datetime,
-                        DBPaper.published_date <= end_datetime
+                        DBPaper.published_date <= end_datetime,
+                        DBPaper.platform == 'arxiv'
                     )
                     .order_by(DBPaper.published_date.desc())
                 )

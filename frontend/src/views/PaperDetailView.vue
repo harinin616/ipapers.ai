@@ -43,7 +43,8 @@
           <a :href="paper.pdf_url" target="_blank" class="action-button">
             Open PDF
           </a>
-          <ChatButton :paper-id="paper.paper_id" />
+          <!-- 添加platform到ChatButton -->
+          <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
           <button @click="goBack" class="action-button">
             Back
           </button>
@@ -78,6 +79,7 @@ import { useRouter } from 'vue-router'
 import { paperStore } from '../stores/paperStore'
 import type { Paper } from '../types/paper'
 import ChatButton from '../components/ChatButton.vue'
+import api from '../services/api'
 
 export default defineComponent({
   name: 'PaperDetailView',
@@ -85,8 +87,19 @@ export default defineComponent({
   components: {
     ChatButton
   },
+
+  props: {
+    id: {
+      type: String,
+      required: true
+    },
+    platform: {
+      type: String,
+      default: 'arxiv'
+    }
+  },
   
-  setup() {
+  setup(props) {
     const router = useRouter();
     const paper = ref<Paper | null>(null);
     const isLoading = ref(true);
@@ -128,19 +141,49 @@ export default defineComponent({
       router.go(-1);
     };
     
-    // Get paper details
-    onMounted(async () => {
-      // try to get paper from store
-      const storedPaper = paperStore.getCurrentPaper();
-      if (storedPaper) {
-        paper.value = storedPaper;
+    // 修改获取论文的方法，传递paperId和platform参数
+    const fetchPaperDetails = async (paperId: string, platform: string = "arxiv") => {
+      isLoading.value = true;
+      error.value = '';
+      
+      try {
+        // Check if paper exists in store first
+        const cachedPaper = paperStore.getCurrentPaper();
+        if (cachedPaper && cachedPaper.paper_id === paperId && cachedPaper.platform === platform) {
+          paper.value = cachedPaper;
+          // Still record click in backend
+          await api.click_paper(paperId, platform);
+        } else {
+          const response = await api.get_paper(paperId, platform);
+          if (response) {
+            paper.value = response;
+            // Update store
+            paperStore.setCurrentPaper(response);
+          } else {
+            error.value = "Paper not found";
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching paper:", err);
+        error.value = "Failed to load the paper. Please try again.";
+      } finally {
         isLoading.value = false;
-        return;
+      }
+    };
+
+    onMounted(async () => {
+      // 首先确保用户ID已设置
+      if (!localStorage.getItem('X-User-ID')) {
+        try {
+          const userId = await api.getUserId();
+          localStorage.setItem('X-User-ID', userId);
+        } catch (err) {
+          console.error("Failed to get user ID:", err);
+        }
       }
       
-      // If not in store, set error
-      error.value = 'Paper not found in store';
-      isLoading.value = false;
+      // 然后获取论文详情
+      await fetchPaperDetails(props.id, props.platform);
     });
     
     return {

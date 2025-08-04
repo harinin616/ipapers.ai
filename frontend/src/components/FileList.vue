@@ -49,11 +49,9 @@
               New
             </button>
 
-            <!-- Upload：使用 label + input 隐藏原生样式 -->
-          <!-- <label class="btn upload">
+            <button class="btn upload" @click="openDialog">
               Upload
-              <input type="file" multiple hidden @change="handleUpload" />
-            </label>--> 
+            </button>
 
             <router-link to="/chat" class="btn chat">
               Chat
@@ -210,8 +208,60 @@
       </div>
     </div>
 </transition>
-    
+    <dialog ref="dlg" class="upload-dialog">
+  <form @submit.prevent="submitForm" enctype="multipart/form-data">
+
+    <h3>Upload Paper</h3>
+
+    <div class="field">
+      <label>Title</label>
+      <input v-model="form.title" placeholder="Optional" />
+    </div>
+
+    <div class="field">
+      <label>Authors</label>
+      <input v-model="form.authors" placeholder="Optional" />
+    </div>
+
+    <div class="field">
+      <label>Published Date</label>
+      <input
+        type="date"
+        v-model="form.date"
+        :max="maxDate"
+        placeholder="1900-01-01"
+      />
+    </div>
+
+    <div class="field">
+      <label>Abstract</label>
+      <textarea v-model="form.abstract" rows="3" placeholder="Optional"></textarea>
+    </div>
+
+    <div class="field">
+      <label>PDF File <span class="req">*</span></label>
+      <input
+        type="file"
+        accept="application/pdf,.pdf"
+        @change="onFile"
+        required
+      />
+    </div>
+
+    <div class="actions">
+      <button type="submit" :disabled="!form.file">Submit</button>
+      <button type="button" @click="closeDialog">Cancel</button>
+    </div>
+  </form>
+</dialog>
+  <AddPaperView
+    v-if="showAddModal"
+    :paperId="lastPaperId"
+    @added="loadFolders"
+    @close="showAddModal = false"
+  />
   </div>
+  
 </template>
 
 <script lang="ts">
@@ -219,6 +269,8 @@ import { defineComponent, ref, watch,computed, onMounted, onBeforeUnmount, nextT
 import { useRoute , useRouter } from 'vue-router'
 import api from '../services/api'
 import { fileSelectionStore } from '../stores/fileSelectionStore'
+import { reactive } from 'vue'
+import AddPaperView from '@/views/AddPaperView.vue'
 
 interface ChatFile {
   file_path: string;
@@ -237,6 +289,7 @@ export interface Folder {
 
 export default defineComponent({
   name: 'FileList',
+  components: { AddPaperView }, 
   
   props: {
     user_id: {
@@ -270,21 +323,66 @@ export default defineComponent({
       pendingShare = { folder };
       showShareModal.value = true;     // open the 2‑button dialog
     };
-const handleUpload = async (e: Event) => {
-  const files = (e.target as HTMLInputElement).files
-  if (!files || !files.length) return
+    // ...
+const showAddModal = ref(false)        // 控制是否显示
+const lastPaperId  = ref('')     
+const dlg  = ref<HTMLDialogElement | null>(null)
+const maxDate = new Date().toISOString().slice(0, 10)
+const form = reactive({
+  title:     '',
+  authors:   '',
+  date:      '1900-01-01',
+  abstract:  '',
+  file:      null as File | null
+})
+
+function openDialog() {
+  resetForm()
+  dlg.value?.showModal()
+}
+function closeDialog() {
+  dlg.value?.close()
+}
+function resetForm() {
+  form.title    = ''
+  form.authors  = ''
+  form.date     = '1900-01-01'
+  form.abstract = ''
+  form.file     = null
+}
+function onFile(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0] || null
+  if (f && f.type !== 'application/pdf' && !f.name.endsWith('.pdf')) {
+    alert('Please choose a PDF file.')
+    (e.target as HTMLInputElement).value = ''
+    return
+  }
+  form.file = f
+}
+
+async function submitForm() {
+  if (!form.file) return
+
+  const fd = new FormData()
+  fd.append('file',        form.file)
+  fd.append('title',       form.title)
+  fd.append('authors',     form.authors)
+  fd.append('published',   form.date || '1900-01-01')
+  fd.append('abstract',    form.abstract)
 
   try {
-    // 👉 这里按你的接口实现批量上传
-    for (const f of Array.from(files)) {
-      await api.upload_file(f)          // 假设存在该接口
-    }
-    await loadFolders()                 // 刷新列表
-  } catch (err) {
-    console.error('upload failed', err)
-    alert('Upload failed, please retry.')
+    const paper_id = await api.upload_file(fd)   // 改成你的接口
+    console.log('Upload success:', paper_id)
+    closeDialog()
+    lastPaperId.value = paper_id
+    showAddModal.value = true 
+
+  } catch (e) {
+    console.error(e)
+    alert('Upload failed.')
   }
 }
+
 
   /* ---------- modal handlers ---------- */
   const confirmShare = async (isPublic: boolean) => {
@@ -609,6 +707,15 @@ const cancelEditFolder = () => {
       startEditFolder,
       editingFolderId,
       cancelEditFolder,
+      form,
+      maxDate,
+      openDialog,
+      onFile,
+      closeDialog,
+      submitForm,
+      dlg,
+      showAddModal,
+      lastPaperId,
     }
   }
 })
@@ -1236,5 +1343,57 @@ const cancelEditFolder = () => {
 .btn.new-folder:hover { background:#43a047; }
 .btn.upload:hover     { background:#fb8c00; }
 .btn.chat:hover       { background:#303f9f; }
+.upload-dialog{
+  padding:1.2rem 1.5rem;
+  border:none;border-radius:8px;
+  width:320px;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);
+  font-family:system-ui, sans-serif;
+}
+.upload-dialog h3{margin-top:0;font-size:1.1rem}
+
+.field{display:flex;flex-direction:column;margin-bottom:.8rem}
+.field label{font-size:.8rem;color:#555;margin-bottom:.25rem}
+.field .req{color:#e11d48;font-weight:bold}
+
+.field input[type="file"]{padding:.25rem 0}
+
+.actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem}
+.actions button{
+  padding:.35rem .9rem;border:none;border-radius:4px;
+  font-size:.85rem;cursor:pointer
+}
+.actions button[type=submit]{background:#2563eb;color:#fff}
+.actions button[type=submit]:disabled{opacity:.6;cursor:not-allowed}
+.actions button[type=button]{background:#e5e7eb;color:#333}
+/* === 修复 Upload 弹窗被吃掉 === */
+
+/* ① 不要再让 .files-sidebar 当 fixed-containing-block */
+.files-sidebar{
+  /* transform: translateZ(0); */   /* 直接删掉或注释掉 */
+  will-change: width, opacity;      /* 性能优化仍在，但不会影响定位 */
+  /* overflow: hidden;  这一行可以保留，弹窗已跳出容器就不会再被裁剪 */
+}
+
+/* ① 不要让侧栏变成 dialog 的“视口” */
+.files-sidebar{
+  /* transform: translateZ(0); */   /* ← 注释 / 删除 */
+  overflow: visible;                /* ← 让弹窗能溢出来 */
+}
+
+/* ② 让 <dialog> 脱离侧栏，固定到窗口中央 */
+.upload-dialog{
+  position: fixed;          /* 脱离文档流，直接贴在 viewport */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3000;            /* 保证在一切侧栏/蒙版之上 */
+  /* 下面原本已有的阴影、圆角等保持不变 */
+}
+
+/* ③ 给 backdrop 一点暗色 */
+.upload-dialog::backdrop{
+  background: rgba(0,0,0,.45);
+}
 
 </style> 

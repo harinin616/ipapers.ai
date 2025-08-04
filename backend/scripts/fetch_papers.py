@@ -88,7 +88,7 @@ async def fetch_papers(days=None):
             
             total_fetched += len(batch_papers)
                 
-            added_db_ids = await db_service.add_papers(batch_papers)
+            added_db_ids = await db_service.add_papers(batch_papers, platform="arxiv")
             
             if not added_db_ids:
                 logger.info(f"No new papers in batch {batch_num} added to DB. All papers already exist.")
@@ -107,7 +107,7 @@ async def fetch_papers(days=None):
             for p in batch_papers:
                 try:
                     pid= p.paper_id
-                    ok = await pdf_service.generate_embeddings_for_paper(pid)
+                    ok = await pdf_service.generate_embeddings_for_paper(pid, "arxiv")
                     if ok:
                         logger.info(f"Generated embeddings for paper {pid}")
                     else:

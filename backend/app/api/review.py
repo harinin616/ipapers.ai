@@ -117,10 +117,19 @@ async def add_files_to_session(
         raise HTTPException(status_code=401, detail="User ID not found")
     
     paper_ids = data.get("paper_ids", [])
+    platforms = data.get("platforms", ["arxiv"] * len(paper_ids))
+    
     if not paper_ids:
         raise HTTPException(status_code=400, detail="No paper IDs provided")
     
-    success = review_service.add_files_to_session(user_id, session_id, paper_ids)
+    # 确保paper_ids和platforms长度相同
+    if len(platforms) < len(paper_ids):
+        platforms.extend(["arxiv"] * (len(paper_ids) - len(platforms)))
+    
+    # 组合paper_ids和platforms
+    paper_data = list(zip(paper_ids, platforms))
+    
+    success = review_service.add_files_to_session(user_id, session_id, paper_data)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to add files to session")
     
@@ -131,7 +140,8 @@ async def add_files_to_session(
 async def remove_session_file(
     request: Request,
     session_id: str = Path(...),
-    paper_id: str = Path(...)
+    paper_id: str = Path(...),
+    platform: str = Query("arxiv", description="Paper platform")
 ):
     """
     Remove a file from a specific RWS session
@@ -140,7 +150,7 @@ async def remove_session_file(
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found")
     
-    success = review_service.remove_file_from_session(user_id, session_id, paper_id)
+    success = review_service.remove_file_from_session(user_id, session_id, paper_id, platform)
     if not success:
         raise HTTPException(status_code=404, detail="File not found in session")
     
@@ -401,11 +411,12 @@ async def set_target_paper(request: Request, data: dict = Body(...)):
     
     session_id = data.get("session_id")
     paper_id = data.get("paper_id")
+    platform = data.get("platform", "arxiv")
     
     if not session_id or not paper_id:
         raise HTTPException(status_code=400, detail="Missing session_id or paper_id")
     
-    success = review_service.set_target_paper(user_id, session_id, paper_id)
+    success = review_service.set_target_paper(user_id, session_id, paper_id, platform)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to set target paper")
     
@@ -424,8 +435,14 @@ async def get_target_paper(request: Request, session_id: str = Query(...)):
     if not session_id:
         raise HTTPException(status_code=400, detail="Missing session_id")
     
-    target_paper_id = review_service.get_target_paper(user_id, session_id)
-    return {"target_paper_id": target_paper_id}
+    target_paper_info = review_service.get_target_paper(user_id, session_id)
+    if not target_paper_info:
+        return {"target_paper_id": None, "target_paper_platform": None}
+    
+    return {
+        "target_paper_id": target_paper_info["paper_id"],
+        "target_paper_platform": target_paper_info["platform"]
+    }
 
 
 @router.delete("/target_paper")

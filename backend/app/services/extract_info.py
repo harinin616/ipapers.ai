@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 from typing import Tuple, Optional
 from pathlib import Path
 import logging
@@ -20,26 +21,53 @@ class PaperInfoExtractor:
     
     def extract_platform(self, paper_id: str) -> str:
 
+        # Check for UUID format first
+        try:
+            uuid.UUID(paper_id)
+            return "upload"
+        except (ValueError, TypeError):
+            pass
+
+        # biorxiv format: biorxiv_XXX_YYY
+        if paper_id.startswith("biorxiv_"):
+            return "biorxiv"
+
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
-        if re.match(r'^\d{4}\.\d+v?\d*$', paper_id):
+        arxiv_pattern = r"^\d{4}\.\d{4,5}(v\d+)?$"
+        # 旧 arXiv 格式 (e.g., hep-th/9901001)
+        old_arxiv_pattern = r"^[a-zA-Z\-]+\/\d{7}$"
+        
+        if re.match(arxiv_pattern, paper_id) or re.match(old_arxiv_pattern, paper_id):
             return "arxiv"
+
+        # Conference paper format: YYYY.venue-track.ID (e.g., 2023.acl-long.123)
+        conference_pattern = r"^\d{4}\.([\w\-]+)\.\d+$"
+        match = re.match(conference_pattern, paper_id)
         
-        # Conference format: YYYY.venue-track.N (e.g., 2023.acl-long.2)
-        if '.' in paper_id:
-            parts = paper_id.split('.')
-            if len(parts) >= 3:
-                venue_track = parts[1]
-                if '-' in venue_track:
-                    venue = venue_track.split('-')[0].lower()
-                    return venue
-                else:
-                    return venue_track.lower()
+        if match:
+            venue_track = match.group(1)
+            
+            # 处理带有"findings-"前缀的特殊情况
+            if venue_track.startswith("findings-"):
+                # 返回主要的会议平台，如"acl"、"naacl"等
+                main_venue = venue_track.split("-")[1] 
+                return main_venue
+            
+            # 提取主要的会议平台 (acl, naacl, emnlp, etc.)
+            venue = venue_track.split("-")[0]
+            return venue
+            
+        # 尝试从paper_id中提取其他可能的平台
+        if "acl" in paper_id.lower():
+            return "acl"
+        elif "naacl" in paper_id.lower():
+            return "naacl"
+        elif "emnlp" in paper_id.lower():
+            return "emnlp"
         
-        # If no pattern matches, try to extract from filename-like patterns
-        if '_' in paper_id:
-            return paper_id.split('_')[0].lower()
-        
-        raise ValueError(f"Cannot determine platform from paper_id format: {paper_id}")
+        # 默认为arxiv
+        logger.warning(f"Could not determine platform from paper_id: {paper_id}, defaulting to 'arxiv'")
+        return "arxiv"
     
     def extract_arxiv_info(self, paper_id: str) -> Tuple[str, str]:
         """
@@ -92,6 +120,24 @@ class PaperInfoExtractor:
         else:
             raise ValueError(f"Invalid conference paper ID format: {paper_id}")
     
+    def extract_biorxiv_info(self, paper_id: str) -> Tuple[str, str]:
+        """
+        Extract information from biorxiv paper ID
+        
+        Args:
+            paper_id: biorxiv paper ID like "biorxiv_XXX_YYY"
+        
+        Returns:
+            (year, month) tuple, using current year/month as placeholder
+        """
+        # For biorxiv, we don't have year/month in the ID
+        # We'll use a generic structure with "biorxiv" as the directory
+        import datetime
+        now = datetime.datetime.now()
+        year = str(now.year)[2:] # Last two digits
+        month = str(now.month).zfill(2)
+        
+        return year, month
 
 
     def get_pdf_storage_directory(self, paper_id: str) -> Path:
@@ -100,8 +146,10 @@ class PaperInfoExtractor:
         
         if platform == "arxiv":
             year, month = self.extract_arxiv_info(paper_id)
- 
             directory = self.pdf_base_dir / "arxiv" / year / month
+        elif platform == "biorxiv":
+            year, month = self.extract_biorxiv_info(paper_id)
+            directory = self.pdf_base_dir / "biorxiv" / year / month
         else:
             # For conference papers (acl, naacl, emnlp, etc.)
             year, venue, track = self.extract_conference_info(paper_id)
@@ -123,6 +171,9 @@ class PaperInfoExtractor:
         if platform == "arxiv":
             year, month = self.extract_arxiv_info(paper_id)
             directory = self.embedding_base_dir / "arxiv" / year / month
+        elif platform == "biorxiv":
+            year, month = self.extract_biorxiv_info(paper_id)
+            directory = self.embedding_base_dir / "biorxiv" / year / month
         else:
             # For conference papers (acl, naacl, emnlp, etc.)
             year, venue, track = self.extract_conference_info(paper_id)
@@ -141,7 +192,22 @@ class PaperInfoExtractor:
             # arXiv URL format: https://arxiv.org/pdf/{paper_id}
             return f"https://arxiv.org/pdf/{paper_id}"
         
+        elif platform == "biorxiv":
+            # Extract DOI from paper_id (format: biorxiv_10.1101_XXXXXX)
+            doi_parts = paper_id.split('_')
+            if len(doi_parts) >= 3:
+                doi_number = doi_parts[2]
+                version = "1"  # Default version if not specified
+                # Use the standard biorxiv PDF URL format
+                return f"https://www.biorxiv.org/content/10.1101/{doi_number}v{version}.full.pdf"
+            else:
+                raise ValueError(f"Invalid biorxiv paper ID format: {paper_id}")
+        
         elif platform in ["acl", "emnlp", "naacl", "eacl", "coling"]:
+            # 检查是否是findings论文
+            if "findings" in paper_id.lower():
+                # ACL Anthology URL format for findings papers: https://aclanthology.org/{paper_id}.pdf
+                return f"https://aclanthology.org/{paper_id}.pdf"
             # ACL Anthology URL format: https://aclanthology.org/{paper_id}.pdf
             return f"https://aclanthology.org/{paper_id}.pdf"
         
@@ -162,6 +228,9 @@ class PaperInfoExtractor:
         
         else:
             # For unknown platforms, return a generic format
+            # 使用ACL Anthology格式作为后备
+            if paper_id.startswith("20"):  # 如果ID以年份开始，尝试ACL Anthology格式
+                return f"https://aclanthology.org/{paper_id}.pdf"
             raise ValueError(f"PDF URL format not supported for platform: {platform}")
 
 

@@ -6,7 +6,7 @@ import json
 import shutil
 import aiofiles
 import aiofiles.os
-from typing import List, Dict, Any, AsyncGenerator, Tuple
+from typing import List, Dict, Any, AsyncGenerator, Tuple, Union
 from pathlib import Path
 from fastapi import UploadFile
 import asyncio
@@ -747,11 +747,24 @@ Focus on meaningful relationships that would help understand the research landsc
         session_data = self.active_rws[user_id]["sessions"][session_id]
         return session_data.get("uploaded_files", [])
     
-    def add_files_to_session(self, user_id: str, session_id: str, paper_ids: List[str]) -> bool:
+    def add_files_to_session(self, user_id: str, session_id: str, paper_data: List[Union[str, Tuple[str, str]]]) -> bool:
         """
         Add existing files from global filelist to a specific session
+        
+        paper_data can be:
+        - List of paper_id strings: ["id1", "id2", ...] (默认platform="arxiv")
+        - List of (paper_id, platform) tuples: [("id1", "arxiv"), ("id2", "acl"), ...]
         """
         try:
+            # 转换paper_data为标准格式
+            paper_ids_with_platform = []
+            for item in paper_data:
+                if isinstance(item, tuple) and len(item) == 2:
+                    paper_ids_with_platform.append(item)
+                else:
+                    # 如果只有paper_id，默认platform为arxiv
+                    paper_ids_with_platform.append((item, "arxiv"))
+                    
             # Get global user files from chat service
             from app.services.chat_service import chat_service
             chat_data = chat_service.active_chats.get(user_id)
@@ -775,23 +788,24 @@ Focus on meaningful relationships that would help understand the research landsc
                 session_data["uploaded_files"] = []
             
             # Get existing paper IDs in session to avoid duplicates
-            existing_paper_ids = {file["paper_id"] for file in session_data["uploaded_files"]}
+            existing_papers = {(file["paper_id"], file.get("platform", "arxiv")) for file in session_data["uploaded_files"]}
             
             # Add files from global list that match the paper_ids
             added_count = 0
             for file_data in chat_data["files"]:
-                if file_data["paper_id"] in paper_ids and file_data["paper_id"] not in existing_paper_ids:
-                    paper_id = file_data["paper_id"]
-                    
+                paper_id = file_data["paper_id"]
+                platform = file_data.get("platform", "arxiv")
+                
+                # 检查这个(paper_id, platform)对是否在请求中
+                if (paper_id, platform) in paper_ids_with_platform and (paper_id, platform) not in existing_papers:
                     # Copy embedding file from global to session-specific location
                     try:
-
-                        embedding_dir = paper_info_extractor.get_embedding_storage_directory
-                        global_path = embedding_dir / f"{paper_id}.json"
+                        embedding_dir = paper_info_extractor.get_embedding_storage_directory(paper_id)
+                        global_path = embedding_dir / f"{paper_id}_{platform}.json"
                         
                         # Destination: session-specific location
                         session_dir = pdf_service.embedding_dir / "uploads" / user_id / session_id
-                        session_path = session_dir / f"{paper_id}.json"
+                        session_path = session_dir / f"{paper_id}_{platform}.json"
                         
                         # Create session directory if it doesn't exist
                         session_dir.mkdir(parents=True, exist_ok=True)
@@ -805,12 +819,13 @@ Focus on meaningful relationships that would help understand the research landsc
                             continue  # Skip this file if embedding doesn't exist
                         
                     except Exception as e:
-                        logger.error(f"Error copying embedding file for paper {paper_id}: {str(e)}")
+                        logger.error(f"Error copying embedding file for paper {paper_id} (platform: {platform}): {str(e)}")
                         continue  # Skip this file if copy fails
                     
                     # Create session file entry based on global file
                     session_file = {
                         "paper_id": paper_id,
+                        "platform": platform,
                         "filename": file_data["filename"],
                         "file_size": file_data.get("file_size", 0),  # May not be available in global files
                         "upload_date": time.time(),  # Use current time as "added to session" time
@@ -830,7 +845,7 @@ Focus on meaningful relationships that would help understand the research landsc
             logger.error(f"Error adding files to session: {str(e)}")
             return False
     
-    def remove_file_from_session(self, user_id: str, session_id: str, paper_id: str) -> bool:
+    def remove_file_from_session(self, user_id: str, session_id: str, paper_id: str, platform: str = "arxiv") -> bool:
         """
         Remove a file from a specific session
         """
@@ -844,15 +859,15 @@ Focus on meaningful relationships that would help understand the research landsc
             
             # Find and remove the file
             for i, file_data in enumerate(uploaded_files):
-                if file_data.get("paper_id") == paper_id:
+                if file_data.get("paper_id") == paper_id and file_data.get("platform", "arxiv") == platform:
                     uploaded_files.pop(i)
-                    logger.info(f"Removed file {paper_id} from session {session_id} for user {user_id}")
+                    logger.info(f"Removed file {paper_id} (platform: {platform}) from session {session_id} for user {user_id}")
                     return True
             
             return False
             
         except Exception as e:
-            logger.error(f"Error removing file {paper_id} from session {session_id}: {str(e)}")
+            logger.error(f"Error removing file {paper_id} (platform: {platform}) from session {session_id}: {str(e)}")
             return False
 
     async def get_session_full_texts(self, user_id: str, session_id: str) -> List[Dict[str, str]]:
@@ -997,7 +1012,7 @@ Focus on meaningful relationships that would help understand the research landsc
 
     # ============ TARGET PAPER MANAGEMENT ============
     
-    def set_target_paper(self, user_id: str, session_id: str, paper_id: str) -> bool:
+    def set_target_paper(self, user_id: str, session_id: str, paper_id: str, platform: str = "arxiv") -> bool:
         """
         Set the target paper (paper missing related work section) for a session
         """
@@ -1017,26 +1032,32 @@ Focus on meaningful relationships that would help understand the research landsc
             
             # Validate that the paper exists in the session
             session_files = session_data.get("uploaded_files", [])
-            paper_exists = any(file_data.get("paper_id") == paper_id for file_data in session_files)
+            paper_exists = any(
+                file_data.get("paper_id") == paper_id and 
+                file_data.get("platform", "arxiv") == platform 
+                for file_data in session_files
+            )
             
             if not paper_exists:
-                logger.warning(f"Paper {paper_id} not found in session {session_id} for user {user_id}")
+                logger.warning(f"Paper {paper_id} (platform: {platform}) not found in session {session_id} for user {user_id}")
                 return False
             
-            # Set the target paper
+            # Set the target paper with platform
             session_data["target_paper"] = paper_id
+            session_data["target_paper_platform"] = platform
             session_data["target_paper_set_at"] = time.time()
             
-            logger.info(f"Set target paper {paper_id} for session {session_id} of user {user_id}")
+            logger.info(f"Set target paper {paper_id} (platform: {platform}) for session {session_id} of user {user_id}")
             return True
             
         except Exception as e:
-            logger.error(f"Error setting target paper {paper_id} for session {session_id}: {str(e)}")
+            logger.error(f"Error setting target paper {paper_id} (platform: {platform}) for session {session_id}: {str(e)}")
             return False
     
-    def get_target_paper(self, user_id: str, session_id: str) -> str | None:
+    def get_target_paper(self, user_id: str, session_id: str) -> Dict[str, str] | None:
         """
         Get the current target paper for a session
+        Returns a dictionary with paper_id and platform, or None if no target paper is set
         """
         try:
             if (user_id not in self.active_rws or 
@@ -1044,7 +1065,15 @@ Focus on meaningful relationships that would help understand the research landsc
                 return None
             
             session_data = self.active_rws[user_id]["sessions"][session_id]
-            return session_data.get("target_paper")
+            paper_id = session_data.get("target_paper")
+            if not paper_id:
+                return None
+                
+            platform = session_data.get("target_paper_platform", "arxiv")
+            return {
+                "paper_id": paper_id,
+                "platform": platform
+            }
             
         except Exception as e:
             logger.error(f"Error getting target paper for session {session_id}: {str(e)}")

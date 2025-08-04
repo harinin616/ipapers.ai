@@ -159,6 +159,7 @@ async def get_user_files(
 )
 async def delete_file(
     paper_id: str,
+    platform: str = Query("arxiv", description="Paper platform"),
     x_user_id: str = Header(..., alias="X-User-ID"),
 ):
     """
@@ -169,7 +170,7 @@ async def delete_file(
         raise HTTPException(status_code=401, detail="Invalid or missing X-User-ID header")
     user_id = int(x_user_id)
 
-    ok = await db_service.remove_file_from_user(user_id, paper_id)
+    ok = await db_service.remove_file_from_user(user_id, paper_id, platform)
     if not ok:
         # 如果该用户的列表里没有这篇论文，就返回 404
         raise HTTPException(status_code=404, detail="File not found in your list")
@@ -181,15 +182,17 @@ async def delete_file(
 async def update_file_selection(request: Request, data: dict = Body(...)):
     user_id = request.headers.get('X-User-ID')
     paper_id = data.get("paper_id")
+    platform = data.get("platform", "arxiv")
     selected = data.get("selected")
     if not user_id or paper_id is None or selected is None:
         raise HTTPException(status_code=400, detail="Missing parameters")
     if user_id.isdigit():
         user_id = await db_service.get_uuid_by_user_id(int(user_id))
-    print(f"Updating selection for paper {paper_id} to {selected} for user {user_id}")
+    print(f"Updating selection for paper {paper_id} (platform: {platform}) to {selected} for user {user_id}")
     await db_service.update_file_selection(
         user_id=user_id,
         paper_id=str(paper_id),
+        platform=platform,
         selected=selected
     )
     uid = str(user_id) 
@@ -197,7 +200,7 @@ async def update_file_selection(request: Request, data: dict = Body(...)):
         chat_service.active_chats[uid] = {"files": set()}
     files = chat_service.active_chats[uid]["files"]
     for file in files:
-        if file["paper_id"] == paper_id:
+        if file["paper_id"] == paper_id and file.get("platform", "arxiv") == platform:
             file["selected"] = selected
             break
     return {"success": True}
@@ -206,10 +209,10 @@ async def update_file_selection(request: Request, data: dict = Body(...)):
 @router.post("/get_paper")
 async def get_paper(
     request: Request,
-    paper_id: str = Body(embed=True)
+    data: dict = Body(...)
 ):
     """
-    Attach a paper to user, download the paper if not exists
+    Get a paper from the database and download it if it doesn't exist
     """
     user_id = request.headers.get('X-User-ID')
     if not user_id:
@@ -217,29 +220,73 @@ async def get_paper(
             status_code=401,
             detail="User ID not found"
         )
+    
+    paper_id = data.get("paper_id")
+    platform = data.get("platform", "arxiv")
+    
+    if not paper_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing paper_id"
+        )
+    
     if user_id.isdigit():
-        user_id=await db_service.get_uuid_by_user_id(int(user_id))
+        user_id = await db_service.get_uuid_by_user_id(int(user_id))
+    
+    # 1. Download the paper PDF if needed
     try:
-        success = await chat_service.get_paper(user_id, paper_id)
-        
+        success = await chat_service.get_paper(user_id, paper_id, platform)
         if not success:
-            return False
-        
-        return True
-    
+            raise HTTPException(status_code=404, detail="Failed to download paper")
     except Exception as e:
-        logger.error(f"Error getting paper {paper_id} for chat session {user_id}: {str(e)}")
-        return False
+        logger.error(f"Error getting paper {paper_id} (platform: {platform}) for chat session {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error downloading paper")
     
+    # 2. Get the paper details from the database
+    try:
+        paper = await db_service.get_paper_by_id(paper_id, platform)
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found in database")
+        
+        from app.models.paper import Paper
+        response = Paper(
+            paper_id=paper.paper_id,
+            title=paper.title,
+            authors=paper.authors,
+            abstract=paper.abstract,
+            categories=paper.categories,
+            pdf_url=paper.pdf_url.replace("http://", "https://"),
+            published_date=paper.published_date,
+            updated_date=paper.updated_date,
+            platform=paper.platform
+        )
+        
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving paper details for {paper_id} (platform: {platform}): {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get paper details")
+
 @router.post("/attach_paper")
 async def attach_paper(
     request: Request,
-    paper_id: str = Body(embed=True)
+    data: dict = Body(...)
 ):
     """
     Get a paper from the database
     """
     user_id = request.headers.get('X-User-ID')
+    
+    paper_id = data.get("paper_id")
+    platform = data.get("platform", "arxiv")
+    
+    if not paper_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing paper_id"
+        )
+    
     if user_id.isdigit():
         user_id=await db_service.get_uuid_by_user_id(int(user_id))
     if not user_id:
@@ -247,7 +294,7 @@ async def attach_paper(
             status_code=401,
             detail="User ID not found"
         )
-    await chat_service.attach_paper(user_id, paper_id)
+    await chat_service.attach_paper(user_id, paper_id, platform)
     return True
 
 @router.post("/files/clear")
@@ -276,23 +323,32 @@ async def clear_user_files(request: Request):
 @router.post("/process_embeddings")
 async def process_paper_embeddings(
     request: Request,
-    paper_id: str = Body(embed=True)
+    data: dict = Body(...)
 ):
     """
     Process embeddings for a paper
     """
-
     user_id = request.headers.get('X-User-ID')
     if not user_id:
         raise HTTPException(
             status_code=401,
             detail="User ID not found"
         )
+    
+    paper_id = data.get("paper_id")
+    platform = data.get("platform", "arxiv")
+    
+    if not paper_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing paper_id"
+        )
+    
     if user_id.isdigit():
         user_id=await db_service.get_uuid_by_user_id(int(user_id))
     
     try:
-        success = await chat_service.process_embeddings(paper_id)
+        success = await chat_service.process_embeddings(paper_id, platform)
         
         if not success:
             return False
@@ -300,7 +356,7 @@ async def process_paper_embeddings(
         return True
     
     except Exception as e:
-        logger.error(f"Error processing embeddings for paper {paper_id} for user {user_id}: {str(e)}")
+        logger.error(f"Error processing embeddings for paper {paper_id} (platform: {platform}) for user {user_id}: {str(e)}")
         return False
 
 @router.get("/sessions")

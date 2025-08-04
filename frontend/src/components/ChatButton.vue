@@ -12,6 +12,7 @@
   <AddToFoldersModal
     v-if="showModal"
     :paper-id="paperId"
+    :platform="platform"
     @added="handleAdded"         
     @close="showModal = false"  
   />
@@ -22,7 +23,10 @@ import { ref } from 'vue'
 import AddToFoldersModal from '../views/AddPaperView.vue'
 
 /* -------- props -------- */
-const props = defineProps<{ paperId: string }>()   // 由父层传入的 arXiv id
+const props = defineProps<{ 
+  paperId: string;
+  platform?: string;
+}>()
 
 /* -------- state -------- */
 const showModal = ref(false)
@@ -32,7 +36,10 @@ const handleAdded = () => {
   // 通知全局 FileList 刷新
   window.dispatchEvent(
     new CustomEvent('paper-attached', {
-      detail: { paperId: props.paperId }
+      detail: { 
+        paperId: props.paperId,
+        platform: props.platform
+      }
     })
   )
   showModal.value = false                      // 关闭弹窗

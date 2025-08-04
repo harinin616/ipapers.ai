@@ -1,13 +1,11 @@
 import os
 import sys
-import json
-import time
+import asyncio
 import logging
-import argparse
 import requests
+import json
 from datetime import date, timedelta, datetime
 
-# Add the parent directory to the path so we can import modules from app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logging.basicConfig(
@@ -16,13 +14,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger("fetch_biorxiv_papers")
 
+from app.models.paper import Paper
+from app.services.db_service import db_service
+from app.services.vector_search_service import vector_search_service
+from app.services.pdf_service import pdf_service
+
 # Constants
 BIORXIV_API_BASE_URL = "https://api.biorxiv.org/details/biorxiv"
 RESULTS_PER_PAGE = 100
 BATCH_DELAY = 3  # seconds between API calls to avoid rate limiting
+DEFAULT_DAYS = 3
+MAX_RESULTS_PER_BATCH = 500
 
 
-def fetch_papers_by_date(start_date, end_date, cursor=0):
+async def fetch_papers_batch(start_date, end_date, cursor=0):
     """
     Fetch bioRxiv papers for a specific date range using the official bioRxiv API.
     
@@ -32,13 +37,14 @@ def fetch_papers_by_date(start_date, end_date, cursor=0):
         cursor (int): Starting position for pagination
         
     Returns:
-        tuple: (list of paper data, total count, messages)
+        List of Paper objects
     """
     url = f"{BIORXIV_API_BASE_URL}/{start_date}/{end_date}/{cursor}"
     logger.info(f"Fetching papers from {url}")
     
     try:
-        response = requests.get(url)
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, lambda: requests.get(url))
         response.raise_for_status()
         data = response.json()
         
@@ -46,115 +52,195 @@ def fetch_papers_by_date(start_date, end_date, cursor=0):
         messages = data.get('messages', [])
         total = int(messages[0].get('total', 0)) if messages else 0
         
-        return collection, total, messages
+        # Convert to Paper objects
+        papers = []
+        for item in collection:
+            try:
+                # Log response for debugging
+                logger.info(f"Processing paper with DOI: {item['doi']}, version: {item['version']}")
+                pdf_url = f"https://www.biorxiv.org/content/10.1101/{item['doi'].split('/')[-1]}v{item['version']}.full.pdf"
+                logger.info(f"Generated PDF URL: {pdf_url}")
+                
+                # Map biorxiv fields to our Paper model
+                paper_id = f"biorxiv_{item['doi'].replace('/', '_')}"
+                
+                # Convert dates from biorxiv format to datetime objects
+                published_date = datetime.strptime(item['date'], '%Y-%m-%d')
+                
+                # Format authors - bioRxiv returns a string with authors separated by commas
+                authors = [a.strip() for a in item['authors'].split(',')]
+                
+                # Create Paper object
+                paper = Paper(
+                    paper_id=paper_id,
+                    title=item['title'],
+                    authors=authors,
+                    abstract=item['abstract'],
+                    categories=[item['category']] if item.get('category') else [],
+                    pdf_url=pdf_url,
+                    published_date=published_date,
+                    updated_date=published_date,  # Use same date as published since bioRxiv doesn't provide separate updated date
+                    platform="biorxiv"
+                )
+                papers.append(paper)
+            except Exception as e:
+                logger.error(f"Error processing paper: {e}", exc_info=True)
+        
+        return papers, total
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch papers: {e}", exc_info=True)
-        return [], 0, []
+        return [], 0
 
 
-def fetch_all_papers_for_date_range(start_date, end_date):
+async def fetch_all_papers_for_date_range(start_date, end_date, max_results=MAX_RESULTS_PER_BATCH):
     """
     Fetch all bioRxiv papers for a given date range, handling pagination.
     
     Args:
         start_date (str): Start date in YYYY-MM-DD format
         end_date (str): End date in YYYY-MM-DD format
+        max_results (int): Maximum number of results to fetch
         
     Returns:
-        list: All papers in the date range
+        list: All Paper objects in the date range
     """
     all_papers = []
     cursor = 0
     total_fetched = 0
     
     # Get first batch and determine total
-    batch, total_count, messages = fetch_papers_by_date(start_date, end_date, cursor)
+    batch, total_count = await fetch_papers_batch(start_date, end_date, cursor)
     all_papers.extend(batch)
     total_fetched += len(batch)
     
-    # Continue fetching if there are more papers
-    while total_fetched < total_count:
-        logger.info(f"Fetched {total_fetched} of {total_count} papers...")
+    # Calculate how many results to fetch in total (either all available or max_results)
+    target_count = min(total_count, max_results)
+    
+    # Continue fetching if there are more papers and we haven't reached our limit
+    while total_fetched < target_count:
+        logger.info(f"Fetched {total_fetched} of {target_count} papers...")
         cursor += RESULTS_PER_PAGE
-        time.sleep(BATCH_DELAY)  # Delay to avoid hitting rate limits
         
-        batch, _, _ = fetch_papers_by_date(start_date, end_date, cursor)
+        await asyncio.sleep(BATCH_DELAY)  # Delay to avoid hitting rate limits
+        
+        batch, _ = await fetch_papers_batch(start_date, end_date, cursor)
         if not batch:
             logger.warning(f"No more papers returned at cursor {cursor}, stopping")
             break
             
         all_papers.extend(batch)
         total_fetched += len(batch)
+        
+        # Stop if we've reached our maximum
+        if total_fetched >= max_results:
+            logger.info(f"Reached maximum result limit ({max_results})")
+            break
     
     logger.info(f"Completed fetching {len(all_papers)} papers for {start_date} to {end_date}")
     return all_papers
 
 
-def save_papers_to_json(papers, filename):
+async def fetch_papers(days=None):
     """
-    Save papers data to a JSON file
+    Main function to fetch bioRxiv papers for a specified number of days
+    """
+    if days is None:
+        days = DEFAULT_DAYS
     
-    Args:
-        papers (list): List of paper data
-        filename (str): Output filename
-        
-    Returns:
-        bool: True if successful, False otherwise
-    """
+    today = date.today()
+    earliest_date = today - timedelta(days=days)
+    
+    logger.info(f"Starting bioRxiv paper fetch task")
+    logger.info(f"Fetching papers from {earliest_date} to {today} ({days} days total)")
+    
+    total_fetched = 0
+    total_added_db = 0
+    all_fetched_paper_ids = []
+    
     try:
-        directory = os.path.dirname(filename)
-        os.makedirs(directory, exist_ok=True)
+        # Convert dates to string format required by bioRxiv API
+        end_date_str = today.isoformat()
+        start_date_str = earliest_date.isoformat()
         
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump({
-                "papers": papers,
-                "count": len(papers),
-                "date_generated": datetime.now().isoformat()
-            }, f, indent=2, ensure_ascii=False)
+        # Fetch all papers in the date range
+        batch_papers = await fetch_all_papers_for_date_range(
+            start_date=start_date_str, 
+            end_date=end_date_str,
+            max_results=MAX_RESULTS_PER_BATCH
+        )
+        
+        if not batch_papers:
+            logger.info("No papers returned, exiting.")
+            return
+        
+        # Extract paper IDs for tracking
+        batch_paper_ids = [paper.paper_id for paper in batch_papers]
+        all_fetched_paper_ids.extend(batch_paper_ids)
+        logger.info(f"Accumulated {len(batch_paper_ids)} paper IDs")
+        
+        total_fetched += len(batch_papers)
+        
+        # Add papers to database and get IDs of newly added papers
+        added_db_ids = await db_service.add_papers(batch_papers, platform="biorxiv")
+        
+        if not added_db_ids:
+            logger.info("No new papers added to DB. All papers already exist.")
+        
+        # Filter papers to only those newly added
+        new_papers = [p for p in batch_papers if p.paper_id in added_db_ids]
+        
+        # Add new papers to vector search index
+        if new_papers:
+            await vector_search_service.add_papers(new_papers)
+        else:
+            logger.info("No new papers for vector index, skipping add_papers()")
+        
+        total_added_db += len(added_db_ids)
+        logger.info(f"Fetched {len(batch_papers)} papers, added {len(added_db_ids)} new papers to DB and vector search.")
+        
+        # Generate embeddings for new papers
+        if new_papers:
+            logger.info(f"Generating embeddings for {len(new_papers)} newly added papers")
+            for p in new_papers:
+                try:
+                    pid = p.paper_id
+                    ok = await pdf_service.generate_embeddings_for_paper(pid, "biorxiv")
+                    if ok:
+                        logger.info(f"Generated embeddings for paper {pid}")
+                    else:
+                        logger.warning(f"Failed to generate embeddings for paper {pid}")
+                except Exception as e:
+                    logger.error(f"Error generating embeddings for paper {p.paper_id}: {e}", exc_info=True)
+        else:
+            logger.info("No new papers to generate embeddings for")
+        
+        logger.info(f"Total fetched: {total_fetched} papers, added to DB: {total_added_db} new papers.")
+        
             
-        logger.info(f"Saved {len(papers)} papers to {filename}")
-        return True
     except Exception as e:
-        logger.error(f"Failed to save papers to {filename}: {e}", exc_info=True)
-        return False
+        logger.error(f"Error occurred during fetch_papers task: {e}", exc_info=True)
+        if all_fetched_paper_ids:
+            logger.info("Saving accumulated paper IDs despite error...")
 
 
-def main():
+async def main():
+    import argparse
     parser = argparse.ArgumentParser(description='Fetch papers from bioRxiv')
-    parser.add_argument('--days', type=int, default=1,
-                      help='Number of days to fetch (default: 1)')
-    parser.add_argument('--start-date', type=str,
-                      help='Start date in YYYY-MM-DD format (overrides days parameter)')
-    parser.add_argument('--end-date', type=str, default=date.today().isoformat(),
-                      help=f'End date in YYYY-MM-DD format (default: today {date.today().isoformat()})')
+    parser.add_argument('--days', type=int, default=None, 
+                       help=f'Number of days to fetch (default: {DEFAULT_DAYS})')
     args = parser.parse_args()
     
-    # Set up date range
-    end_date = args.end_date
-    if args.start_date:
-        start_date = args.start_date
-    else:
-        start_date = (date.fromisoformat(end_date) - timedelta(days=args.days)).isoformat()
+    logger.info(f"args: {args.days}")
+    logger.info("=" * 80)
+    logger.info("Starting bioRxiv paper fetch script")
+    logger.info(f"Configuration: Default days={DEFAULT_DAYS}, API delay={BATCH_DELAY} seconds")
+    logger.info(f"Max results per fetch: {MAX_RESULTS_PER_BATCH}")
+
+    await fetch_papers(days=args.days)
     
-    logger.info(f"Fetching bioRxiv papers from {start_date} to {end_date}")
-    
-    # Determine output file path
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(script_dir, '..', 'data')
-    output_filename = f"biorxiv_papers_{start_date}_to_{end_date}.json"
-    output_path = os.path.join(data_dir, output_filename)
-    
-    # Fetch papers and save to file
-    papers = fetch_all_papers_for_date_range(start_date, end_date)
-    
-    if papers:
-        save_papers_to_json(papers, output_path)
-        logger.info(f"Successfully processed {len(papers)} papers")
-    else:
-        logger.warning("No papers were fetched")
-    
-    logger.info("Script completed")
+    logger.info("bioRxiv paper fetch script completed")
+    logger.info("=" * 80)
 
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 
