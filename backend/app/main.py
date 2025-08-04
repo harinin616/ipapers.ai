@@ -7,7 +7,7 @@ import logging
 
 from fastapi.responses import HTMLResponse
 from app.api import paper, search, chat, user, auth, review,share, metrics,contact,topics,folders,forum,comments
-
+from fastapi.staticfiles import StaticFiles
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
@@ -30,6 +30,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+api_app.mount(
+    "/data/cached_pdfs/uploads",
+    StaticFiles(directory="data/cached_pdfs/uploads"),
+    name="pdf_uploads",
 )
 
 #@app.get("/", response_class=HTMLResponse)   

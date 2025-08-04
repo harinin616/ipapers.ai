@@ -44,8 +44,8 @@ class PaperInfoExtractor:
             return paper_id.split('_')[0].lower()
         
         # 如果无法确定，默认返回arxiv
-        logger.warning(f"Cannot determine platform from paper_id format: {paper_id}, defaulting to 'arxiv'")
-        return "arxiv"
+        logger.warning(f"Cannot determine platform from paper_id format: {paper_id}, defaulting to 'unknown'")
+        return "unknown"
     
     def extract_arxiv_info(self, paper_id: str) -> Tuple[str, str]:
         """

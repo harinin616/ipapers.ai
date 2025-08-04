@@ -224,11 +224,16 @@ class DBService:
                 .options(
                     selectinload(DBPaper.authors),
                     selectinload(DBPaper.categories)
-                )
+                ).where(DBPaper.platform == "arxiv")  # 默认只取 arxiv 平台的论文
                 # no limit or offset → fetch all
             )
             db_papers = result.scalars().all()
             for db_paper in db_papers:
+                if paper_info_extractor.extract_platform(db_paper.paper_id) != "arxiv":
+                    logger.warning(f"Paper {db_paper.paper_id} has unexpected platform "
+                                   f"{paper_info_extractor.extract_platform(db_paper.paper_id)}, "
+                                   f"expected 'arxiv'. Skipping.")
+                    continue
                 papers.append(Paper(
                     paper_id=db_paper.paper_id,
                     title=db_paper.title,
@@ -431,6 +436,11 @@ class DBService:
             db_papers = result.scalars().all()
             
             for db_paper in db_papers:
+                if paper_info_extractor.extract_platform(db_paper.paper_id) != "arxiv":
+                    logger.warning(f"Paper {db_paper.paper_id} has unexpected platform "
+                                   f"{paper_info_extractor.extract_platform(db_paper.paper_id)}, "
+                                   f"expected 'arxiv'. Skipping.")
+                    continue
                 papers.append(Paper(
                     paper_id=db_paper.paper_id,
                     title=db_paper.title,
