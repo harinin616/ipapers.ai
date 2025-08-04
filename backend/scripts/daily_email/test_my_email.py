@@ -38,18 +38,30 @@ def main():
         
         # Display the result
         if result["success"]:
-            print("✅ SUCCESS!")
-            print(f"   {result['message']}")
-            
-            # Show additional details if available
-            if 'date' in result:
-                print(f"   📅 Date: {result['date']}")
-            if 'total_papers' in result:
-                print(f"   📄 Total papers: {result['total_papers']}")
-            if 'categories_count' in result:
-                print(f"   🏷️  Categories: {result['categories_count']}")
-            if 'images_embedded' in result:
-                print(f"   🖼️  Images embedded: {result['images_embedded']}")
+            if result.get("skipped", False):
+                print("⏭️ SKIPPED!")
+                print(f"   {result['message']}")
+                
+                # Show additional details if available
+                if 'date' in result:
+                    print(f"   📅 Date: {result['date']}")
+                if 'total_papers' in result:
+                    print(f"   📄 Total papers: {result['total_papers']}")
+                if 'reason' in result:
+                    print(f"   🚫 Reason: {result['reason']}")
+            else:
+                print("✅ SUCCESS!")
+                print(f"   {result['message']}")
+                
+                # Show additional details if available
+                if 'date' in result:
+                    print(f"   📅 Date: {result['date']}")
+                if 'total_papers' in result:
+                    print(f"   📄 Total papers: {result['total_papers']}")
+                if 'categories_count' in result:
+                    print(f"   🏷️  Categories: {result['categories_count']}")
+                if 'images_embedded' in result:
+                    print(f"   🖼️  Images embedded: {result['images_embedded']}")
                 
         else:
             print("❌ FAILED!")

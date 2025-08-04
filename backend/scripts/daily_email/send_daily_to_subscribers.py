@@ -65,9 +65,14 @@ async def send_to_all_subscribers(test_mode=False):
                 )
                 
                 if result["success"]:
-                    successful_sends += 1
-                    logger.info(f"✅ Successfully sent email to {email}")
-                    logger.debug(f"   Details: {result.get('message', 'No details')}")
+                    if result.get("skipped", False):
+                        # Email was skipped due to insufficient papers
+                        logger.info(f"⏭️ Skipped sending email to {email}: {result.get('message', 'No details')}")
+                        # Don't count as failed, but also don't count as successful
+                    else:
+                        successful_sends += 1
+                        logger.info(f"✅ Successfully sent email to {email}")
+                        logger.debug(f"   Details: {result.get('message', 'No details')}")
                 else:
                     failed_sends += 1
                     error_msg = result.get('message', 'Unknown error')

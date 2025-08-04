@@ -183,6 +183,21 @@ def send_daily_summary(recipient_email=None, recipient_name=None, test_mode=Fals
     total_papers = data.get('total_papers', 0)
     categories = data.get('categories', [])
     
+    # Check if number of papers is less than 300
+    if total_papers < 300:
+        message = f"Daily feed has {total_papers} papers (less than 300), skipping email send"
+        print(f"Info: {message}")
+        return {
+            "success": True, 
+            "message": message,
+            "recipient_email": RECIPIENT_EMAIL,
+            "recipient_name": recipient_name,
+            "date": date,
+            "total_papers": total_papers,
+            "skipped": True,
+            "reason": "insufficient_papers"
+        }
+    
     # Create email subject
     subject = f"{date} Daily Feed ({total_papers} papers)"
     
@@ -470,8 +485,12 @@ if __name__ == "__main__":
     result = send_daily_summary()
     
     if result["success"]:
-        print("Daily summary sent successfully!")
-        print(f"Details: {result['message']}")
+        if result.get("skipped", False):
+            print("Daily summary skipped!")
+            print(f"Details: {result['message']}")
+        else:
+            print("Daily summary sent successfully!")
+            print(f"Details: {result['message']}")
     else:
         print("Failed to send daily summary.")
         print(f"Error: {result['message']}")
