@@ -31,6 +31,10 @@ class PaperInfoExtractor:
         # biorxiv format: biorxiv_XXX_YYY
         if paper_id.startswith("biorxiv_"):
             return "biorxiv"
+        
+        # medrxiv format: medrxiv_XXX_YYY
+        if paper_id.startswith("medrxiv_"):
+            return "medrxiv"
 
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
         arxiv_pattern = r"^\d{4}\.\d{4,5}(v\d+)?$"
@@ -139,6 +143,25 @@ class PaperInfoExtractor:
         
         return year, month
 
+    def extract_medrxiv_info(self, paper_id: str) -> Tuple[str, str]:
+        """
+        Extract information from medRxiv paper ID
+        
+        Args:
+            paper_id: medRxiv paper ID like "medrxiv_XXX_YYY"
+        
+        Returns:
+            (year, month) tuple, using current year/month as placeholder
+        """
+        # For medRxiv, we don't have year/month in the ID
+        # We'll use a generic structure with "medrxiv" as the directory
+        import datetime
+        now = datetime.datetime.now()
+        year = str(now.year)[2:] # Last two digits
+        month = str(now.month).zfill(2)
+        
+        return year, month
+
 
     def get_pdf_storage_directory(self, paper_id: str) -> Path:
 
@@ -150,6 +173,9 @@ class PaperInfoExtractor:
         elif platform == "biorxiv":
             year, month = self.extract_biorxiv_info(paper_id)
             directory = self.pdf_base_dir / "biorxiv" / year / month
+        elif platform == "medrxiv":
+            year, month = self.extract_medrxiv_info(paper_id)
+            directory = self.pdf_base_dir / "medrxiv" / year / month
         else:
             # For conference papers (acl, naacl, emnlp, etc.)
             year, venue, track = self.extract_conference_info(paper_id)
@@ -174,6 +200,9 @@ class PaperInfoExtractor:
         elif platform == "biorxiv":
             year, month = self.extract_biorxiv_info(paper_id)
             directory = self.embedding_base_dir / "biorxiv" / year / month
+        elif platform == "medrxiv":
+            year, month = self.extract_medrxiv_info(paper_id)
+            directory = self.embedding_base_dir / "medrxiv" / year / month
         else:
             # For conference papers (acl, naacl, emnlp, etc.)
             year, venue, track = self.extract_conference_info(paper_id)
@@ -202,6 +231,17 @@ class PaperInfoExtractor:
                 return f"https://www.biorxiv.org/content/10.1101/{doi_number}v{version}.full.pdf"
             else:
                 raise ValueError(f"Invalid biorxiv paper ID format: {paper_id}")
+        
+        elif platform == "medrxiv":
+            # Extract DOI from paper_id (format: medrxiv_10.1101_XXXXXX)
+            doi_parts = paper_id.split('_')
+            if len(doi_parts) >= 3:
+                doi_number = doi_parts[2]
+                # medRxiv papers don't typically have version numbers in the PDF URL
+                # Use the standard medrxiv PDF URL format
+                return f"https://www.medrxiv.org/content/10.1101/{doi_number}.full.pdf"
+            else:
+                raise ValueError(f"Invalid medrxiv paper ID format: {paper_id}")
         
         elif platform in ["acl", "emnlp", "naacl", "eacl", "coling"]:
             # 检查是否是findings论文
