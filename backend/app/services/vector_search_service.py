@@ -240,8 +240,18 @@ class VectorSearchService:
                 logger.error(f"LLM call failed ({e}); fallback to original query")
                 reformulated = query
 
-            # 用重写后的（或原始）文本搜索
-            result_tuples = await self.vector_search(reformulated, k=k)
+            # 一半用原始查询，一半用重写后的查询
+            k_half = k // 2
+            original_results = await self.vector_search(query, k=k_half)
+            reformulated_results = await self.vector_search(reformulated, k=k - k_half)
+            
+            # 合并结果并去重
+            seen = set()
+            result_tuples = []
+            for result in original_results + reformulated_results:
+                if result not in seen:
+                    seen.add(result)
+                    result_tuples.append(result)
 
             return result_tuples
                 

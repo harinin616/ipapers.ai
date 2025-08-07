@@ -357,21 +357,48 @@ class DBService:
         if not paper_ids_data:
             return []
             
+        logger.info(f"get_papers_by_ids received data: {paper_ids_data[:3]}...")  # 只显示前3个
+        
         # 提取paper_id和platform
         paper_ids = []
         paper_platforms = {}
         for item in paper_ids_data:
             if isinstance(item, tuple) and len(item) == 2:
                 paper_id, platform = item
+                # 确保都是字符串
+                paper_id = str(paper_id)
+                platform = str(platform)
                 paper_ids.append(paper_id)
                 paper_platforms[paper_id] = platform
             else:
-                paper_id = item
+                paper_id = str(item)  # 确保是字符串
                 paper_ids.append(paper_id)
                 paper_platforms[paper_id] = "arxiv"  # 默认平台
         
+        logger.info(f"Processed paper_ids: {paper_ids[:3]}...")
+        logger.info(f"Processed platforms: {list(paper_platforms.values())[:3]}...")
+        
         try:
             async for db in get_async_db():
+                # 构建查询条件列表
+                conditions = []
+                for paper_id in paper_ids:
+                    platform = paper_platforms.get(paper_id, "arxiv")
+                    # 再次确保参数都是字符串类型
+                    paper_id_str = str(paper_id)
+                    platform_str = str(platform)
+                    logger.debug(f"Adding condition: paper_id={paper_id_str} (type: {type(paper_id_str)}), platform={platform_str} (type: {type(platform_str)})")
+                    conditions.append(
+                        and_(
+                            DBPaper.paper_id == paper_id_str,
+                            DBPaper.platform == platform_str
+                        )
+                    )
+                
+                # 如果没有条件，直接返回空列表
+                if not conditions:
+                    return []
+                
                 # 使用复杂的查询一次性获取所有论文及其作者、分类
                 stmt = (
                     select(
@@ -395,13 +422,7 @@ class DBService:
                         paper_categories.c.platform == DBPaper.platform
                     ))
                     .outerjoin(DBCategory, paper_categories.c.category == DBCategory.name)
-                    .where(or_(*[
-                        and_(
-                            DBPaper.paper_id == paper_id,
-                            DBPaper.platform == paper_platforms.get(paper_id, "arxiv")
-                        )
-                        for paper_id in paper_ids
-                    ]))
+                    .where(or_(*conditions))
                     .group_by(
                         DBPaper.paper_id,
                         DBPaper.platform,
@@ -1915,7 +1936,7 @@ class DBService:
         根据 folder_id 取 shared_folders.summary。
 
         - 若传入 user_id，则只返回该用户本人拥有的或公开分享的概要。
-        - 找不到记录返回 None（可区分“无记录” vs. “summary 为空字符串”）。
+        - 找不到记录返回 None（可区分"无记录" vs. "summary 为空字符串"）。
         """
         async for db in get_async_db():                 # type: AsyncSession
             try:
