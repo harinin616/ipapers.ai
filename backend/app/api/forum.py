@@ -131,6 +131,7 @@ async def get_share_mode(
 
 class ShareUserIn(BaseModel):
     email: str
+    role:str
 
 @router.post("/{folder_id}/add_user", summary="Add a user to shared folder")
 async def add_share_user(
@@ -138,6 +139,8 @@ async def add_share_user(
     payload: ShareUserIn,
 ):
     email = payload.email.strip()
+    role= payload.role.strip()
+
     if not email:
         raise HTTPException(status_code=400, detail="Email is required")
     print(f"Adding user {email} to shared folder {folder_id}")
@@ -147,7 +150,7 @@ async def add_share_user(
         raise HTTPException(status_code=404, detail="User not found")
     print(f"User ID for {email} is {user_id}")
 
-    ok = await db_service.add_share_user(folder_id, user_id)
+    ok = await db_service.add_share_user(folder_id, user_id, role)
     if not ok:
         raise HTTPException(
             status_code=404,
@@ -172,4 +175,25 @@ async def remove_share_user(
         raise HTTPException(
             status_code=404,
             detail="Shared folder not found or you do not have permission to remove users",
+        )
+
+@router.patch("/{folder_id}/update_user_role", summary="Update user role in shared folder")
+async def update_share_user_role(
+    folder_id: int,
+    payload: ShareUserIn,
+):
+    email = payload.email.strip()
+    role = payload.role.strip()
+    if not email or not role:
+        raise HTTPException(status_code=400, detail="Email and role are required")
+    
+    user_id = await db_service.get_user_id_by_email(email)
+    if not user_id:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    ok = await db_service.update_share_user_role(folder_id, user_id, role)
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail="Shared folder not found or you do not have permission to update user role",
         )

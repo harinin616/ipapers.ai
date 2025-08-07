@@ -84,11 +84,13 @@ export interface IApiService {
   delete_shared_comment(cid: number): Promise<void>;
   get_summary(folderId: number): Promise<string | null>;
   regen_summary(folderId: number): Promise<string | null>;
-  getSharePermission(fid:number): Promise<string[]>;
+  getSharePermission(fid:number): Promise<any[]>;
   updateShareMode(folderId: number, is_public: boolean): Promise<void>;
-  addShareUser(folderId: number, email: string): Promise<void>;
+  addShareUser(folderId: number, email: string, role: 'viewer' | 'editor'): Promise<void>;
   removeShareUser(folderId: number, email: string): Promise<void>;
   upload_file(formData: FormData): Promise<any>;
+  updateShareUserRole(folderId: number, email: string, role: 'viewer' | 'editor'): Promise<void>;
+  get_user_folders(): Promise<Folder[]>;
 }
 /**
  * API Service implementation
@@ -788,7 +790,7 @@ async get_shared_folders(): Promise<any[]> {
       throw error;
     }
   }
-  async getSharePermission(fid:number): Promise<string[]> {
+  async getSharePermission(fid:number): Promise<any[]> {
     try {
       const resp = await this.api.get(`/api/forum/${fid}/permission`);
       return resp.data;
@@ -814,11 +816,19 @@ async get_shared_folders(): Promise<any[]> {
       throw error;
     }
   }
-  async addShareUser(folderId: number, email: string): Promise<void> {
+  async addShareUser(folderId: number, email: string, role: 'viewer' | 'editor'): Promise<void> {
     try {
-      await this.api.post(`/api/forum/${folderId}/add_user`, { email });
+      await this.api.post(`/api/forum/${folderId}/add_user`, { email, role });
     } catch (error) {
       console.error('Failed to add share user:', error);
+      throw error;
+    }
+  }
+  async updateShareUserRole(folderId: number, email: string, role: 'viewer' | 'editor'): Promise<void> {
+    try {
+      await this.api.patch(`/api/forum/${folderId}/update_user_role`, { email, role });
+    } catch (error) {
+      console.error('Failed to update share user role:', error);
       throw error;
     }
   }
@@ -860,5 +870,6 @@ export default new ApiService();
 export interface Folder {
   id: number
   name: string
+  type: 'own' | 'shared'
   files: ChatFile[]
 }

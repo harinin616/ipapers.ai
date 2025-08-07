@@ -127,13 +127,25 @@
     </button>
   </div>
 
-  <!-- 已添加邮箱 -->
-  <ul class="users-list" v-if="panel.existing.length">
-    <li v-for="mail in panel.existing" :key="mail">
-      {{ mail }}
-      <button class="delete-user" @click="removeUser(mail)">✖</button>
-    </li>
-  </ul>
+<!-- 模板片段 -->
+<ul class="users-list" v-if="panel.existing.length">
+  <li v-for="u in panel.existing" :key="u.email" class="user-item">
+    <span class="user-email">{{ u.email }}</span>
+
+    <!-- 加上 @change -->
+    <select
+      v-model="u.role"
+      class="role-select"
+      @change="updateRole(u.email, u.role)"
+    >
+      <option value="viewer">Viewer</option>
+      <option value="editor">Editor</option>
+    </select>
+
+    <button class="delete-user" @click="removeUser(u.email)">✖</button>
+  </li>
+</ul>
+
 </div>
 
   <div class="btn-row">
@@ -228,7 +240,7 @@ const panel = reactive({
   fid    : 0,
   mode   : 'public' as 'public' | 'specific',
   usersText: '',
-  existing: [] as string[],
+  existing: [] as { email: string; role: 'viewer' | 'editor' }[],
   style  : {} as Record<string,string>,   // { left:'', top:'' }
   emailToAdd: '',
 })
@@ -237,12 +249,26 @@ async function addUser() {
   const email = panel.emailToAdd.trim()
   if (!email) return
   try {
-    await api.addShareUser(panel.fid, email)   // POST /api/share/{fid}/user
-    panel.existing.push(email)
+    await api.addShareUser(panel.fid, email, 'viewer')   // POST /api/share/{fid}/user
+    panel.existing.push({email, role: 'viewer'}) // 默认角色为 viewer
     panel.emailToAdd = ''
   } catch (e) {
     console.error(e)
     alert('Failed to add user')
+  }
+}
+async function updateRole(email: string, role: 'viewer' | 'editor') {
+  try {
+    // 假设后端接口是 PATCH /api/share/:fid/user/:email/role
+    await api.updateShareUserRole(panel.fid, email, role)
+    // 成功后 panel.existing 已经是最新的，不用额外处理
+  } catch (e) {
+    console.error(e)
+    alert('Failed to update role')
+    // 回滚到原来的值（可选）
+    panel.existing = panel.existing.map(u =>
+      u.email === email ? { ...u, role: role === 'viewer' ? 'editor' : 'viewer' } : u
+    )
   }
 }
 
@@ -250,7 +276,7 @@ async function addUser() {
 async function removeUser(email: string) {
   try {
     await api.removeShareUser(panel.fid, email) // DELETE /api/share/{fid}/user/{email}
-    panel.existing = panel.existing.filter(m => m !== email)
+    panel.existing = panel.existing.filter(m => m.email !== email)
   } catch (e) {
     console.error(e)
     alert('Failed to remove user')
@@ -601,6 +627,61 @@ function confirmDelete(){
   font-size: .95rem;
   font-weight: 600;
   color: #374151;
+}
+/* 1. 调整每一行的布局：左右分布，垂直居中 */
+.users-list .user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 邮箱在左，角色和删除按钮在右 */
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #e3e7ef;
+}
+
+/* 2. 邮箱文字样式 */
+.user-item .user-email {
+  flex: 1;                 /* 占满剩余空间，长邮箱自动截断 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+/* 3. 角色选择器美化 */
+.role-select {
+  margin: 0 0.5rem;        /* 左右间距 */
+  padding: 0.2rem 0.4rem;
+  font-size: 0.83rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+/* 给不同角色一个轻微底色区分（可选） */
+.role-select option[value="viewer"] {
+  background-color: #f9fafb;
+}
+.role-select option[value="editor"] {
+  background-color: #eef2ff;
+}
+
+/* 4. 删除按钮对齐和 hover 效果 */
+.delete-user {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: #ef4444;
+  cursor: pointer;
+}
+.delete-user:hover {
+  color: #c81e1e;
+}
+
+/* 5. 整体弹窗内滚动（当用户太多时） */
+.setting-pop .users-input {
+  max-height: 200px;       /* 最多显示的高度 */
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
 }
 
 </style>

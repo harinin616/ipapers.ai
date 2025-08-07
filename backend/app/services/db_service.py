@@ -1442,11 +1442,11 @@ class DBService:
             except Exception as e:
                 logger.error(f"Unexpected error when getting UUID by user ID {user_id}: {str(e)}", exc_info=True)
                 return None
-
-    async def get_folders_with_files(self, user_id: uuid.UUID) -> list[dict]:
+    
+    async def get_folders_with_files(self, user_id: uuid.UUID) -> List[dict]:
         async for db in get_async_db():
-            # 预加载 files → paper
-            result = await db.execute(
+            # 1. 查出用户 own 的 folders
+            stmt_own = (
                 select(DBFolder)
                 .options(
                     selectinload(DBFolder.files)
@@ -1455,13 +1455,42 @@ class DBService:
                 .where(DBFolder.user_id == user_id)
                 .order_by(DBFolder.created_at)
             )
-            folders: list[DBFolder] = result.scalars().all()
+            own_res = await db.execute(stmt_own)
+            own_folders: List[DBFolder] = own_res.scalars().all()
 
+            # 2. 查出用户作为 editor 的 shared folders
+            stmt_shared = (
+                select(DBSharedFolder.folder_id)
+                .where(DBSharedFolder.allowed_editor_ids.any(user_id))
+            )
+            shared_res = await db.execute(stmt_shared)
+            shared_folder_ids = {fid for (fid,) in shared_res.all()}
+
+            # 3. 将 own_folders 和 shared_folders 合并，去重
+            #    并为 shared folders 预加载 files
+            all_folder_ids = {fld.id for fld in own_folders} | shared_folder_ids
+
+            stmt_all = (
+                select(DBFolder)
+                .options(
+                    selectinload(DBFolder.files)
+                    .selectinload(DBUserFile.paper)
+                )
+                .where(DBFolder.id.in_(all_folder_ids))
+                .order_by(DBFolder.created_at)
+            )
+            all_res = await db.execute(stmt_all)
+            folders: List[DBFolder] = all_res.scalars().all()
+
+            # 4. 组装输出
             out = []
             for fld in folders:
+                is_own = (str(fld.user_id) == str(user_id))
+                #print(fld.id, fld.name, fld.user_id, user_id, is_own)
                 out.append({
-                    "id":   fld.id,
-                    "name": fld.name,
+                    "id":        fld.id,
+                    "name":      fld.name,
+                    "type":      "own" if is_own else "shared",
                     "files": [
                         {
                             "paper_id":  uf.paper_id,
@@ -1476,6 +1505,9 @@ class DBService:
                     ]
                 })
             return out
+
+        # 理论不会走到这里
+        return []
 
 
 
@@ -1631,6 +1663,8 @@ class DBService:
                     elif str(user_id) == str(sf.owner_id):  # 只返回用户自己的共享文件夹
                         tmp.append(sf)
                     elif str(user_id) in str(sf.allowed_user_ids):  # 只返回用户有权限的共享文件夹
+                        tmp.append(sf)
+                    elif str(user_id) in str(sf.allowed_editor_ids):  # 只返回用户有编辑权限的共享文件夹
                         tmp.append(sf)
 
                 return [
@@ -1936,48 +1970,71 @@ class DBService:
 
         return False
 
-    async def get_share_permission(self, folder_id: int) -> List[str]:
+    async def get_share_permission(
+        self, folder_id: int
+    ) -> List[dict[str, str]]:
         """
-        把 shared_folders.allowed_user_ids 映射成邮箱列表。
-
+        返回指定 shared folder 的访问权限列表：
         - 文件夹不存在 → 404
-        - is_public=True 或名单为空 → 返回 []
+        - is_public=True 或 两个名单都为空 → 返回 []
+        - 否则返回 [{email, role}, ...]，role ∈ {'viewer','editor'}
         """
-        async for db in get_async_db():      # type: AsyncSession
+        async for db in get_async_db():  # type: AsyncSession
             try:
-                # ① 取 allowed_user_ids & is_public
+                # ① 读 public 标志，以及 viewer/editor 两个数组
                 stmt = select(
                     DBSharedFolder.is_public,
-                    DBSharedFolder.allowed_user_ids
+                    DBSharedFolder.allowed_user_ids,
+                    DBSharedFolder.allowed_editor_ids,
                 ).where(DBSharedFolder.folder_id == folder_id)
-
                 res = await db.execute(stmt)
                 row = res.one_or_none()
-
                 if row is None:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail=f"Shared folder #{folder_id} not found",
                     )
 
-                is_public, allowed_ids = row
-                allowed_ids: List[UUID] = allowed_ids or []
+                is_public, viewers, editors = row
+                viewers = viewers or []
+                editors = editors or []
 
-                if not allowed_ids:
+                # 如果公开或都没指定，直接返回空
+                if is_public or (not viewers and not editors):
                     return []
 
-                # ② 根据 UUID -> email
+                # ② 整合所有要 lookup 的用户 ID
+                viewer_ids = set(viewers)
+                editor_ids = set(editors)
+                all_ids = list(viewer_ids | editor_ids)
+
+                # ③ 批量查询 email
                 email_res = await db.execute(
-                    select(DBUser.email).where(DBUser.id.in_(allowed_ids))
+                    select(DBUser.id, DBUser.email).where(DBUser.id.in_(all_ids))
                 )
-                emails = [e for (e,) in email_res.all()]
-                return emails
+                rows = email_res.all()  # List of (UUID, str)
+
+                # ④ 构造 id -> email 映射
+                id2email = {uid: email for uid, email in rows}
+
+                # ⑤ 按原顺序组装结果，editor 覆盖 viewer
+                result: List[Dict[str, str]] = []
+                for uid in all_ids:
+                    email = id2email.get(uid)
+                    if not email:
+                        # 数据库中找不到此用户，跳过
+                        continue
+                    role = 'editor' if uid in editor_ids else 'viewer'
+                    result.append({"email": email, "role": role})
+
+                return result
 
             except SQLAlchemyError as e:
                 logger.error(f"DB error in get_share_permission: {e}")
                 return []
 
-        return []       # 理论上不会到达
+        # 理论上走不到这里
+        return []
 
     async def update_share_mode(
         self,
@@ -2046,7 +2103,7 @@ class DBService:
                 return False
 
 
-    async def add_share_user(self, folder_id: int, user_id: uuid.UUID) -> bool:
+    async def add_share_user(self, folder_id: int, user_id: uuid.UUID, role: str) -> bool:
         """
         向共享文件夹的 `allowed_user_ids` 中追加一个用户。
         - 找不到 folder_id      → False
@@ -2066,19 +2123,26 @@ class DBService:
                     return False
 
                 # ② 若列为 NULL，先初始化
-                if shared.allowed_user_ids is None:
-                    shared.allowed_user_ids = []
+                if role=="editor":
+                    if shared.allowed_editor_ids is None:
+                        shared.allowed_editor_ids = []
+                    if user_id in shared.allowed_editor_ids:
+                        logger.info(f"User {user_id} already exists in folder {folder_id}")
+                        return False
+                    new_ids = (shared.allowed_editor_ids or []) + [user_id]
+                    shared.allowed_editor_ids = new_ids          # ★ 重新赋值，ORM 能检测到
+                elif role=="viewer":
+                    if shared.allowed_user_ids is None:
+                        shared.allowed_user_ids = []
 
-                # ③ 幂等性检查
-                if user_id in shared.allowed_user_ids:
-                    logger.info(f"User {user_id} already exists in folder {folder_id}")
-                    return False
-
-        
-                new_ids = (shared.allowed_user_ids or []) + [user_id]
-                shared.allowed_user_ids = new_ids          # ★ 重新赋值，ORM 能检测到
+                    # ③ 幂等性检查
+                    if user_id in shared.allowed_user_ids:
+                        logger.info(f"User {user_id} already exists in folder {folder_id}")
+                        return False
+            
+                    new_ids = (shared.allowed_user_ids or []) + [user_id]
+                    shared.allowed_user_ids = new_ids          # ★ 重新赋值，ORM 能检测到
                 await db.commit()
-
                 logger.info(f"Added user {user_id} to shared folder {folder_id}")
                 return True
 
@@ -2096,6 +2160,72 @@ class DBService:
                 return False
 
         return False    # 理论上不会走到这里
+
+    async def update_share_user_role(
+        self, folder_id: int, user_id: uuid.UUID, new_role: str
+    ) -> bool:
+        """
+        """
+        if new_role not in ("viewer", "editor"):
+            logger.info(f"Invalid role '{new_role}' for folder {folder_id}")
+            return False
+
+        async for db in get_async_db():  # type: AsyncSession
+            try:
+                # ① 查 shared_folder 行（按 folder_id 字段）
+                stmt = select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id)
+                res = await db.execute(stmt)
+                shared: Optional[DBSharedFolder] = res.scalar_one_or_none()
+
+                if shared is None:
+                    logger.info(f"Shared folder with folder_id={folder_id} not found")
+                    return False
+
+                # 初始化两个字段为空列表，以便后面操作
+                viewers = shared.allowed_user_ids or []
+                editors = shared.allowed_editor_ids or []
+
+                # ② 根据 new_role 做移动
+                if new_role == "viewer":
+                    # 从 editors 中移除
+                    if user_id in editors:
+                        editors = [uid for uid in editors if uid != user_id]
+                    # 添加到 viewers（幂等）
+                    if user_id not in viewers:
+                        viewers = viewers + [user_id]
+
+                else:  # new_role == "editor"
+                    # 从 viewers 中移除
+                    if user_id in viewers:
+                        viewers = [uid for uid in viewers if uid != user_id]
+                    # 添加到 editors（幂等）
+                    if user_id not in editors:
+                        editors = editors + [user_id]
+
+                # ③ 赋值并 commit
+                shared.allowed_user_ids = viewers
+                shared.allowed_editor_ids = editors
+                await db.commit()
+
+                logger.info(
+                    f"Updated role for user {user_id} in folder {folder_id} to '{new_role}'"
+                )
+                return True
+
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"DB error updating role for user {user_id} in folder {folder_id}: {e}")
+                return False
+
+            except Exception as e:
+                await db.rollback()
+                logger.error(
+                    f"Unexpected error updating role for user {user_id} in folder {folder_id}: {e}",
+                    exc_info=True,
+                )
+                return False
+
+        return False  # 理论上不会走到这里
 
     async def remove_share_user(self, folder_id: int, user_id: uuid.UUID) -> bool:
         """

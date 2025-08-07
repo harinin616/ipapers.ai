@@ -234,6 +234,11 @@ class DBSharedFolder(Base):
         nullable=False,
         server_default=sa.text("ARRAY[]::uuid[]")        # PG 侧空数组默认
     )
+    allowed_editor_ids = Column(
+        ARRAY(UUID(as_uuid=True)),
+        nullable=False,
+        server_default=sa.text("ARRAY[]::uuid[]")
+    )
 
     folder = relationship("DBFolder")
     owner  = relationship("DBUser")

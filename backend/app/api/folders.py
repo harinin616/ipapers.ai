@@ -21,6 +21,7 @@ class FolderOut(BaseModel):
     id:    int
     name:  str
     files: List[FileOut]
+    type: str
 
 @router.get("", response_model=List[FolderOut])
 async def list_folders(request: Request):

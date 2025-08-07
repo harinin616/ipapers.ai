@@ -82,6 +82,11 @@
               <!-- 名称：显示 or 输入框 -->
               <template v-if="editingFolderId !== folder.id">
                 <span class="fname" @dblclick.stop="startEditFolder(folder)">{{ folder.name }}</span>
+              <span
+                v-if="folder.type === 'shared'"
+                class="folder-badge"
+                title="Shared"
+              >S</span>
                 <span class="count">({{ folder.files.length }})</span>
                  <button
                    class="f-btn delete"
@@ -284,6 +289,7 @@ interface ChatFile {
 export interface Folder {
   id: number
   name: string
+  type: 'own' | 'shared'
   files: ChatFile[]
 }
 
@@ -512,6 +518,7 @@ const cancelEditFolder = () => {
       try {
         // 1. 拉取后端
         folders.value = await api.get_user_folders()     // [{id,name,files:[{…}, …]}, …]
+        console.log('load folders', folders.value)
 
         /* 2. 默认展开第一个文件夹 */
         if (folders.value.length) {
@@ -1394,6 +1401,23 @@ const cancelEditFolder = () => {
 /* ③ 给 backdrop 一点暗色 */
 .upload-dialog::backdrop{
   background: rgba(0,0,0,.45);
+}
+.folder-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: white;
+  background-color: #f59e0b; /* 橙黄背景 */
+  border-radius: 50%;
+  margin-left: 0.5rem;
+  cursor: default;
+}
+.folder-badge:hover {
+  background-color: #d97706; /* hover 深一点 */
 }
 
 </style> 
