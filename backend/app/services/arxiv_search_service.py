@@ -235,9 +235,8 @@ class ArxivSearchService:
                 )
                 
                 paper_list.append(paper)
-
             await self.queue.put(paper_list)
-
+            
             return paper_list
         except Exception as e:
             print(f"Error searching arXiv: {str(e)}")

@@ -33,6 +33,16 @@ paper_authors = Table(
     sa.ForeignKeyConstraint(['paper_id', 'platform'], ['papers.paper_id', 'papers.platform'], ondelete='CASCADE')
 )
 
+# ★ 新增：Paper ⇄ Comment 多对多关联表
+paper_comments = Table(
+    'paper_comments',
+    Base.metadata,
+    Column('paper_id', String, primary_key=True),
+    Column('platform', String, primary_key=True, default='arxiv'),
+    Column('comment_id', Integer, ForeignKey('comments.id', ondelete='CASCADE'), primary_key=True),
+    sa.ForeignKeyConstraint(['paper_id', 'platform'], ['papers.paper_id', 'papers.platform'], ondelete='CASCADE')
+)
+
 class DBPaper(Base):
     __tablename__ = "papers"
     
@@ -52,6 +62,8 @@ class DBPaper(Base):
         order_by=paper_authors.c.author_order
     )
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
+    # ★ 新增：关联到评论
+    comments   = relationship("DBComment", secondary='paper_comments', back_populates="papers")
     def __repr__(self):
         return f"<Paper {self.paper_id} ({self.platform}): {self.title}>"
 
@@ -295,6 +307,9 @@ class DBComment(Base):
 
     # —— 外键关系 —— #
     commenter        = relationship("DBUser", lazy="joined")
+
+    # ★ 新增：被哪些论文引用
+    papers           = relationship("DBPaper", secondary='paper_comments', back_populates="comments")
 
     def __repr__(self):
         return f"<Comment#{self.id}>"

@@ -7,7 +7,7 @@ from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
 from app.services.llm_service import llm_service
 from app.services import search_log_service
-
+from app.services.arxiv_search_service import arxivsearch_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -20,10 +20,11 @@ async def search_papers(search_request: PaperSearchRequest):
     """
     try:
         logger.info(f"Received search request: {search_request.query}")
-
-        # 只使用vector search
-        paper_id_platform_pairs = await vector_search_service.search(query=search_request.query)
         
+        vec_task   = asyncio.create_task(vector_search_service.search(query=search_request.query))
+        arxiv_task = asyncio.create_task(arxivsearch_service.search(query=search_request.query))
+        
+        paper_id_platform_pairs, arxiv_papers = await asyncio.gather(vec_task, arxiv_task)
         if not paper_id_platform_pairs:
             return PaperSearchResponse(results=[], count=0)
         
@@ -40,7 +41,13 @@ async def search_papers(search_request: PaperSearchRequest):
                 unique.append(p)
                 seen_titles.add(p.title)
 
+        for p in arxiv_papers:
+            if p.title not in seen_titles:
+                unique.append(p)
+                seen_titles.add(p.title)
+
         papers = unique
+        
 
         documents=[p.title+p.abstract for p in papers]
         rerank = await llm_service.get_rerank(documents=documents,query=search_request.query)

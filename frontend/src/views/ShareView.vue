@@ -81,40 +81,81 @@
     </div>
 
 
-     <transition name="overlay-fade">
-      <div
-        v-if="detailPaper"
-        class="modal-overlay"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="'modal-title'"
-        @click.self="closeDetail"
-      >
-        <transition name="modal-slide">
-          <div
-            class="modal-content"
-            tabindex="-1"
-            ref="modalContent"
-          >
-            <header class="modal-header">
-              <h2 id="modal-title">{{ detailPaper.title }}</h2>
-              <button
-                class="close-btn"
-                @click="closeDetail"
-                aria-label="Close"
-              >✖</button>
-            </header>
-            <section class="modal-body" id="modal-desc">
-              <p><strong>Authors:</strong> {{ detailPaper.authors.join(', ') }}</p>
-              <p><strong>Published:</strong> {{ formatDate(detailPaper.published_date) }}</p>
-              <p><strong>Abstract:</strong></p>
-              <p>{{ detailPaper.abstract }}</p>
-              <a :href="detailPaper.pdf_url" target="_blank">View PDF</a>
-            </section>
+     <transition name="modal-float">
+    <div
+      v-if="detailPaper"
+      class="floating-modal compact-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="'modal-title'"
+      tabindex="-1"
+      ref="modalContent"
+    >
+      <header class="modal-header compact-header">
+        <a
+          :href="detailPaper.pdf_url"
+          target="_blank"
+          id="modal-title"
+          class="modal-title-link"
+          title="Open PDF"
+        >{{ detailPaper.title }}</a>
+        <button class="close-btn" @click="closeDetail" aria-label="Close">✖</button>
+      </header>
+      <section class="modal-body compact-body" id="modal-desc">
+        <p><strong>Authors:</strong> {{ detailPaper.authors.join(', ') }}</p>
+        <p><strong>Published:</strong> {{ formatDate(detailPaper.published_date) }}</p>
+        <p>
+          <strong>Abstract: </strong>
+          <span v-if="!abstractExpanded">
+            {{ detailPaper.abstract.length > 220 ? detailPaper.abstract.slice(0, 220) + '...' : detailPaper.abstract }}
+            <a v-if="detailPaper.abstract.length > 220" class="expand-link" @click="abstractExpanded = true">Expand</a>
+          </span>
+          <span v-else>
+            {{ detailPaper.abstract }}
+            <a class="expand-link" @click="abstractExpanded = false">Collapse</a>
+          </span>
+        </p>
+
+        <!-- ★ 新增：Paper 评论区 -->
+        <div class="paper-comments">
+          <h4 class="pc-title">Comments</h4>
+          <ul class="paper-comment-list">
+            <li v-for="c in paperComments" :key="c.id" class="pc-item">
+              <div class="pc-meta">
+                <span class="pc-author">{{ c.commenter_name || 'Anonymous' }}</span>
+                <span class="pc-dot">·</span>
+                <span class="pc-date">{{ formatDate(c.created_at) }}</span>
+                <!-- 新增：仅作者可见的删除按钮 -->
+                <button
+                  v-if="c.commenter_id === userId"
+                  class="delete-btn"
+                  title="Delete"
+                  @click="deletePaperComment(c.id)"
+                >✖</button>
+              </div>
+              <div class="pc-content">{{ c.content }}</div>
+            </li>
+            <li v-if="!paperComments.length" class="pc-empty">No comments yet.</li>
+          </ul>
+          <div class="paper-comment-input">
+            <textarea
+              v-model="newPaperComment"
+              class="pc-textarea"
+              placeholder="Leave a comment…"
+              rows="2"
+            ></textarea>
+            <button
+              class="pc-submit"
+              :disabled="!newPaperComment.trim() || submittingPaperComment"
+              @click="submitPaperComment"
+            >
+              {{ submittingPaperComment ? 'Submitting…' : 'Submit' }}
+            </button>
           </div>
-        </transition>
-      </div>
-    </transition>
+        </div>
+      </section>
+    </div>
+  </transition>
   </div>
 
 </template>
@@ -122,7 +163,7 @@
 
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount,computed,reactive } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount,computed,reactive, nextTick } from 'vue'
 import SharedSidebar   from '@/components/SharedSidebar.vue'
 import GraphWithDetail from '@/components/GraphWithDetail.vue'
 import SharedGraph3D   from '@/components/SharedGraph3D.vue'
@@ -227,6 +268,7 @@ const userId = localStorage.getItem('X-User-ID') || ''
 /* ---------- 新增 state ---------- */
 const summaryText   = ref<string | null>(null)
 const summaryLoading = ref(false)
+const abstractExpanded = ref(false)
 
 /* ---------- API 封装 ---------- */
 async function fetchSummary(folderId: number) {
@@ -405,6 +447,7 @@ function onKeydown(e: KeyboardEvent) {
 
 watch(detailPaper, async (val) => {
   if (val) {
+    abstractExpanded.value = false
     // 开弹窗时 lock scroll
     document.body.style.overflow = 'hidden'
     await nextTick()
@@ -424,7 +467,62 @@ onBeforeUnmount(() => {
 })
 
 const modalContent = ref<HTMLElement|null>(null)
+
+/* ---------- 新增：Paper 评论状态 ---------- */
+const paperComments = ref<Array<{ id:number; content:string; commenter_name:string; commenter_id:string; created_at:string }>>([])
+const newPaperComment = ref('')
+const submittingPaperComment = ref(false)
+
+/* ---------- 新增：加载指定论文的评论 ---------- */
+async function loadPaperComments(paperId: string) {
+  try {
+    paperComments.value = await api.get_paper_comments(paperId) || []
+  } catch (e) {
+    console.error('Failed to load paper comments', e)
+    paperComments.value = []
+  }
+}
+
+/* ---------- 新增：提交论文评论 ---------- */
+async function submitPaperComment() {
+  if (!detailPaper.value || !newPaperComment.value.trim()) return
+  submittingPaperComment.value = true
+  try {
+    const saved = await api.add_paper_comment(detailPaper.value.paper_id, newPaperComment.value.trim())
+    paperComments.value.push(saved)
+    newPaperComment.value = ''
+  } catch (e) {
+    alert('Failed to add comment.')
+  } finally {
+    submittingPaperComment.value = false
+  }
+}
+
+/* ---------- 新增：删除论文评论 ---------- */
+async function deletePaperComment(cid: number) {
+  if (!confirm('Delete this comment?')) return
+  try {
+    await api.delete_paper_comment(cid)
+    paperComments.value = paperComments.value.filter(c => c.id !== cid)
+  } catch (e) {
+    alert('Failed to delete comment.')
+  }
+}
+
+// 监听弹窗打开/切换论文时加载评论并重置展开状态
+watch(detailPaper, async (p) => {
+  if (p) {
+    abstractExpanded.value = false
+    await loadPaperComments(p.paper_id)
+    await nextTick()
+    ;(modalContent.value as HTMLElement | null)?.focus()
+  } else {
+    paperComments.value = []
+    newPaperComment.value = ''
+  }
+})
 </script>
+
 <style scoped>
 .share-manager {
   display: flex;
@@ -623,357 +721,6 @@ const modalContent = ref<HTMLElement|null>(null)
   min-height: 0;
 }
 
-/* 主列：图 + 摘要 */
-.main-column {
-  flex: 3;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* 图区域：占满剩余空间 */
-.graph-area {
-  flex: 1;
-  overflow: hidden;
-  min-height: 0;
-}
-
-/* 摘要区域：固定高度下滑动 */
-.summary-area {
-  flex: 0 0 auto;
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 1rem;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
-}
-
-/* 评论区域：固定宽度，纵向布局 */
-.comment-area {
-  flex: 0 0 300px;
-  border-left: 1px solid #e5e7eb;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  background: #f9fafb;
-  overflow-y: auto;
-}
-.comment-area {
-  min-width: 300px;    /* 被压缩到极窄时仍保持 300px */
-  position: relative;  /* 建立新层级 */
-  z-index: 20;         /* 把 canvas 压在下面 */
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.modal-content {
-  background: #fff;
-  width: 80%;
-  max-width: 600px;
-  max-height: 90%;
-  overflow-y: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-}
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-}
-.modal-body {
-  padding: 1rem;
-  line-height: 1.6;
-}
-.overlay-fade-enter-active,
-.overlay-fade-leave-active {
-  transition: opacity .3s;
-}
-.overlay-fade-enter-from,
-.overlay-fade-leave-to {
-  opacity: 0;
-}
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-/* 弹窗滑入 */
-.modal-slide-enter-active {
-  animation: slideIn .3s ease-out forwards;
-}
-.modal-slide-leave-active {
-  animation: slideOut .2s ease-in forwards;
-}
-@keyframes slideIn {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
-}
-@keyframes slideOut {
-  from { transform: translateY(0);     opacity: 1; }
-  to   { transform: translateY(20px); opacity: 0; }
-}
-
-/* 弹窗主体 */
-.modal-content {
-  background: #fff;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85%;
-  overflow-y: auto;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  outline: none; /* focus 时外观自行定义 */
-}
-
-/* 头部 */
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  color: #555;
-  transition: color .2s;
-}
-.close-btn:hover {
-  color: #111;
-}
-
-/* 内容 */
-.modal-body {
-  padding: 1rem 1.5rem;
-  line-height: 1.6;
-}
-
-/* 小屏下全屏弹窗 */
-@media (max-width: 480px) {
-  .modal-content {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    max-height: 100%;
-  }
-}
-.overlay-fade-enter-active,
-.overlay-fade-leave-active {
-  transition: opacity .3s;
-}
-.overlay-fade-enter-from,
-.overlay-fade-leave-to {
-  opacity: 0;
-}
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-/* 弹窗滑入 */
-.modal-slide-enter-active {
-  animation: slideIn .3s ease-out forwards;
-}
-.modal-slide-leave-active {
-  animation: slideOut .2s ease-in forwards;
-}
-@keyframes slideIn {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
-}
-@keyframes slideOut {
-  from { transform: translateY(0);     opacity: 1; }
-  to   { transform: translateY(20px); opacity: 0; }
-}
-
-/* 弹窗主体 */
-.modal-content {
-  background: #fff;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85%;
-  overflow-y: auto;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  outline: none; /* focus 时外观自行定义 */
-}
-
-/* 头部 */
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  color: #555;
-  transition: color .2s;
-}
-.close-btn:hover {
-  color: #111;
-}
-
-/* 内容 */
-.modal-body {
-  padding: 1rem 1.5rem;
-  line-height: 1.6;
-}
-
-/* 小屏下全屏弹窗 */
-@media (max-width: 480px) {
-  .modal-content {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    max-height: 100%;
-  }
-}
-.modal-content {
-  background: #ffffff;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85%;
-  overflow-y: auto;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  display: flex;
-  flex-direction: column;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-}
-
-/* 头部 */
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f7fafc;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-}
-.modal-header h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-  color: #2d3748;
-  line-height: 1.2;
-}
-.close-btn {
-  width: 32px; height: 32px;
-  font-size: 1.25rem;
-  color: #4a5568;
-  transition: color .2s, background .2s;
-  border-radius: 4px;
-}
-.close-btn:hover {
-  color: #e53e3e;
-  background: rgba(229,62,62,0.1);
-}
-
-/* 正文 */
-.modal-body {
-  padding: 1.5rem;
-  color: #4a5568;
-  line-height: 1.6;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.modal-body p {
-  margin: 0;
-  font-size: 1rem;
-}
-.modal-body p + p {
-  margin-top: 0.75rem;
-}
-.modal-body strong {
-  color: #2b6cb0;
-}
-
-/* 作者、发表信息 */
-.modal-body > p:first-child,
-.modal-body > p:nth-child(2) {
-  font-size: 0.95rem;
-  color: #718096;
-}
-.modal-body > p:first-child strong,
-.modal-body > p:nth-child(2) strong {
-  color: #2d3748;
-}
-
-/* 链接按钮化 */
-.modal-body a {
-  display: inline-block;
-  margin-top: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #2b6cb0;
-  color: #fff;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 0.9rem;
-  transition: background .2s;
-}
-.modal-body a:hover {
-  background: #2573b4;
-}
-
-/* 小屏下全屏 */
-@media (max-width: 480px) {
-  .modal-content {
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
-  }
-}
-.right-pane {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-/* 内容区：左右两栏 */
-.content-wrap {
-  display: flex;
-  flex: 1;
-  min-height: 0; /* 允许子元素收缩 */
-}
-
 /* 主列：上下两段 */
 .main-column {
   display: flex;
@@ -1030,4 +777,170 @@ const modalContent = ref<HTMLElement|null>(null)
   overflow-y: auto;      /* 纵向滚动 */
 }
 
+/* 紧凑版弹窗 */
+.compact-modal {
+  width: 420px !important;
+  max-width: 98vw;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  background: #fff;
+}
+.compact-header {
+  padding: .8rem 1.5rem .7rem 1.5rem !important;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+}
+.modal-title-link {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: underline;
+  flex: 1;
+  margin-right: .5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color .18s;
+}
+.modal-title-link:hover {
+  color: #1e40af;
+}
+.compact-body {
+  padding: 1rem 1.5rem 1.2rem 1.5rem !important;
+  font-size: 0.93rem;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: .25em;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  max-height: 320px;
+}
+.compact-body p {
+  margin: 0 0 .18em 0;
+  font-size: .93em;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+.expand-link {
+  color: #2563eb;
+  cursor: pointer;
+  margin-left: .5em;
+  font-size: .93em;
+  text-decoration: underline;
+  user-select: none;
+}
+.expand-link:hover {
+  color: #1e40af;
+  text-decoration: underline;
+}
+
+/* 悬浮窗样式 */
+.floating-modal {
+  position: fixed;
+  right: 180px; /* 靠左一点 */
+  bottom: 36px;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  border-radius: 12px;
+  background: #fff;
+  animation: floatIn .22s;
+  width: 540px !important;      /* 更宽 */
+  max-width: 98vw !important;
+  max-height: 420px;            /* 固定高度 */
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (max-width: 800px) {
+  .floating-modal {
+    right: 8px;
+    left: 8px;
+    width: auto !important;
+    max-width: 98vw !important;
+  }
+}
+
+/* 悬浮窗动画 */
+.modal-float-enter-active, .modal-float-leave-active {
+  transition: opacity .22s;
+}
+.modal-float-enter-from, .modal-float-leave-to {
+  opacity: 0;
+}
+
+/* ★ Paper 评论区样式 */
+.paper-comments {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+.pc-title {
+  margin: 0 0 .5rem 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #334155;
+}
+.paper-comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-height: 180px;       /* 让评论区域可滚动 */
+  overflow-y: auto;
+}
+.pc-item {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: .5rem .6rem;
+}
+.pc-meta {
+  font-size: .78rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin-bottom: .15rem;
+}
+.pc-author { font-weight: 600; color: #374151; }
+.pc-dot { color: #9ca3af; }
+.pc-content { font-size: .9rem; color: #374151; white-space: pre-wrap; word-break: break-word; }
+.pc-empty { color: #9ca3af; text-align: center; }
+
+.paper-comment-input {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-start;
+  margin-top: .6rem;
+}
+.pc-textarea {
+  flex: 1;
+  min-height: 54px;
+  padding: .45rem .6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: .9rem;
+  resize: vertical;
+}
+.pc-submit {
+  flex: 0 0 auto;
+  padding: .45rem .9rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: .88rem;
+  cursor: pointer;
+}
+.pc-submit:disabled { opacity: .6; cursor: not-allowed; }
 </style>
