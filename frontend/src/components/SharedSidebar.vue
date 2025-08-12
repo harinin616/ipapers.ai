@@ -26,7 +26,7 @@
   <!-- ── 列表 ─────────────────────────────── -->
   <template v-if="shares.length">
     <ul class="shared-sidebar__list">
-      <li v-for="s in shares" :key="s.folder_id">
+      <li v-for="s in sortedShares" :key="s.folder_id">
         <!-- 文件夹行 -->
         <div
           class="shared-sidebar__item folder-main"
@@ -157,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive,ref, defineProps, defineEmits } from 'vue'
+import { reactive,ref, defineProps, defineEmits, computed } from 'vue'
 import api from '../services/api'
 interface ShareMeta {
   id: number
@@ -243,6 +243,29 @@ const panel = reactive({
   existing: [] as { email: string; role: 'viewer' | 'editor' }[],
   style  : {} as Record<string,string>,   // { left:'', top:'' }
   emailToAdd: '',
+})
+
+// 新增排序后的 shares 计算属性
+const sortedShares = computed(() => {
+  return [...props.shares].sort((a, b) => {
+    // 1. owner（自己）最前
+    const isOwnerA = a.owner_id === props.currentUserId
+    const isOwnerB = b.owner_id === props.currentUserId
+    if (isOwnerA && !isOwnerB) return -1
+    if (!isOwnerA && isOwnerB) return 1
+    // 2. shared（非 owner 且非 public）其次
+    const isSharedA = !a.is_public && !isOwnerA
+    const isSharedB = !b.is_public && !isOwnerB
+    if (isSharedA && !isSharedB) return -1
+    if (!isSharedA && isSharedB) return 1
+    // 3. public 最后
+    const isPublicA = a.is_public
+    const isPublicB = b.is_public
+    if (isPublicA && !isPublicB) return 1
+    if (!isPublicA && isPublicB) return -1
+    // 4. 其他情况按 folder_id 升序
+    return a.folder_id - b.folder_id
+  })
 })
 
 async function addUser() {

@@ -91,6 +91,9 @@ export interface IApiService {
   upload_file(formData: FormData): Promise<any>;
   updateShareUserRole(folderId: number, email: string, role: 'viewer' | 'editor'): Promise<void>;
   get_user_folders(): Promise<Folder[]>;
+  get_paper_comments(paperId: string, platform?: string): Promise<any[]>;
+  add_paper_comment(paperId: string, content: string, platform?: string): Promise<any>;
+  delete_paper_comment(cid: number): Promise<void>;
 
   // Recommendation methods
   getUserRecommendations(options?: { limit?: number; exclude_existing?: boolean }): Promise<Paper[]>;
@@ -855,6 +858,40 @@ async get_shared_folders(): Promise<any[]> {
     } catch (err) {
       console.error('Upload failed:', err)
       throw err
+    }
+  }
+  async get_paper_comments(paperId: string, platform: string = 'arxiv'): Promise<any[]>{
+    try {
+      const resp = await this.api.get(`/api/comments/paper/${encodeURIComponent(paperId)}`, {
+        params: { platform }
+      })
+      return resp.data
+    } catch (error) {
+      console.error('Failed to get paper comments:', error)
+      throw error
+    }
+  }
+
+  async add_paper_comment(paperId: string, content: string, platform: string = 'arxiv'): Promise<any>{
+    try {
+      const resp = await this.api.post(`/api/comments/paper`, {
+        paperId,
+        content,
+        platform
+      })
+      return resp.data
+    } catch (error) {
+      console.error('Failed to add paper comment:', error)
+      throw error
+    }
+  }
+
+  async delete_paper_comment(cid: number): Promise<void>{
+    try {
+      await this.api.delete(`/api/comments/paper/${cid}`)
+    } catch (error) {
+      console.error('Failed to delete paper comment:', error)
+      throw error
     }
   }
 
