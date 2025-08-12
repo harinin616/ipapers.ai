@@ -91,6 +91,10 @@ export interface IApiService {
   upload_file(formData: FormData): Promise<any>;
   updateShareUserRole(folderId: number, email: string, role: 'viewer' | 'editor'): Promise<void>;
   get_user_folders(): Promise<Folder[]>;
+
+  // Recommendation methods
+  getUserRecommendations(options?: { limit?: number; exclude_existing?: boolean }): Promise<Paper[]>;
+  getFolderRecommendations(folderId: number, options?: { limit?: number; exclude_existing?: boolean }): Promise<Paper[]>;
 }
 /**
  * API Service implementation
@@ -850,6 +854,35 @@ async get_shared_folders(): Promise<any[]> {
       return res.data
     } catch (err) {
       console.error('Upload failed:', err)
+      throw err
+    }
+  }
+
+  // Recommendation methods
+  async getUserRecommendations(options: { limit?: number; exclude_existing?: boolean } = {}): Promise<Paper[]> {
+    try {
+      const params = new URLSearchParams()
+      if (options.limit) params.append('limit', options.limit.toString())
+      if (options.exclude_existing !== undefined) params.append('exclude_existing', options.exclude_existing.toString())
+
+      const response = await this.api.get(`/api/recommendations/user?${params.toString()}`)
+      return response.data
+    } catch (err) {
+      console.error('Failed to get user recommendations:', err)
+      throw err
+    }
+  }
+
+  async getFolderRecommendations(folderId: number, options: { limit?: number; exclude_existing?: boolean } = {}): Promise<Paper[]> {
+    try {
+      const params = new URLSearchParams()
+      if (options.limit) params.append('limit', options.limit.toString())
+      if (options.exclude_existing !== undefined) params.append('exclude_existing', options.exclude_existing.toString())
+
+      const response = await this.api.get(`/api/recommendations/folder/${folderId}?${params.toString()}`)
+      return response.data
+    } catch (err) {
+      console.error('Failed to get folder recommendations:', err)
       throw err
     }
   }

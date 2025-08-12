@@ -99,6 +99,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/recommendations',
+    name: 'recommendations',
+    component: () => import('@/views/RecommendationsView.vue'),
+    meta: {
+      title: 'Paper Recommendations - iPapers',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/subscription',
     name: 'subscription',
     component: () => import('@/views/SubscriptionView.vue'),
