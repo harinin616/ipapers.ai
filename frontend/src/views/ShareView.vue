@@ -24,7 +24,7 @@
                ref="graphRef"
                v-model="selected"
                :papers="graphData"
-                @node-click="detailPaper = $event"
+                @node-click="openDetailModal($event)"
                class="graph-detail"
              />
           </div>
@@ -81,81 +81,97 @@
     </div>
 
 
-     <transition name="modal-float">
-    <div
-      v-if="detailPaper"
-      class="floating-modal compact-modal"
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="'modal-title'"
-      tabindex="-1"
-      ref="modalContent"
+<transition-group name="modal-float">
+  <div
+    v-for="m in openModals"
+    :key="m.paper.paper_id"
+    class="floating-modal compact-modal"
+    role="dialog"
+    aria-modal="true"
+    :aria-labelledby="'modal-title-' + m.paper.paper_id"
+    tabindex="-1"
+    :style="styleFrom(m)"
+    @mousedown="bringToFront(m)"
+  >
+    <header
+      class="modal-header compact-header"
+      @mousedown="onModalDragStart($event, m)"
     >
-      <header class="modal-header compact-header">
-        <a
-          :href="detailPaper.pdf_url"
-          target="_blank"
-          id="modal-title"
-          class="modal-title-link"
-          title="Open PDF"
-        >{{ detailPaper.title }}</a>
-        <button class="close-btn" @click="closeDetail" aria-label="Close">✖</button>
-      </header>
-      <section class="modal-body compact-body" id="modal-desc">
-        <p><strong>Authors:</strong> {{ detailPaper.authors.join(', ') }}</p>
-        <p><strong>Published:</strong> {{ formatDate(detailPaper.published_date) }}</p>
-        <p>
-          <strong>Abstract: </strong>
-          <span v-if="!abstractExpanded">
-            {{ detailPaper.abstract.length > 220 ? detailPaper.abstract.slice(0, 220) + '...' : detailPaper.abstract }}
-            <a v-if="detailPaper.abstract.length > 220" class="expand-link" @click="abstractExpanded = true">Expand</a>
-          </span>
-          <span v-else>
-            {{ detailPaper.abstract }}
-            <a class="expand-link" @click="abstractExpanded = false">Collapse</a>
-          </span>
-        </p>
+      <a
+        :href="m.paper.pdf_url"
+        target="_blank"
+        :id="'modal-title-' + m.paper.paper_id"
+        class="modal-title-link"
+        title="Open PDF"
+      >{{ m.paper.title }}</a>
+      <button class="close-btn" @click="closeModal(m.paper.paper_id)" aria-label="Close">✖</button>
+    </header>
 
-        <!-- ★ 新增：Paper 评论区 -->
-        <div class="paper-comments">
-          <h4 class="pc-title">Comments</h4>
-          <ul class="paper-comment-list">
-            <li v-for="c in paperComments" :key="c.id" class="pc-item">
-              <div class="pc-meta">
-                <span class="pc-author">{{ c.commenter_name || 'Anonymous' }}</span>
-                <span class="pc-dot">·</span>
-                <span class="pc-date">{{ formatDate(c.created_at) }}</span>
-                <!-- 新增：仅作者可见的删除按钮 -->
-                <button
-                  v-if="c.commenter_id === userId"
-                  class="delete-btn"
-                  title="Delete"
-                  @click="deletePaperComment(c.id)"
-                >✖</button>
-              </div>
-              <div class="pc-content">{{ c.content }}</div>
-            </li>
-            <li v-if="!paperComments.length" class="pc-empty">No comments yet.</li>
-          </ul>
-          <div class="paper-comment-input">
-            <textarea
-              v-model="newPaperComment"
-              class="pc-textarea"
-              placeholder="Leave a comment…"
-              rows="2"
-            ></textarea>
-            <button
-              class="pc-submit"
-              :disabled="!newPaperComment.trim() || submittingPaperComment"
-              @click="submitPaperComment"
-            >
-              {{ submittingPaperComment ? 'Submitting…' : 'Submit' }}
-            </button>
-          </div>
+    <section class="modal-body compact-body" :id="'modal-desc-' + m.paper.paper_id">
+      <p><strong>Authors:</strong> {{ m.paper.authors.join(', ') }}</p>
+      <p><strong>Published:</strong> {{ formatDate(m.paper.published_date) }}</p>
+      <p>
+        <strong>Abstract: </strong>
+        <span v-if="!m.abstractExpanded">
+          {{ m.paper.abstract.length > 220 ? m.paper.abstract.slice(0, 220) + '...' : m.paper.abstract }}
+          <a v-if="m.paper.abstract.length > 220" class="expand-link" @click="m.abstractExpanded = true">Expand</a>
+        </span>
+        <span v-else>
+          {{ m.paper.abstract }}
+          <a class="expand-link" @click="m.abstractExpanded = false">Collapse</a>
+        </span>
+      </p>
+
+      <!-- 每个弹窗自己的评论区 -->
+      <div class="paper-comments">
+        <h4 class="pc-title">Comments</h4>
+        <ul class="paper-comment-list">
+          <li v-for="c in m.comments" :key="c.id" class="pc-item">
+            <div class="pc-meta">
+              <span class="pc-author">{{ c.commenter_name || 'Anonymous' }}</span>
+              <span class="pc-dot">·</span>
+              <span class="pc-date">{{ formatDate(c.created_at) }}</span>
+              <button
+                v-if="c.commenter_id === userId"
+                class="delete-btn"
+                title="Delete"
+                @click="deletePaperCommentFor(m, c.id)"
+              >✖</button>
+            </div>
+            <div class="pc-content">{{ c.content }}</div>
+          </li>
+          <li v-if="!m.comments.length" class="pc-empty">No comments yet.</li>
+        </ul>
+        <div class="paper-comment-input">
+          <textarea
+            v-model="m.newComment"
+            class="pc-textarea"
+            placeholder="Leave a comment…"
+            rows="2"
+          ></textarea>
+          <button
+            class="pc-submit"
+            :disabled="!m.newComment.trim() || m.submitting"
+            @click="submitPaperCommentFor(m)"
+          >
+            {{ m.submitting ? 'Submitting…' : 'Submit' }}
+          </button>
         </div>
-      </section>
-    </div>
-  </transition>
+      </div>
+    </section>
+
+    <!-- 8 个缩放句柄（传入当前 modal m） -->
+    <div class="resize-handle handle-n"  @mousedown.stop="onModalResizeStart($event, m, 'n')"  />
+    <div class="resize-handle handle-s"  @mousedown.stop="onModalResizeStart($event, m, 's')"  />
+    <div class="resize-handle handle-e"  @mousedown.stop="onModalResizeStart($event, m, 'e')"  />
+    <div class="resize-handle handle-w"  @mousedown.stop="onModalResizeStart($event, m, 'w')"  />
+    <div class="resize-handle handle-ne" @mousedown.stop="onModalResizeStart($event, m, 'ne')" />
+    <div class="resize-handle handle-nw" @mousedown.stop="onModalResizeStart($event, m, 'nw')" />
+    <div class="resize-handle handle-se" @mousedown.stop="onModalResizeStart($event, m, 'se')" />
+    <div class="resize-handle handle-sw" @mousedown.stop="onModalResizeStart($event, m, 'sw')" />
+  </div>
+</transition-group>
+
   </div>
 
 </template>
@@ -217,6 +233,124 @@ function onSelectPaper(pid: string) {
 const renderedSummary = computed(() =>
   summaryText.value ? md.render(summaryText.value) : ''
 )
+const activeDrag = ref<{ m: ModalState; dx: number; dy: number } | null>(null)
+const activeResize = ref<{
+  m: ModalState; dir: Dir;
+  startX: number; startY: number;
+  startW: number; startH: number;
+  startL: number; startT: number;
+} | null>(null)
+
+function clampModal(m: ModalState) {
+  const margin = 8
+  const maxLeft = Math.max(margin, window.innerWidth  - m.width  - margin)
+  const maxTop  = Math.max(margin, window.innerHeight - m.height - margin)
+  m.left = Math.min(Math.max(m.left, margin), maxLeft)
+  m.top  = Math.min(Math.max(m.top,  margin), maxTop)
+}
+
+function onModalDragStart(e: MouseEvent, m: ModalState) {
+  // 避免拖拽 close 按钮/链接
+  const target = e.target as HTMLElement
+  if (target.closest('.close-btn') || target.closest('a')) return
+  bringToFront(m)
+  activeDrag.value = { m, dx: e.clientX - m.left, dy: e.clientY - m.top }
+}
+
+function onModalResizeStart(e: MouseEvent, m: ModalState, dir: Dir) {
+  bringToFront(m)
+  activeResize.value = {
+    m, dir,
+    startX: e.clientX, startY: e.clientY,
+    startW: m.width, startH: m.height,
+    startL: m.left,  startT: m.top
+  }
+}
+
+function onWindowMouseMove(e: MouseEvent) {
+  if (activeDrag.value) {
+    const { m, dx, dy } = activeDrag.value
+    m.left = e.clientX - dx
+    m.top  = e.clientY - dy
+    clampModal(m)
+  } else if (activeResize.value) {
+    const { m, dir, startX, startY, startW, startH, startL, startT } = activeResize.value
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+
+    let newLeft = startL
+    let newTop  = startT
+    let newW    = startW
+    let newH    = startH
+
+    if (dir.includes('e')) newW = startW + dx
+    if (dir.includes('s')) newH = startH + dy
+    if (dir.includes('w')) { newW = startW - dx; newLeft = startL + dx }
+    if (dir.includes('n')) { newH = startH - dy; newTop  = startT + dy }
+
+    const minW = 360, minH = 220
+    if (newW < minW) { if (dir.includes('w')) newLeft -= (minW - newW); newW = minW }
+    if (newH < minH) { if (dir.includes('n')) newTop  -= (minH - newH); newH = minH }
+
+    const margin = 8
+    const maxRight  = window.innerWidth  - margin
+    const maxBottom = window.innerHeight - margin
+
+    if (newLeft < margin) {
+      const overflow = margin - newLeft
+      newLeft = margin
+      if (dir.includes('w')) newW = Math.max(minW, newW - overflow)
+    }
+    if (newTop < margin) {
+      const overflow = margin - newTop
+      newTop = margin
+      if (dir.includes('n')) newH = Math.max(minH, newH - overflow)
+    }
+    if (newLeft + newW > maxRight) {
+      const overflow = newLeft + newW - maxRight
+      if (dir.includes('e')) newW = Math.max(minW, newW - overflow)
+      else newLeft = maxRight - newW
+    }
+    if (newTop + newH > maxBottom) {
+      const overflow = newTop + newH - maxBottom
+      if (dir.includes('s')) newH = Math.max(minH, newH - overflow)
+      else newTop = maxBottom - newH
+    }
+
+    m.left = newLeft
+    m.top  = newTop
+    m.width  = newW
+    m.height = newH
+  }
+}
+
+function onWindowMouseUp() {
+  activeDrag.value = null
+  activeResize.value = null
+}
+
+function closeTopMost() {
+  if (!openModals.value.length) return
+  const m = openModals.value.reduce((a, b) => (a.z > b.z ? a : b))
+  closeModal(m.paper.paper_id)
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') closeTopMost()
+}
+
+onMounted(() => {
+  window.addEventListener('mousemove', onWindowMouseMove)
+  window.addEventListener('mouseup', onWindowMouseUp)
+  window.addEventListener('keydown', onKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onWindowMouseMove)
+  window.removeEventListener('mouseup', onWindowMouseUp)
+  window.removeEventListener('keydown', onKeydown)
+})
+
 // --- 类型定义 ---
 interface ShareMeta {
   id: number
@@ -243,6 +377,111 @@ export interface Paper {
   embedding?: number[]  // 可选的向量表示
 
 }
+type Dir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+
+interface ModalState {
+  paper: Paper
+  top: number
+  left: number
+  width: number
+  height: number
+  z: number
+  abstractExpanded: boolean
+  comments: Array<{ id:number; content:string; commenter_name:string; commenter_id:string; created_at:string }>
+  newComment: string
+  submitting: boolean
+}
+
+const openModals = ref<ModalState[]>([])
+let zSeed = 3000  // 置顶用
+
+function styleFrom(m: ModalState) {
+  return {
+    top: `${m.top}px`,
+    left: `${m.left}px`,
+    width: `${m.width}px`,
+    height: `${m.height}px`,
+    right: 'auto',
+    bottom: 'auto',
+    maxHeight: 'none',
+    zIndex: m.z
+  }
+}
+
+function findModalIndex(paperId: string) {
+  return openModals.value.findIndex(x => x.paper.paper_id === paperId)
+}
+
+function bringToFront(m: ModalState) {
+  m.z = ++zSeed
+}
+
+function cascadePosition(w: number, h: number, idx: number) {
+  const offset = idx * 28
+  const left = Math.max(8, window.innerWidth  - w - 180 - offset)
+  const top  = Math.max(8, window.innerHeight - h -  36 - offset)
+  return { left, top }
+}
+
+async function openDetailModal(p: Paper) {
+  // 已打开则置顶
+  const i = findModalIndex(p.paper_id)
+  if (i >= 0) { bringToFront(openModals.value[i]); return }
+
+  const width = 540, height = 360
+  const { left, top } = cascadePosition(width, height, openModals.value.length)
+
+  const m: ModalState = {
+    paper: p,
+    top, left, width, height,
+    z: ++zSeed,
+    abstractExpanded: false,
+    comments: [],
+    newComment: '',
+    submitting: false
+  }
+  openModals.value.push(m)
+  await loadPaperCommentsInto(m)
+}
+
+function closeModal(paperId: string) {
+  const i = findModalIndex(paperId)
+  if (i >= 0) openModals.value.splice(i, 1)
+}
+
+async function loadPaperCommentsInto(m: ModalState) {
+  try {
+    m.comments = await api.get_paper_comments(m.paper.paper_id) || []
+  } catch (e) {
+    console.error('Failed to load paper comments', e)
+    m.comments = []
+  }
+}
+
+async function submitPaperCommentFor(m: ModalState) {
+  if (!m.newComment.trim()) return
+  m.submitting = true
+  try {
+    const saved = await api.add_paper_comment(m.paper.paper_id, m.newComment.trim())
+    m.comments.push(saved)
+    m.newComment = ''
+  } catch (e) {
+    alert('Failed to add comment.')
+  } finally {
+    m.submitting = false
+  }
+}
+
+async function deletePaperCommentFor(m: ModalState, cid: number) {
+  if (!confirm('Delete this comment?')) return
+  try {
+    await api.delete_paper_comment(cid)
+    m.comments = m.comments.filter(c => c.id !== cid)
+  } catch (e) {
+    alert('Failed to delete comment.')
+  }
+}
+
 function formatDate(timestamp: string): string {
   const d = new Date(timestamp)
   return d.toLocaleDateString('en-US', {
@@ -350,23 +589,39 @@ async function refreshRightPane(folderId: number) {
   const files = papersMap[folderId]
 
   /* ③ 计算余弦 → citeMap → graphData （原来 watch 里的代码整段搬过来） */
-  const citeMap = new Map<string, string[]>()
+  const citeMap = new Map<string, string[]>();
+  const edges: {u:string, v:string, w:number}[] = [];
+
   const cosine = (a:number[], b:number[])=>{
-    let dot=0,na=0,nb=0
+    let dot=0,na=0,nb=0;
     for(let i=0;i<a.length;i++){
-      dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i]
+      dot+=a[i]*b[i]; na+=a[i]*a[i]; nb+=b[i]*b[i];
     }
-    return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-10)
+    return dot/(Math.sqrt(na)*Math.sqrt(nb)+1e-10);
   }
+
   for(let i=0;i<files.length;i++){
-    const fi=files[i]; if(!fi.embedding) continue
+    const fi=files[i]; if(!fi.embedding) continue;
     for(let j=i+1;j<files.length;j++){
-      const fj=files[j]; if(!fj.embedding) continue
-      if(cosine(fi.embedding,fj.embedding) > .96){
-        ;(citeMap.get(fi.paper_id)??citeMap.set(fi.paper_id,[]).get(fi.paper_id)!).push(fj.paper_id)
-        ;(citeMap.get(fj.paper_id)??citeMap.set(fj.paper_id,[]).get(fj.paper_id)!).push(fi.paper_id)
+      const fj=files[j]; if(!fj.embedding) continue;
+      const sim = cosine(fi.embedding,fj.embedding);
+      if(sim > .96){
+        edges.push({u:fi.paper_id, v:fj.paper_id, w:sim});
       }
     }
+  }
+
+  // 排序并截断
+  const n = files.length;
+  if(edges.length > 2*n){
+    edges.sort((a,b)=>b.w-a.w);
+    edges.length = 2*n;
+  }
+
+  // 重建 citeMap
+  for(const {u,v} of edges){
+    (citeMap.get(u)??citeMap.set(u,[]).get(u)!).push(v);
+    (citeMap.get(v)??citeMap.set(v,[]).get(v)!).push(u);
   }
 
   graphData.value = files.map(f=>({
@@ -405,7 +660,7 @@ onMounted(() => {
   if (graphRef.value && typeof graphRef.value.onNodeClick === 'function') {
     graphRef.value.onNodeClick((n: any) => {
       // 只打开详情，不修改 selected
-      detailPaper.value = n.paper || null
+           if (n?.paper) openDetailModal(n.paper)
     })
   }
 })
@@ -439,11 +694,7 @@ async function onPopState() {
   else activeId.value = null
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && detailPaper.value) {
-    closeDetail()
-  }
-}
+
 
 watch(detailPaper, async (val) => {
   if (val) {
@@ -467,6 +718,182 @@ onBeforeUnmount(() => {
 })
 
 const modalContent = ref<HTMLElement|null>(null)
+
+/* ---------- 新增：拖拽与缩放状态 ====== */
+const modalTop   = ref(100)
+const modalLeft  = ref(100)
+const modalWidth = ref(540)
+const modalHeight= ref(360)
+
+const dragging = ref(false)
+const dragOffset = { x: 0, y: 0 }
+
+
+const resizing = ref(false)
+const resizeDir = ref<Dir | null>(null)
+const resizeStart = { x: 0, y: 0, w: 0, h: 0, l: 0, t: 0 }
+
+const modalStyle = computed(() => ({
+  top: `${modalTop.value}px`,
+  left: `${modalLeft.value}px`,
+  width: `${modalWidth.value}px`,
+  height: `${modalHeight.value}px`,
+  right: 'auto',
+  bottom: 'auto',
+  maxHeight: 'none'
+}))
+
+function clampPosition() {
+  const maxLeft = Math.max(0, window.innerWidth  - modalWidth.value  - 8)
+  const maxTop  = Math.max(0, window.innerHeight - modalHeight.value - 8)
+  modalLeft.value = Math.max(8, Math.min(modalLeft.value, maxLeft))
+  modalTop.value  = Math.max(8, Math.min(modalTop.value,  maxTop))
+}
+
+function onDragStart(e: MouseEvent) {
+  // 避免拖拽 close 按钮/链接
+  const target = e.target as HTMLElement
+  if (target.closest('.close-btn') || target.closest('a')) return
+  dragging.value = true
+  dragOffset.x = e.clientX - modalLeft.value
+  dragOffset.y = e.clientY - modalTop.value
+  window.addEventListener('mousemove', onDragMove)
+  window.addEventListener('mouseup', onDragEnd)
+}
+
+function onDragMove(e: MouseEvent) {
+  if (!dragging.value) return
+  modalLeft.value = e.clientX - dragOffset.x
+  modalTop.value  = e.clientY - dragOffset.y
+  clampPosition()
+}
+
+function onDragEnd() {
+  dragging.value = false
+  window.removeEventListener('mousemove', onDragMove)
+  window.removeEventListener('mouseup', onDragEnd)
+}
+
+function onResizeStart(e: MouseEvent, dir: Dir) {
+  resizing.value = true
+  resizeDir.value = dir
+  resizeStart.x = e.clientX
+  resizeStart.y = e.clientY
+  resizeStart.w = modalWidth.value
+  resizeStart.h = modalHeight.value
+  resizeStart.l = modalLeft.value
+  resizeStart.t = modalTop.value
+  window.addEventListener('mousemove', onResizeMove)
+  window.addEventListener('mouseup', onResizeEnd)
+}
+
+function onResizeMove(e: MouseEvent) {
+  if (!resizing.value || !resizeDir.value) return
+  const dx = e.clientX - resizeStart.x
+  const dy = e.clientY - resizeStart.y
+
+  let newLeft = resizeStart.l
+  let newTop  = resizeStart.t
+  let newW    = resizeStart.w
+  let newH    = resizeStart.h
+
+  const dir = resizeDir.value
+
+  // 基础计算：按方向增减尺寸与位置
+  if (dir.includes('e')) newW = resizeStart.w + dx
+  if (dir.includes('s')) newH = resizeStart.h + dy
+  if (dir.includes('w')) {
+    newW = resizeStart.w - dx
+    newLeft = resizeStart.l + dx
+  }
+  if (dir.includes('n')) {
+    newH = resizeStart.h - dy
+    newTop = resizeStart.t + dy
+  }
+
+  // 最小尺寸
+  const minW = 360, minH = 220
+  if (newW < minW) {
+    if (dir.includes('w')) newLeft -= (minW - newW)
+    newW = minW
+  }
+  if (newH < minH) {
+    if (dir.includes('n')) newTop -= (minH - newH)
+    newH = minH
+  }
+
+  // 视口边界
+  const margin = 8
+  const maxRight = window.innerWidth  - margin
+  const maxBottom= window.innerHeight - margin
+
+  // 左边界
+  if (newLeft < margin) {
+    const overflow = margin - newLeft
+    newLeft = margin
+    if (dir.includes('w')) newW = Math.max(minW, newW - overflow)
+  }
+  // 顶边界
+  if (newTop < margin) {
+    const overflow = margin - newTop
+    newTop = margin
+    if (dir.includes('n')) newH = Math.max(minH, newH - overflow)
+  }
+  // 右边界
+  if (newLeft + newW > maxRight) {
+    const overflow = newLeft + newW - maxRight
+    if (dir.includes('e')) {
+      newW = Math.max(minW, newW - overflow)
+    } else {
+      newLeft = maxRight - newW
+    }
+  }
+  // 底边界
+  if (newTop + newH > maxBottom) {
+    const overflow = newTop + newH - maxBottom
+    if (dir.includes('s')) {
+      newH = Math.max(minH, newH - overflow)
+    } else {
+      newTop = maxBottom - newH
+    }
+  }
+
+  modalLeft.value  = newLeft
+  modalTop.value   = newTop
+  modalWidth.value = newW
+  modalHeight.value= newH
+}
+
+function onResizeEnd() {
+  resizing.value = false
+  resizeDir.value = null
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', onResizeEnd)
+}
+
+// 打开时设置初始位置与尺寸
+watch(detailPaper, async (p) => {
+  if (p) {
+    // ...existing code...
+    // 计算初始位置：右下
+    modalWidth.value  = 540
+    modalHeight.value = 360
+    modalLeft.value   = Math.max(8, window.innerWidth  - modalWidth.value  - 180)
+    modalTop.value    = Math.max(8, window.innerHeight - modalHeight.value - 36)
+    clampPosition()
+  } else {
+    // ...existing code...
+  }
+})
+
+// 清理
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onDragMove)
+  window.removeEventListener('mouseup', onDragEnd)
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', onResizeEnd)
+})
+
 
 /* ---------- 新增：Paper 评论状态 ---------- */
 const paperComments = ref<Array<{ id:number; content:string; commenter_name:string; commenter_id:string; created_at:string }>>([])
@@ -779,7 +1206,7 @@ watch(detailPaper, async (p) => {
 
 /* 紧凑版弹窗 */
 .compact-modal {
-  width: 420px !important;
+  width: auto;
   max-width: 98vw;
   padding: 0;
   border-radius: 12px;
@@ -819,7 +1246,7 @@ watch(detailPaper, async (p) => {
   gap: .25em;
   flex: 1 1 auto;
   overflow-y: auto;
-  max-height: 320px;
+  max-height: none; /* 覆盖原有 320px 限制，随外层高度伸缩 */
 }
 .compact-body p {
   margin: 0 0 .18em 0;
@@ -844,16 +1271,11 @@ watch(detailPaper, async (p) => {
 /* 悬浮窗样式 */
 .floating-modal {
   position: fixed;
-  right: 180px; /* 靠左一点 */
-  bottom: 36px;
   z-index: 2000;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   border-radius: 12px;
   background: #fff;
   animation: floatIn .22s;
-  width: 540px !important;      /* 更宽 */
-  max-width: 98vw !important;
-  max-height: 420px;            /* 固定高度 */
   min-height: 260px;
   display: flex;
   flex-direction: column;
@@ -943,4 +1365,32 @@ watch(detailPaper, async (p) => {
   cursor: pointer;
 }
 .pc-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+/* 让 header 表示可拖拽 */
+.modal-header.compact-header {
+  cursor: move;
+  user-select: none;
+}
+
+/* 通用句柄基类 */
+.resize-handle { position: absolute; z-index: 1; }
+
+/* 边句柄：更容易抓取，厚度 6px */
+.handle-n { top: -3px; left: 20px; right: 20px; height: 6px; cursor: n-resize; }
+.handle-s { bottom: -3px; left: 20px; right: 20px; height: 6px; cursor: s-resize; }
+.handle-e { right: -3px; top: 20px; bottom: 20px; width: 6px; cursor: e-resize; }
+.handle-w { left: -3px; top: 20px; bottom: 20px; width: 6px; cursor: w-resize; }
+
+/* 角句柄：12px 小方块 */
+.handle-ne { right: -4px; top: -4px; width: 12px; height: 12px; cursor: ne-resize; }
+.handle-nw { left:  -4px; top: -4px; width: 12px; height: 12px; cursor: nw-resize; }
+.handle-se { right: -4px; bottom: -4px; width: 12px; height: 12px; cursor: se-resize; }
+.handle-sw { left:  -4px; bottom: -4px; width: 12px; height: 12px; cursor: sw-resize; }
+
+/* 可选：给角句柄一个淡淡的视觉提示（不想要可移除） */
+.handle-ne, .handle-nw, .handle-se, .handle-sw {
+  border: 2px solid #9ca3af22;
+  background: #9ca3af22;
+  border-radius: 2px;
+}
 </style>

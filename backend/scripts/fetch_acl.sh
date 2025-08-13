@@ -1,0 +1,1 @@
+/home/ec2-user/miniconda3/bin/python fetch_acl_papers.py --conference emnlp --year 2023 > logs/acl/emnlp2023.log 2>&1 &
