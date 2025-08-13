@@ -5,7 +5,6 @@ from typing import List
 from pydantic import BaseModel, Field
 from app.services.db_service import db_service
 import datetime
-import uuid  # ★ 新增
 
 router = APIRouter()
 

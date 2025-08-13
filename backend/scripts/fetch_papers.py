@@ -103,17 +103,17 @@ async def fetch_papers(days=None):
             logger.info(f"Batch {batch_num}: Fetched {len(batch_papers)} papers, added {len(added_db_ids)} new papers to DB and vector search.")
 
             # --- 新增：生成 embeddings ---
-            logger.info(f"Generating embeddings for {len(batch_papers)} new papers")
-            for p in batch_papers:
-                try:
-                    pid= p.paper_id
-                    ok = await pdf_service.generate_embeddings_for_paper(pid, "arxiv")
-                    if ok:
-                        logger.info(f"Generated embeddings for paper {pid}")
-                    else:
-                        logger.warning(f"Failed to generate embeddings for paper {pid}")
-                except Exception as e:
-                    logger.error(f"Error generating embeddings for paper {pid}: {e}", exc_info=True)
+        #    logger.info(f"Generating embeddings for {len(batch_papers)} new papers")
+         #   for p in batch_papers:
+          #      try:
+           #         pid= p.paper_id
+            #        ok = await pdf_service.generate_embeddings_for_paper(pid, "arxiv")
+             #       if ok:
+              #          logger.info(f"Generated embeddings for paper {pid}")
+               #     else:
+                #        logger.warning(f"Failed to generate embeddings for paper {pid}")
+           #     except Exception as e:
+            #        logger.error(f"Error generating embeddings for paper {pid}: {e}", exc_info=True)
             # ---------------------------
 
             current_end_date = current_start_date - timedelta(days=1)

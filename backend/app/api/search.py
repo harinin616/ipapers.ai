@@ -25,10 +25,12 @@ async def search_papers(search_request: PaperSearchRequest):
         arxiv_task = asyncio.create_task(arxivsearch_service.search(query=search_request.query))
         
         paper_id_platform_pairs, arxiv_papers = await asyncio.gather(vec_task, arxiv_task)
+
         if not paper_id_platform_pairs:
             return PaperSearchResponse(results=[], count=0)
         
         logger.info(f"Found {len(paper_id_platform_pairs)} paper IDs from vector search")
+        logger.info(f"Found {len(arxiv_papers)} papers from arXiv search")
 
         papers = await db_service.get_papers_by_ids(paper_id_platform_pairs)
 
