@@ -24,7 +24,7 @@
         class="generate-btn"
       >
         <span v-if="isLoading">Generating...</span>
-        <span v-else>Generate 30 Recommendations</span>
+        <span v-else>Generate Recommendations</span>
       </button>
     </div>
 
@@ -70,14 +70,13 @@
     <!-- Initial State -->
     <div v-if="!hasSearched && !isLoading" class="initial-state">
       <div class="welcome-content">
-        <h3>Welcome to Paper Recommendations!</h3>
+        <h3>Welcome to Paper Recommendations</h3>
         <p>Get personalized paper recommendations based on papers in your selected folder.</p>
         <ul>
           <li><strong>Select a folder:</strong> Choose a folder containing papers you're interested in</li>
-          <li><strong>Get 30 recommendations:</strong> We'll find 30 similar papers based on your folder's content</li>
-          <li><strong>Discover new research:</strong> Explore papers you haven't seen before</li>
+          <li><strong>Get recommendations:</strong> We'll find similar papers based on your folder's content</li>
         </ul>
-        <p>Select a folder above and click "Generate 30 Recommendations" to get started.</p>
+        <p>Select a folder above and click "Generate Recommendations" to get started.</p>
       </div>
     </div>
   </div>
