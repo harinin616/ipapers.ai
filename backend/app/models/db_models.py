@@ -4,10 +4,11 @@ from sqlalchemy import Column, String, DateTime, Integer, Float, Table, ForeignK
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID,JSONB
+from sqlalchemy.dialects.postgresql import UUID,JSONB, TSVECTOR
 from pgvector.sqlalchemy import Vector
 import uuid
 from sqlalchemy import event
+from sqlalchemy import Computed, Index     
 
 
 Base = declarative_base()
@@ -61,11 +62,20 @@ class DBPaper(Base):
         backref="papers",
         order_by=paper_authors.c.author_order
     )
+    tsv = Column(TSVECTOR, nullable=False) 
+    
     categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
     # ★ 新增：关联到评论
     comments   = relationship("DBComment", secondary='paper_comments', back_populates="papers")
     def __repr__(self):
         return f"<Paper {self.paper_id} ({self.platform}): {self.title}>"
+    __table_args__ = (
+        # 1) 全文索引：GIN(tsv)
+        Index("ix_papers_tsv", "tsv", postgresql_using="gin"),
+
+        # 2) 标题 trigram 索引：GIN(title gin_trgm_ops) —— 前缀/模糊/相似匹配
+        Index("ix_papers_title_trgm", sa.text("title gin_trgm_ops"), postgresql_using="gin"),
+    )
 
 
 class DBAuthor(Base):

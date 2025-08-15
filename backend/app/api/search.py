@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 import logging
 import asyncio
+from fastapi.concurrency import run_in_threadpool
 
 from app.models.paper import PaperSearchRequest, PaperSearchResponse, Paper
 from app.services.db_service import db_service
 from app.services.vector_search_service import vector_search_service
+from app.services.keyword_search_service import keyword_search_service 
 from app.services.llm_service import llm_service
 from app.services import search_log_service
 from app.services.arxiv_search_service import arxivsearch_service
@@ -23,16 +26,27 @@ async def search_papers(search_request: PaperSearchRequest):
         
         vec_task   = asyncio.create_task(vector_search_service.search(query=search_request.query))
         arxiv_task = asyncio.create_task(arxivsearch_service.search(query=search_request.query))
-        
-        paper_id_platform_pairs, arxiv_papers = await asyncio.gather(vec_task, arxiv_task)
+        keyword_task= asyncio.create_task(keyword_search_service.search(query=search_request.query))
 
-        if not paper_id_platform_pairs:
+
+        paper_id_platform_pairs, arxiv_papers, keyword_paper_id_platform_pairs = await asyncio.gather(vec_task, arxiv_task, keyword_task)
+        print(keyword_paper_id_platform_pairs)
+
+        # --- 将本地的召回结果ID进行高效融合 ---
+        # 使用集合(set)的并集操作，可以自动合并和去重
+        combined_local_ids = set(paper_id_platform_pairs).union(set(keyword_paper_id_platform_pairs))
+        # 将集合转换为列表
+        combined_local_ids = list(combined_local_ids)
+
+        if not combined_local_ids and not arxiv_papers:
             return PaperSearchResponse(results=[], count=0)
         
         logger.info(f"Found {len(paper_id_platform_pairs)} paper IDs from vector search")
+        logger.info(f"Found {len(keyword_paper_id_platform_pairs)} paper IDs from keyword search")
+        logger.info(f"Total unique local IDs to fetch: {len(combined_local_ids)}")
         logger.info(f"Found {len(arxiv_papers)} papers from arXiv search")
 
-        papers = await db_service.get_papers_by_ids(paper_id_platform_pairs)
+        papers = await db_service.get_papers_by_ids(combined_local_ids)
 
         # 去重
         unique = []

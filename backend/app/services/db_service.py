@@ -12,16 +12,18 @@ from sqlalchemy import distinct
 
 from app.models.paper import Paper
 from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
-from app.models.db_models import DBComment,shared_folder_comments, paper_comments
+from app.models.db_models import DBComment,shared_folder_comments
 from app.db.database import get_async_db
 
 from app.services.llm_service import llm_service 
 from app.services.extract_info import paper_info_extractor
 
 from fastapi import HTTPException, status
-
+import re
+import sqlalchemy as sa
 logger = logging.getLogger(__name__)
 
+FTS_CONFIG = "simple"
 
 class DBService:
     """
@@ -1875,116 +1877,6 @@ class DBService:
 
         return None
     
-    async def get_comments_by_paper_id(self, paper_id: str, platform: str = "arxiv") -> list[dict]:
-        """
-        按论文查询评论（按创建时间升序）
-        """
-        async for db in get_async_db():
-            try:
-                result = await db.execute(
-                    select(
-                        DBComment.id,
-                        DBComment.content,
-                        DBComment.commenter_name,
-                        DBComment.created_at,
-                        DBComment.commenter_id,
-                    )
-                    .join(paper_comments, DBComment.id == paper_comments.c.comment_id)
-                    .where(
-                        paper_comments.c.paper_id == paper_id,
-                        paper_comments.c.platform == platform,
-                    )
-                    .order_by(DBComment.created_at)
-                )
-                rows = result.all()
-                return [
-                    {
-                        "id": r.id,
-                        "content": r.content,
-                        "commenter_name": r.commenter_name,
-                        "commenter_id": r.commenter_id,
-                        "created_at": r.created_at.isoformat(),
-                    }
-                    for r in rows
-                ]
-            except SQLAlchemyError as e:
-                logger.error("DB error (get_comments_by_paper_id): %s", e)
-                return []
-            except Exception:
-                logger.exception("Unexpected error in get_comments_by_paper_id")
-                return []
-        return []
-
-    async def add_comment_by_paper_id(
-        self,
-        user_id,
-        paper_id: str,
-        content: str,
-        platform: str = "arxiv"
-    ):
-        """
-        给指定论文新增评论，并写入 paper_comments 关联表
-        """
-        content = (content or "").strip()
-        if not content:
-            return None
-
-        async for db in get_async_db():
-            try:
-                # 校验论文是否存在
-                paper = (
-                    await db.execute(
-                        select(DBPaper).where(
-                            and_(DBPaper.paper_id == paper_id, DBPaper.platform == platform)
-                        )
-                    )
-                ).scalars().first()
-                if not paper:
-                    return None
-
-                # 评论者名称
-                user = await db.get(DBUser, user_id)
-                commenter_name = user.name if user else ""
-
-                # 创建评论
-                comment = DBComment(
-                    content=content,
-                    commenter_id=user_id,
-                    commenter_name=commenter_name,
-                    created_at=datetime.utcnow()
-                )
-                db.add(comment)
-                await db.flush()  # 获取 comment.id
-
-                # 关联到论文
-                await db.execute(
-                    insert(paper_comments).values(
-                        paper_id=paper_id,
-                        platform=platform,
-                        comment_id=comment.id
-                    )
-                )
-
-                await db.commit()
-                await db.refresh(comment)
-
-                return {
-                    "id": comment.id,
-                    "content": comment.content,
-                    "commenter_name": comment.commenter_name,
-                    "commenter_id": comment.commenter_id,
-                    "created_at": comment.created_at.isoformat(),
-                }
-            except SQLAlchemyError as e:
-                await db.rollback()
-                logger.error("DB error (add_comment_by_paper_id): %s", e)
-                return None
-            except Exception:
-                await db.rollback()
-                logger.exception("Unexpected error in add_comment_by_paper_id")
-                return None
-        return None
-
     async def delete_comment(
         self,
         cid: int,
@@ -2011,24 +1903,19 @@ class DBService:
                     return False
 
                 # ② 权限校验（可选）
-                if user_id is not None:
-                    uid_str = str(user_id)
-                    if uid_str is None or str(comment.commenter_id) != uid_str:
-                        logger.warning(
-                            f"User {user_id} tried to delete others' comment {cid}"
-                        )
-                        return False
+                if user_id is not None and comment.commenter_id != user_id:
+                    logger.warning(
+                        f"User {user_id} tried to delete others' comment {cid}"
+                    )
+                    return False
+
                 # ③ 删 pivot 表行（若未设置 CASCADE）
                 await db.execute(
                     delete(shared_folder_comments).where(
                         shared_folder_comments.c.comment_id == cid
                     )
                 )
-                await db.execute(
-                    delete(paper_comments).where(
-                        paper_comments.c.comment_id == cid
-                    )
-                )
+
                 # ④ 删评论本身
                 await db.delete(comment)
                 await db.commit()
@@ -2410,5 +2297,62 @@ class DBService:
                 return False
 
         return False    # 理论上不会走到这里
+    
+    async def keyword_search(
+        self,
+        query: str,
+        limit: int = 50,
+    ) -> List[Tuple[str, str]]:
+        """
+        关键词检索（基于 GIN(tsv)）
+        - 拆空白并用 AND 连接：'a b' -> 'a & b'
+        - 主路径：to_tsquery(:cfg, unaccent(:q))
+        - 兜底：websearch_to_tsquery(:cfg, unaccent(:q))
+        """
+        if not query or not query.strip():
+            return []
+
+        # AND 形式（to_tsquery 语法）
+        terms = re.split(r"\s+", query.strip())
+        processed_query = " & ".join(t for t in terms if t)
+        limit = max(1, min(int(limit), 1000))
+        print(f"keyword_search: query='{query}', processed='{processed_query}', limit={limit}")
+
+        async for db in get_async_db():  # type: AsyncSession
+            try:
+                # 主路径：配置使用 simple，并与 tsv 一样走 unaccent
+                sql_to = sa.text("""
+                    SELECT paper_id, platform
+                    FROM papers
+                    WHERE tsv @@ to_tsquery(:cfg, unaccent(:q))
+                    ORDER BY ts_rank_cd(tsv, to_tsquery(:cfg, unaccent(:q))) DESC
+                    LIMIT :lim
+                """)
+                res = await db.execute(sql_to, {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit})
+                rows = res.fetchall()
+                return [(row[0], row[1]) for row in rows]
+
+            except SQLAlchemyError as e:
+                logger.warning(f"to_tsquery failed, fallback to websearch_to_tsquery: {e}")
+                try:
+                    sql_web = sa.text("""
+                        SELECT paper_id, platform
+                        FROM papers
+                        WHERE tsv @@ websearch_to_tsquery(:cfg, unaccent(:q))
+                        ORDER BY ts_rank_cd(tsv, websearch_to_tsquery(:cfg, unaccent(:q))) DESC
+                        LIMIT :lim
+                    """)
+                    res = await db.execute(sql_web, {"cfg": FTS_CONFIG, "q": query, "lim": limit})
+                    rows = res.fetchall()
+                    return [(row[0], row[1]) for row in rows]
+                except SQLAlchemyError as e2:
+                    logger.error(f"DB error in keyword_search (fallback failed): {e2}")
+                    return []
+            except Exception as e:
+                logger.error("Unexpected error in keyword_search", exc_info=True)
+                return []
+
+        return []
+
 # Create a global instance
-db_service = DBService()
+db_service = DBService() 
