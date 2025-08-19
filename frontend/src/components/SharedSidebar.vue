@@ -20,7 +20,7 @@
     </button>
 
     <!-- 标题只在展开时显示 -->
-    <h3 v-if="!isCollapsed">Related Work Folders</h3>
+    <h3 v-if="!isCollapsed">Paper Folders</h3>
   </header>
 
   <!-- ── 列表 ─────────────────────────────── -->
