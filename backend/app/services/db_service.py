@@ -64,6 +64,55 @@ class DBService:
         
         return None
 
+    # ========== Search History Methods ==========
+    
+    async def add_search_history(
+        self,
+        session_id: str,
+        user_id: str,
+        query: str,
+        timestamp: datetime
+    ) -> bool:
+        """
+        Add search history record
+        """
+        try:
+            async for db in get_async_db():
+                # 这里可以创建一个搜索历史表，或者暂时记录到日志
+                logger.info(f"Search history: user={user_id}, session={session_id}, query='{query}', time={timestamp}")
+                return True
+        except Exception as e:
+            logger.error(f"Error adding search history: {e}")
+            return False
+    
+    async def get_user_search_history(self, user_id: str) -> List[dict]:
+        """
+        Get user's search history
+        """
+        try:
+            # 这里可以从数据库获取搜索历史，暂时返回空列表
+            # 后续可以创建专门的搜索历史表
+            logger.info(f"Getting search history for user: {user_id}")
+            return []
+        except Exception as e:
+            logger.error(f"Error getting search history: {e}")
+            return []
+    
+    async def save_search_context(
+        self,
+        context_data: dict
+    ) -> bool:
+        """
+        Save search context for future reference
+        """
+        try:
+            # 这里可以保存到数据库或缓存
+            logger.info(f"Saving search context: {context_data}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving search context: {e}")
+            return False
+    
     
     async def add_user(self,user_id: uuid.UUID, name: str, email: str) -> bool:
         """
