@@ -99,6 +99,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/perplexity-search',
+    name: 'perplexity-search',
+    component: () => import('@/views/PerplexityStyleSearchView.vue'),
+    meta: {
+      title: 'PaperSearch - Academic Research Assistant',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/recommendations',
     name: 'recommendations',
     component: () => import('@/views/RecommendationsView.vue'),

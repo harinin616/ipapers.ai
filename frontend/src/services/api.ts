@@ -895,6 +895,34 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
+  // Improved Conversational Search methods
+  async improvedConversationalSearch(payload: {
+    session_id: string;
+    query: string;
+    conversation_history: any[]
+  }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/improved-conversational/search', payload)
+      return response.data
+    } catch (err) {
+      console.error('Failed to perform improved conversational search:', err)
+      throw err
+    }
+  }
+
+  async getSearchSuggestions(params: { 
+    session_id: string; 
+    context?: string 
+  }): Promise<any> {
+    try {
+      const response = await this.api.get('/api/conversational/search_suggestions', { params })
+      return response.data
+    } catch (err) {
+      console.error('Failed to get search suggestions:', err)
+      throw err
+    }
+  }
+
   // Recommendation methods
   async getUserRecommendations(options: { limit?: number; exclude_existing?: boolean } = {}): Promise<Paper[]> {
     try {
