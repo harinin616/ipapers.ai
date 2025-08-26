@@ -1,7 +1,7 @@
 <template>
   <div v-if="summary" class="search-summary">
     <div class="summary-header">
-      <h3>📋 Research Summary</h3>
+      <h3>📋 Search Summary</h3>
       <div class="summary-controls">
         <button @click="toggleExpanded" class="toggle-btn">
           {{ isExpanded ? 'Collapse' : 'Expand' }}
@@ -15,7 +15,12 @@
         <div class="fade-overlay"></div>
       </div>
       
-      <div v-else class="summary-full" v-html="renderMarkdown(summary)"></div>
+      <div v-else class="summary-full">
+        <div v-for="(section, index) in formattedSummary" :key="index" class="summary-section">
+          <h4 v-if="section.type === 'heading'" class="section-heading">{{ section.content }}</h4>
+          <p v-else-if="section.type === 'paragraph'" class="section-paragraph" v-html="section.content"></p>
+        </div>
+      </div>
     </div>
     
     <div v-if="!isExpanded" class="summary-footer">
@@ -27,8 +32,6 @@
 </template>
 
 <script>
-import { marked } from 'marked'
-
 export default {
   name: 'SearchSummary',
   props: {
@@ -67,6 +70,36 @@ export default {
       }
       
       return firstParagraph || this.summary.substring(0, 150) + '...'
+    },
+    
+    formattedSummary() {
+      if (!this.summary) return []
+      
+      const sections = []
+      const lines = this.summary.split('\n')
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim()
+        if (!trimmedLine) continue
+        
+        // Handle headings
+        if (trimmedLine.startsWith('#')) {
+          const headingText = trimmedLine.replace(/^#+\s*/, '')
+          sections.push({
+            type: 'heading',
+            content: headingText
+          })
+        } else {
+          // Handle regular paragraphs with link conversion
+          const formattedContent = this.formatLinks(trimmedLine)
+          sections.push({
+            type: 'paragraph',
+            content: formattedContent
+          })
+        }
+      }
+      
+      return sections
     }
   },
   methods: {
@@ -74,16 +107,9 @@ export default {
       this.isExpanded = !this.isExpanded
     },
     
-    renderMarkdown(content) {
-      if (!content) return ''
-      
-      // Configure marked options
-      marked.setOptions({
-        breaks: true,
-        gfm: true
-      })
-      
-      return marked(content)
+    formatLinks(text) {
+      // Convert markdown-style links [text](url) to HTML links
+      return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     }
   }
 }
@@ -91,44 +117,42 @@ export default {
 
 <style scoped>
 .search-summary {
-  background: linear-gradient(135deg, #f8fffe 0%, #f1f8ff 100%);
-  border: 1px solid #e1f5fe;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .summary-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 1.5rem 1rem 1.5rem;
-  border-bottom: 1px solid #e1f5fe;
-  background: rgba(255, 255, 255, 0.5);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
 }
 
 .summary-header h3 {
   margin: 0;
-  color: #1976d2;
-  font-size: 1.2rem;
+  color: #333;
+  font-size: 1.1rem;
   font-weight: 600;
 }
 
 .toggle-btn {
-  background: #1976d2;
+  background: #3f51b5;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
 }
 
 .toggle-btn:hover {
-  background: #1565c0;
-  transform: translateY(-1px);
+  background: #303f9f;
 }
 
 .summary-content {
@@ -144,9 +168,9 @@ export default {
 
 .summary-preview p {
   margin: 0;
-  color: #333;
-  line-height: 1.6;
-  font-size: 1rem;
+  color: #666;
+  line-height: 1.5;
+  font-size: 0.95rem;
 }
 
 .fade-overlay {
@@ -155,65 +179,52 @@ export default {
   left: 0;
   right: 0;
   height: 2rem;
-  background: linear-gradient(to bottom, transparent, #f8fffe);
+  background: linear-gradient(to bottom, transparent, white);
   pointer-events: none;
 }
 
 .summary-full {
   color: #333;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
-.summary-full :deep(h1) {
-  color: #1976d2;
-  font-size: 1.4rem;
+.summary-section {
   margin-bottom: 1rem;
-  border-bottom: 2px solid #e1f5fe;
-  padding-bottom: 0.5rem;
 }
 
-.summary-full :deep(h2) {
-  color: #1976d2;
-  font-size: 1.2rem;
-  margin: 1.5rem 0 0.8rem 0;
-}
-
-.summary-full :deep(h3) {
-  color: #424242;
+.section-heading {
+  color: #333;
   font-size: 1.1rem;
-  margin: 1.2rem 0 0.6rem 0;
-}
-
-.summary-full :deep(p) {
-  margin-bottom: 1rem;
-  text-align: justify;
-}
-
-.summary-full :deep(a) {
-  color: #1976d2;
-  text-decoration: none;
-  border-bottom: 1px dotted #1976d2;
-  transition: all 0.3s ease;
-}
-
-.summary-full :deep(a:hover) {
-  color: #1565c0;
-  border-bottom-style: solid;
-}
-
-.summary-full :deep(strong) {
-  color: #1976d2;
   font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #eee;
+}
+
+.section-paragraph {
+  margin: 0 0 0.8rem 0;
+  color: #555;
+  line-height: 1.6;
+}
+
+.section-paragraph a {
+  color: #3f51b5;
+  text-decoration: none;
+}
+
+.section-paragraph a:hover {
+  text-decoration: underline;
 }
 
 .summary-footer {
   padding: 0.8rem 1.5rem;
-  background: rgba(255, 255, 255, 0.7);
-  border-top: 1px solid #e1f5fe;
+  background: #f8f9fa;
+  border-top: 1px solid #eee;
 }
 
 .summary-meta {
   color: #666;
+  font-size: 0.85rem;
   font-style: italic;
 }
 
@@ -224,7 +235,7 @@ export default {
 @media (max-width: 768px) {
   .summary-header {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.8rem;
     align-items: flex-start;
   }
   
