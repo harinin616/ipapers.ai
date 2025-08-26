@@ -91,7 +91,11 @@ export default {
           
           // only perform search if query actually changed or don't have cached results
           if (oldQuery !== newQuery || !searchStore.getHasSearched()) {
-            this.performSearch(false); // default to normal search for route-based searches
+            // Check if this is an AI search request from the home page
+            const includeSummary = searchStore.getIncludeSummary();
+            this.performSearch(includeSummary);
+            // Reset the flag after use
+            searchStore.setIncludeSummary(false);
           }
         }
       }
@@ -132,11 +136,15 @@ export default {
       // clear cache when user performs a new search from the search box
       searchStore.clearSearch();
       this.searchQuery = query;
+      // Explicitly clear summary before new search
+      this.summary = null;
       this.performSearch(includeSummary);
     },
     
     async performSearch(includeSummary = false) {
       if (!this.searchQuery.trim()) return;
+      
+      console.log('🔍 Starting search with includeSummary:', includeSummary);
       
       this.isLoading = true;
       this.results = [];
@@ -152,6 +160,8 @@ export default {
           include_summary: includeSummary,
           summary_type: 'full'
         });
+        
+        console.log('📊 API response data:', { hasSummary: !!data.summary, includeRequested: includeSummary, summary: data.summary?.substring(0, 100) });
         
         if (data && Array.isArray(data.results)) {
           this.results = data.results.map(paper => ({
@@ -169,6 +179,10 @@ export default {
           if (data.summary) {
             this.summary = data.summary;
             searchStore.setSummary(data.summary);
+          } else {
+            // Ensure summary is cleared if not provided
+            this.summary = null;
+            searchStore.setSummary(null);
           }
           
           // update store with results
