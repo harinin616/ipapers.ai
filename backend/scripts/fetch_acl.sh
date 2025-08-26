@@ -1,1 +1,5 @@
-/home/ec2-user/miniconda3/bin/python fetch_acl_papers.py --conference emnlp --year 2024 > logs/acl/emnlp2024.log 2>&1 &
+#EMNLP BEFORE 2024
+#ACL BEFORE 2025
+#NAACL BEFORE 2025
+
+/home/ec2-user/miniconda3/bin/python fetch_acl_papers.py --conference emnlp --year 2022 > logs/acl/emnlp2022.log 2>&1 &

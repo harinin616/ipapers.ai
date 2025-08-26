@@ -21,7 +21,6 @@ class VectorSearchService:
         Initialize vector search service
         """
         self.embedding_dim = llm_service.default_embedding_dimensions
-             
         self.index = None
         self.paper_ids = []
         self.paper_platforms = []
@@ -241,14 +240,14 @@ class VectorSearchService:
                 reformulated = query
 
             # 一半用原始查询，一半用重写后的查询
-            k_half = k // 2
-            original_results = await self.vector_search(query, k=k_half)
-            reformulated_results = await self.vector_search(reformulated, k=k - k_half)
+#            k_half = k# // 2
+            #original_results = []#await self.vector_search(query, k=k_half)
+            reformulated_results = await self.vector_search(reformulated, k=k )#- k_half)
             
             # 合并结果并去重
             seen = set()
             result_tuples = []
-            for result in original_results + reformulated_results:
+            for result in reformulated_results:#original_results + 
                 if result not in seen:
                     seen.add(result)
                     result_tuples.append(result)
