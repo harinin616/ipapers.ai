@@ -5,13 +5,17 @@ interface SearchState {
   results: any[]
   hasSearched: boolean
   sortBy: string
+  summary: string | null
+  includeSummary: boolean
 }
 
 const searchState = reactive<SearchState>({
   query: '',
   results: [],
   hasSearched: false,
-  sortBy: 'relevance'
+  sortBy: 'relevance',
+  summary: null,
+  includeSummary: false
 })
 
 export const searchStore = {
@@ -20,9 +24,15 @@ export const searchStore = {
   getResults: () => searchState.results,
   getHasSearched: () => searchState.hasSearched,
   getSortBy: () => searchState.sortBy,
+  getSummary: () => searchState.summary,
+  getIncludeSummary: () => searchState.includeSummary,
 
   setSortBy: (sortBy: string) => {
     searchState.sortBy = sortBy
+  },
+
+  setIncludeSummary: (includeSummary: boolean) => {
+    searchState.includeSummary = includeSummary
   },
   
   // Actions
@@ -34,11 +44,16 @@ export const searchStore = {
     searchState.results = results
     searchState.hasSearched = true
   },
+
+  setSummary: (summary: string | null) => {
+    searchState.summary = summary
+  },
   
   clearSearch: () => {
     searchState.query = ''
     searchState.results = []
     searchState.hasSearched = false
+    searchState.summary = null
   },
   
   // Check if we have cached results for a query

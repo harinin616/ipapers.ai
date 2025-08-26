@@ -33,6 +33,14 @@
         </div>
         
         <div v-else-if="results.length > 0" class="papers-list">
+          <!-- Summary Display -->
+          <SearchSummary 
+            v-if="summary" 
+            :summary="summary" 
+            :paper-count="results.length"
+          />
+          
+          <!-- Paper Cards -->
           <PaperCard v-for="paper in sortedResults" :key="paper.paper_id" :paper="paper" />
         </div>
         <div v-else class="search-instructions">
@@ -47,20 +55,23 @@
 import api from '../services/api'
 import SearchBox from '../components/SearchBox.vue'
 import PaperCard from '../components/PaperCard.vue'
+import SearchSummary from '../components/SearchSummary.vue'
 import { searchStore } from '../stores/searchStore'
 
 export default {
   name: 'SearchView',
   components: {
     SearchBox,
-    PaperCard
+    PaperCard,
+    SearchSummary
   },
   data() {
     return {
       searchQuery: '',
       results: [],
       isLoading: false,
-      sortBy: searchStore.getSortBy()
+      sortBy: searchStore.getSortBy(),
+      summary: null
     }
   },
   watch: {
@@ -74,12 +85,13 @@ export default {
           if (searchStore.hasCachedResults(newQuery)) {
             // use cached results instead of searching again
             this.results = searchStore.getResults();
+            this.summary = searchStore.getSummary();
             return;
           }
           
           // only perform search if query actually changed or don't have cached results
           if (oldQuery !== newQuery || !searchStore.getHasSearched()) {
-            this.performSearch();
+            this.performSearch(false); // default to normal search for route-based searches
           }
         }
       }
@@ -91,6 +103,7 @@ export default {
       this.searchQuery = searchStore.getQuery();
       this.results = searchStore.getResults();
       this.sortBy = searchStore.getSortBy();
+      this.summary = searchStore.getSummary();
     }
   },
   computed: {
@@ -115,18 +128,19 @@ export default {
     }
   },
   methods: {
-    handleSearchBoxSearch(query) {
+    handleSearchBoxSearch(query, includeSummary = false) {
       // clear cache when user performs a new search from the search box
       searchStore.clearSearch();
       this.searchQuery = query;
-      this.performSearch();
+      this.performSearch(includeSummary);
     },
     
-    async performSearch() {
+    async performSearch(includeSummary = false) {
       if (!this.searchQuery.trim()) return;
       
       this.isLoading = true;
       this.results = [];
+      this.summary = null;
       
       // update store
       searchStore.setQuery(this.searchQuery.trim());
@@ -134,7 +148,9 @@ export default {
       try {
         const data = await api.searchPapers({
           query: this.searchQuery.trim(),
-          limit: 30
+          limit: 30,
+          include_summary: includeSummary,
+          summary_type: 'full'
         });
         
         if (data && Array.isArray(data.results)) {
@@ -148,6 +164,12 @@ export default {
             categories: Array.isArray(paper.categories) ? paper.categories : 
                        (paper.categories ? [paper.categories] : [])
           }));
+          
+          // Handle summary if provided
+          if (data.summary) {
+            this.summary = data.summary;
+            searchStore.setSummary(data.summary);
+          }
           
           // update store with results
           searchStore.setResults(this.results);
@@ -221,8 +243,7 @@ export default {
   margin-bottom: 1rem;
 }
 
-.sort-options {
-}
+
 
 .sort-options label {
   margin-right: 0.5rem;
@@ -257,6 +278,16 @@ export default {
 @media (max-width: 768px) {
   .papers-list {
     grid-template-columns: 1fr;
+  }
+  
+  .sort-options-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .sort-options {
+    align-self: flex-end;
   }
 }
 </style> 

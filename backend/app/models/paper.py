@@ -22,9 +22,12 @@ class PaperSearchRequest(BaseModel):
     query: str
     limit: int = Field(30, ge=1, le=100)
     categories: Optional[List[str]] = Field(None)
+    include_summary: bool = Field(False, description="Generate summary for search results")
+    summary_type: str = Field("full", description="Type of summary: 'full' or 'quick'")
 
 
 class PaperSearchResponse(BaseModel):
     """Model for paper search response"""
     results: List[Paper]
-    count: int 
+    count: int
+    summary: Optional[str] = Field(None, description="Generated summary of search results") 
