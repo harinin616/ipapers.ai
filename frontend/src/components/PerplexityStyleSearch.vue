@@ -8,22 +8,6 @@
       <div v-if="conversations.length === 0" class="welcome-state">
         <div class="welcome-card">
           <h2>👋 Welcome to Intelligent Conversational Search</h2>
-          <p>I can help you:</p>
-          
-          <div class="feature-list">
-            <div class="feature-item">
-              <span class="feature-icon">🔍</span>
-              <span class="feature-text"><strong>Search Papers:</strong> Describe your research needs, I'll find relevant papers</span>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">💬</span>
-              <span class="feature-text"><strong>Academic Discussion:</strong> Explain concepts, discuss research methods</span>
-            </div>
-            <div class="feature-item">
-              <span class="feature-icon">🎯</span>
-              <span class="feature-text"><strong>Precise Matching:</strong> Gradually refine search conditions through conversation</span>
-            </div>
-          </div>
           
           <div class="example-grid">
             <button 
@@ -70,24 +54,37 @@
                   <h4>📄 Related Papers ({{ conversation.response.papers.length }})</h4>
                   <div class="papers-grid">
                     <div 
-                      v-for="paper in conversation.response.papers.slice(0, 6)" 
+                      v-for="paper in conversation.response.papers.slice(0, conversation.showAllPapers ? conversation.response.papers.length : 6)" 
                       :key="paper.paper_id"
-                      @click="openPaper(paper)"
                       class="paper-card"
                     >
-                      <div class="paper-title">{{ paper.title }}</div>
-                      <div class="paper-authors">{{ paper.authors }}</div>
-                      <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
+                      <div class="paper-content" @click="openPaper(paper)">
+                        <div class="paper-title">{{ paper.title }}</div>
+                        <div class="paper-authors">{{ paper.authors }}</div>
+                        <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
+                      </div>
+                      <div class="paper-actions" @click.stop>
+                        <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
+                      </div>
                     </div>
                   </div>
                   
                   <!-- Show more papers button -->
                   <button 
-                    v-if="conversation.response.papers.length > 6"
+                    v-if="conversation.response.papers.length > 6 && !conversation.showAllPapers"
                     @click="showMorePapers(conversation)"
                     class="show-more-btn"
                   >
                     Show {{ conversation.response.papers.length - 6 }} more papers
+                  </button>
+                  
+                  <!-- Show less papers button -->
+                  <button 
+                    v-if="conversation.response.papers.length > 6 && conversation.showAllPapers"
+                    @click="showLessPapers(conversation)"
+                    class="show-more-btn"
+                  >
+                    Show less papers
                   </button>
                 </div>
 
@@ -146,6 +143,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import api from '../services/api'
+import ChatButton from './ChatButton.vue'
 
 // Reactive data
 const conversations = ref([])
@@ -189,7 +187,8 @@ const handleSearch = async () => {
     query,
     loading: true,
     response: null,
-    sessionId: generateSessionId()
+    sessionId: generateSessionId(),
+    showAllPapers: false
   }
   
   conversations.value.push(conversation)
@@ -254,8 +253,13 @@ const openPaper = (paper) => {
 }
 
 const showMorePapers = (conversation) => {
-  // Could implement modal or expand inline
-  console.log('Show more papers for:', conversation)
+  conversation.showAllPapers = true
+  scrollToBottom()
+}
+
+const showLessPapers = (conversation) => {
+  conversation.showAllPapers = false
+  scrollToBottom()
 }
 
 const scrollToBottom = () => {
@@ -316,39 +320,7 @@ onMounted(() => {
   margin: 0 0 0.5rem;
 }
 
-.welcome-card p {
-  color: #718096;
-  font-size: 1.1rem;
-  margin: 0 0 1.5rem;
-}
 
-.feature-list {
-  margin-bottom: 1.5rem;
-  text-align: left;
-}
-
-.feature-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.feature-icon {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-  margin-top: 0.1rem;
-}
-
-.feature-text {
-  color: #4a5568;
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-.feature-text strong {
-  color: #2d3748;
-}
 
 .example-grid {
   display: grid;
@@ -462,13 +434,25 @@ onMounted(() => {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 1rem;
-  cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .paper-card:hover {
   border-color: #667eea;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.paper-content {
+  flex: 1;
+  cursor: pointer;
+}
+
+.paper-actions {
+  flex-shrink: 0;
 }
 
 .paper-title {

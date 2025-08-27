@@ -278,7 +278,7 @@ class ChatService:
 
         if not chat_file_names:
             # 直接返回预设答复
-            preset = "Please attach at least one file before I can answer questions about it. \n[Go to Home]l(https://ipapers.ai/) to add papers to your file list, then select them in the file list and try again."
+            preset = "Please attach at least one file before I can answer questions about it. \nAdd papers to your file list, then select them and try again."
             # 将预设答复写入历史
             await self.add_message(user_id, session_id, "assistant", preset)
             await db_service.add_message(

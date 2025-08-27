@@ -103,10 +103,12 @@ Analysis rules:
 - If user explicitly mentions "find papers", "search", "papers", "research", "literature", etc., and query is specific enough → get_papers
 - If user mentions getting papers but query is too broad (like "latest developments", "review") → clarify  
 - If it's greetings, concept explanations, general questions → chat
-- **IMPORTANT**: Consider conversation context carefully. If user says "this topic", "related papers", "papers on this", etc., extract the main topic from the conversation history and combine it with any additional terms in the current query.
+- **IMPORTANT**: Consider conversation context carefully. If user says "this topic", "related papers", "papers on this", etc., extract the main topic from the conversation history
 - When extracting search terms, combine context with current query intelligently
 
-Return JSON format:
+**CRITICAL**: You must respond with ONLY valid JSON. No explanations, no markdown formatting, no additional text.
+
+Return exactly one of these JSON formats:
 
 For get_papers:
 {{
@@ -130,29 +132,41 @@ For chat:
 }}
 
 Examples:
-- "find some papers about transformer" → get_papers (refined_query: "transformer")
-- "latest machine learning developments" → clarify (too broad)
-- "what is deep learning?" → chat (concept explanation)
-- Context: "what is random walk?" → "show me papers on this topic" → get_papers (refined_query: "random walk")
-- Context: discussing BERT → "find related papers" → get_papers (refined_query: "BERT")
-- Context: "explain attention mechanism" → "papers about this" → get_papers (refined_query: "attention mechanism")
+- "find some papers about transformer" → {{"intent": "get_papers", "refined_query": "transformer", "reasoning": "User explicitly requests papers about transformer"}}
+- "latest machine learning developments" → {{"intent": "clarify", "clarification_question": "Your query is quite broad. Could you specify which aspect of machine learning you want to learn about?", "suggestions": ["Search for specific algorithms", "Find papers in particular domains", "Show me theoretical research"], "reasoning": "Query too broad without specific focus"}}
+- "what is deep learning?" → {{"intent": "chat", "reasoning": "User asks for concept explanation"}}
+- Context: "what is random walk?" → "show me papers on this topic" → {{"intent": "get_papers", "refined_query": "random walk", "reasoning": "User refers to previously discussed topic"}}
+- Context: discussing BERT → "find related papers" → {{"intent": "get_papers", "refined_query": "BERT", "reasoning": "User requests papers related to context topic"}}
 
-**Key instruction**: When user refers to "this topic", "related papers", etc., extract the main subject from the conversation history and combine it with any additional terms in the current query.
-
-Return only JSON, no other content.
+**IMPORTANT INSTRUCTIONS**:
+1. Return ONLY the JSON object, no other text
+2. Do not use markdown formatting (no ```json or ```)
+3. Ensure all strings are properly quoted
+4. When user refers to "this topic", extract the main subject from conversation history
+5. For get_papers, refined_query should be the actual search terms, not the full user query
 """
 
             response = await llm_service.conversation(
                 messages=[{"role": "user", "content": prompt}]
             )
 
-            # Parse JSON response
+            # Parse JSON response - simplified with better prompt
             try:
-                analysis = json.loads(response)
+                # Clean response - remove any potential markdown formatting
+                import re
+                cleaned_response = re.sub(r'```json\s*', '', response)
+                cleaned_response = re.sub(r'```\s*', '', cleaned_response)
+                cleaned_response = cleaned_response.strip()
+                
+                # Try to parse JSON
+                analysis = json.loads(cleaned_response)
                 logger.info(f"Intent analysis: {analysis}")
                 return analysis
-            except json.JSONDecodeError:
-                logger.warning(f"Failed to parse intent analysis JSON: {response}")
+                
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON parsing failed: {e}")
+                logger.warning(f"Response was: {response}")
+                logger.warning(f"Cleaned response was: {cleaned_response}")
                 return self._fallback_intent_analysis(query, conversation_history)
 
         except Exception as e:
@@ -168,7 +182,8 @@ Return only JSON, no other content.
         # Clear paper search keywords
         paper_keywords = [
             "paper", "papers", "literature", "research", "study", "find", "search",
-            "article", "publication", "related research", "show me", "this topic"
+            "article", "publication", "related research", "show me", "this topic",
+            "help me find", "please help", "can you find", "could you find"
         ]
         
         # Broad query keywords
@@ -205,7 +220,7 @@ Return only JSON, no other content.
                 }
             else:
                 # Has clear intent or context support
-                search_query = self._extract_search_keywords(query, context_topic)
+                search_query = self._extract_search_keywords_improved(query, context_topic)
                 return {
                     "intent": "get_papers",
                     "refined_query": search_query,
@@ -284,23 +299,57 @@ Return only JSON, no other content.
         
         return ""
 
-    def _extract_search_keywords(self, query: str, context_topic: str = "") -> str:
+    def _extract_search_keywords_improved(self, query: str, context_topic: str = "") -> str:
         """
-        Extract search keywords with improved context handling
+        Improved search keyword extraction with better pattern matching
         """
-        # Remove stop words
+        # Remove common polite phrases and stop words
+        polite_phrases = [
+            "would you please", "please help me", "can you help me", "could you help me",
+            "i would like", "i want", "i need", "help me find", "please find",
+            "show me", "get me", "find me"
+        ]
+        
         stop_words = [
             "find", "search", "papers", "about", "on", "for", "i", "want", "to",
             "the", "a", "an", "is", "are", "some", "get", "show", "me", "this",
-            "topic", "related", "related to", "concerning", "regarding"
+            "topic", "related", "related to", "concerning", "regarding", "please",
+            "help", "can", "could", "would", "like", "need"
         ]
         
-        words = query.lower().split()
+        # Clean the query
+        cleaned_query = query.lower()
+        for phrase in polite_phrases:
+            cleaned_query = cleaned_query.replace(phrase, "")
+        
+        # Remove stop words
+        words = cleaned_query.split()
         keywords = [word for word in words if word not in stop_words and len(word) > 2]
         
         # If there's context topic, use it first
         if context_topic:
             keywords = [context_topic] + keywords
+        
+        # If no keywords found, try to extract from the original query
+        if not keywords:
+            # Look for patterns like "about X" or "on X"
+            import re
+            patterns = [
+                r'about ([a-zA-Z\s]+?)(?:\?|$|\.)',
+                r'on ([a-zA-Z\s]+?)(?:\?|$|\.)',
+                r'for ([a-zA-Z\s]+?)(?:\?|$|\.)',
+                r'regarding ([a-zA-Z\s]+?)(?:\?|$|\.)'
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, query.lower())
+                if match:
+                    topic = match.group(1).strip()
+                    # Clean the topic
+                    topic_words = [word for word in topic.split() if word not in stop_words and len(word) > 2]
+                    if topic_words:
+                        keywords = topic_words
+                        break
         
         return " ".join(keywords[:4])  # Maximum 4 keywords
 
