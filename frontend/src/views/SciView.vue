@@ -2,7 +2,7 @@
   <div class="ideation-app">
     <div class="bg-gradient" />
 
-    <header class="topbar">
+    <!--header class="topbar">
       <div class="brand">
         <div class="brand-icon">★</div>
         <span>Fancy Ideation Studio</span>
@@ -13,7 +13,7 @@
         <span class="badge">Persona diversity</span>
       </div>
       <button class="btn btn-outline">Settings</button>
-    </header>
+    </header-->
 
     <main class="container">
       <section class="main-left">
