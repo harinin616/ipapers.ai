@@ -409,5 +409,293 @@ class LLMService:
             return [result['index'] for result in response.output['results']]
         return []
 
+    # ========== Conversational Search Methods ==========
+    
+    async def conversation(
+        self,
+        messages: List[dict],
+        model: Optional[str] = None
+    ) -> str:
+        """
+        General conversation method using Gemini
+        """
+        try:
+            if not self.llm_client:
+                logger.warning("LLM client not available")
+                return ""
+            
+            convo_model = model or self.conversation_model
+            if not convo_model:
+                convo_model = "gemini-2.0-flash"
+            
+            # Convert messages to Gemini format
+            gemini_messages = []
+            for msg in messages:
+                role = msg.get('role', 'user')
+                content = msg.get('content', '')
+                if role == 'user':
+                    gemini_messages.append({"role": "user", "parts": [{"text": content}]})
+                elif role == 'assistant':
+                    gemini_messages.append({"role": "model", "parts": [{"text": content}]})
+                elif role == 'system':
+                    # Gemini doesn't have system messages, prepend to user message
+                    if gemini_messages and gemini_messages[-1]["role"] == "user":
+                        gemini_messages[-1]["parts"][0]["text"] = f"System: {content}\n\nUser: {gemini_messages[-1]['parts'][0]['text']}"
+                    else:
+                        gemini_messages.append({"role": "user", "parts": [{"text": f"System: {content}"}]})
+            
+            # Use the correct Gemini API call
+            response = self.llm_client.models.generate_content(
+                model=convo_model,
+                contents=gemini_messages
+            )
+            
+            return response.text if response and response.text else ""
+            
+        except Exception as e:
+            logger.error(f"Error in conversation: {e}")
+            return ""
+    
+    async def enhance_search_query(
+        self,
+        original_query: str,
+        context: str
+    ) -> str:
+        """
+        Enhance search query with conversation context
+        """
+        try:
+            prompt = f"""
+You are a search query enhancement expert. Your task is to improve the user's search query by incorporating relevant context from their conversation history.
+
+Context from conversation:
+{context}
+
+Original query: {original_query}
+
+Please enhance the query by:
+1. Resolving any pronouns or references (e.g., "this paper" → specific paper title)
+2. Adding relevant keywords from the conversation context
+3. Maintaining the user's original search intent
+4. Making the query more specific and searchable
+
+Return only the enhanced query, nothing else.
+"""
+            
+            enhanced_query = await self.conversation(
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            return enhanced_query.strip() if enhanced_query else original_query
+            
+        except Exception as e:
+            logger.error(f"Error enhancing search query: {e}")
+            return original_query
+    
+    async def rerank_with_context(
+        self,
+        papers: List[str],
+        context: str
+    ) -> List[int]:
+        """
+        Rerank papers based on conversation context
+        """
+        try:
+            prompt = f"""
+You are a research paper ranking expert. Based on the user's conversation context, rank the following papers in order of relevance.
+
+Context from conversation:
+{context}
+
+Papers to rank (title and abstract):
+{chr(10).join([f"{i+1}. {paper}" for i, paper in enumerate(papers)])}
+
+Please return only the indices (1-based) of the papers in order of relevance, separated by commas.
+For example: 3,1,5,2,4
+
+Return only the numbers, nothing else.
+"""
+            
+            response = await self.conversation(
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            if not response:
+                return list(range(len(papers)))
+            
+            # Parse the response to get indices
+            try:
+                indices = [int(x.strip()) - 1 for x in response.split(',')]
+                # Filter valid indices
+                valid_indices = [i for i in indices if 0 <= i < len(papers)]
+                # Add any missing indices
+                for i in range(len(papers)):
+                    if i not in valid_indices:
+                        valid_indices.append(i)
+                return valid_indices
+            except:
+                return list(range(len(papers)))
+                
+        except Exception as e:
+            logger.error(f"Error reranking with context: {e}")
+            return list(range(len(papers)))
+    
+    async def generate_search_suggestions(
+        self,
+        current_query: str,
+        search_results: List[dict],
+        context: str
+    ) -> List[str]:
+        """
+        Generate follow-up search suggestions
+        """
+        try:
+            # Handle both dict and object formats
+            result_titles = []
+            for result in search_results[:3]:
+                if isinstance(result, dict):
+                    title = result.get('title', 'Unknown')
+                else:
+                    title = getattr(result, 'title', 'Unknown')
+                result_titles.append(f"- {title}")
+            
+            prompt = f"""
+You are a research assistant helping users explore academic papers. Based on the current search and results, suggest follow-up questions.
+
+Current search: {current_query}
+
+Top search results:
+{chr(10).join(result_titles)}
+
+Context:
+{context}
+
+Generate 3-5 follow-up search suggestions that would help the user explore related topics or refine their search. Focus on:
+1. Related research areas
+2. Specific aspects of the current topic
+3. Alternative approaches or methodologies
+4. Recent developments or trends
+
+Return each suggestion on a new line, starting with "- ".
+"""
+            
+            response = await self.conversation(
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            if not response:
+                return []
+            
+            # Parse suggestions
+            suggestions = []
+            for line in response.split('\n'):
+                line = line.strip()
+                if line.startswith('- '):
+                    suggestions.append(line[2:])
+                elif line and len(suggestions) < 5:
+                    suggestions.append(line)
+            
+            return suggestions[:5]
+            
+        except Exception as e:
+            logger.error(f"Error generating search suggestions: {e}")
+            return []
+    
+    async def generate_conversation_summary(
+        self,
+        conversation_history: List[dict],
+        current_query: str,
+        context: str
+    ) -> str:
+        """
+        Generate a summary of the current conversation
+        """
+        try:
+            # Extract user queries from history
+            user_queries = [msg.get('content', '') for msg in conversation_history if msg.get('role') == 'user']
+            
+            prompt = f"""
+You are a research assistant. Generate a brief summary of this search session.
+
+User's search history: {', '.join(user_queries)}
+Current query: {current_query}
+
+Context:
+{context}
+
+Generate a brief summary (1-2 sentences) highlighting the user's research interests and search patterns.
+"""
+            
+            summary = await self.conversation(
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            return summary.strip() if summary else f"Search session with {len(user_queries)} queries"
+            
+        except Exception as e:
+            logger.error(f"Error generating conversation summary: {e}")
+            return f"Search session with {len(conversation_history)} messages"
+    
+    async def generate_personalized_suggestions(
+        self,
+        search_history: List[dict],
+        context: Optional[str] = None
+    ) -> List[str]:
+        """
+        Generate personalized search suggestions based on user history
+        """
+        try:
+            # Extract recent searches
+            recent_searches = [item.get('query', '') for item in search_history[-5:]]
+            
+            prompt = f"""
+You are a research assistant. Based on the user's search history, suggest relevant follow-up searches.
+
+Recent searches: {', '.join(recent_searches)}
+
+Context: {context or 'No specific context'}
+
+Generate 3-5 personalized search suggestions that would help the user explore related topics or discover new research areas.
+Focus on:
+1. Related research areas based on their search patterns
+2. Emerging topics in their field of interest
+3. Specific aspects they might want to explore further
+4. Recent developments or trends
+
+Return each suggestion on a new line, starting with "- ".
+"""
+            
+            response = await self.conversation(
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            if not response:
+                return [
+                    "What are the latest developments in machine learning?",
+                    "Show me papers about transformer models",
+                    "Find research on computer vision applications"
+                ]
+            
+            # Parse suggestions
+            suggestions = []
+            for line in response.split('\n'):
+                line = line.strip()
+                if line.startswith('- '):
+                    suggestions.append(line[2:])
+                elif line and len(suggestions) < 5:
+                    suggestions.append(line)
+            
+            return suggestions[:5]
+            
+        except Exception as e:
+            logger.error(f"Error generating personalized suggestions: {e}")
+            return [
+                "What are the latest developments in machine learning?",
+                "Show me papers about transformer models",
+                "Find research on computer vision applications"
+            ]
+    
+
+
 # Create global LLM service instance
 llm_service = LLMService()

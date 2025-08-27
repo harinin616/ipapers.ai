@@ -98,6 +98,9 @@ export interface IApiService {
   // Recommendation methods
   getUserRecommendations(options?: { limit?: number; exclude_existing?: boolean }): Promise<Paper[]>;
   getFolderRecommendations(folderId: number, options?: { limit?: number; exclude_existing?: boolean }): Promise<Paper[]>;
+  generateIdeas(payload: GenerateIdeasRequest): Promise<GenerateIdeasResponse>;
+  expandProposal(id: string): Promise<{ markdown: string }>;
+  streamIdeasGenerate(payload: GenerateIdeasRequest): Promise<Response>;
 }
 /**
  * API Service implementation
@@ -951,6 +954,45 @@ async get_shared_folders(): Promise<any[]> {
       throw err
     }
   }
+  async generateIdeas(payload: GenerateIdeasRequest): Promise<GenerateIdeasResponse> {
+    try {
+      const resp = await this.api.post('/api/ideas/generate', payload)
+      return resp.data
+    } catch (err) {
+      console.error('Failed to generate ideas:', err)
+      throw err
+    }
+  }
+    // ---- Streaming Ideation ----
+  async streamIdeasGenerate(payload: GenerateIdeasRequest): Promise<Response> {
+    try {
+      const userId = localStorage.getItem('X-User-ID');
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (userId) headers['X-User-ID'] = userId;
+
+      // SSE/streaming endpoint
+      const resp = await fetch(`/api/ideas/stream_generate`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      return resp;
+    } catch (err) {
+      console.error('Failed to stream ideas generation:', err);
+      throw err;
+    }
+  }
+
+
+  async expandProposal(id: string): Promise<{ markdown: string }> {
+    try {
+      const resp = await this.api.post('/api/ideas/expand', { id })
+      return resp.data
+    } catch (err) {
+      console.error('Failed to expand proposal:', err)
+      throw err
+    }
+  }
 }
 
 interface ChatFile {
@@ -970,4 +1012,34 @@ export interface Folder {
   name: string
   type: 'own' | 'shared'
   files: ChatFile[]
+}
+
+// ---- Types aligned with the frontend ----
+export interface Persona {
+  key: string
+  name: string
+  on: boolean
+}
+
+export interface Idea {
+  id: string
+  title: string
+  summary: string
+  novelty: number
+  feasibility: number
+  clarity: number
+  score: number
+  tags: string[]
+}
+
+export interface GenerateIdeasRequest {
+  topic: string
+  rounds: number
+  reviewers: number
+  personas: Persona[]
+}
+
+export interface GenerateIdeasResponse {
+  ideas: Idea[]
+  kpis?: { nonDup?: number; pAt10?: number }
 }

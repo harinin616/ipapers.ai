@@ -99,8 +99,8 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/perplexity-search',
-    name: 'perplexity-search',
+    path: '/conversational-search',
+    name: 'conversational-search',
     component: () => import('@/views/PerplexityStyleSearchView.vue'),
     meta: {
       title: 'PaperSearch - Academic Research Assistant',
@@ -180,6 +180,16 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: false
     }
   },
+  {
+    path: '/sci',
+    name: 'sci',
+    component: () => import('../views/SciView.vue'),
+    meta: {
+      title: ' AI Scientist - iPapers',
+      requiresAuth: false
+    }
+  }
+  
 ]
 
 // Create router instance
@@ -187,7 +197,7 @@ const router = createRouter({
   history: createWebHistory('/'),
   routes,
   scrollBehavior(to, from, savedPosition) {
-    // If there's a saved position, use it
+    // If there's a saved position, ur it
     if (savedPosition) {
       return savedPosition;
     }

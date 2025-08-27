@@ -103,14 +103,15 @@ Analysis rules:
 - If user explicitly mentions "find papers", "search", "papers", "research", "literature", etc., and query is specific enough → get_papers
 - If user mentions getting papers but query is too broad (like "latest developments", "review") → clarify  
 - If it's greetings, concept explanations, general questions → chat
-- Consider conversation context: if previously discussing a topic and now says "find related papers" → get_papers
+- **IMPORTANT**: Consider conversation context carefully. If user says "this topic", "related papers", "papers on this", etc., extract the main topic from the conversation history and combine it with any additional terms in the current query.
+- When extracting search terms, combine context with current query intelligently
 
 Return JSON format:
 
 For get_papers:
 {{
     "intent": "get_papers",
-    "refined_query": "extracted specific search terms",
+    "refined_query": "extracted specific search terms (combine context + current query)",
     "reasoning": "analysis reason"
 }}
 
@@ -132,7 +133,11 @@ Examples:
 - "find some papers about transformer" → get_papers (refined_query: "transformer")
 - "latest machine learning developments" → clarify (too broad)
 - "what is deep learning?" → chat (concept explanation)
-- Context discussing BERT, user says "find related papers" → get_papers (combining context)
+- Context: "what is random walk?" → "show me papers on this topic" → get_papers (refined_query: "random walk")
+- Context: discussing BERT → "find related papers" → get_papers (refined_query: "BERT")
+- Context: "explain attention mechanism" → "papers about this" → get_papers (refined_query: "attention mechanism")
+
+**Key instruction**: When user refers to "this topic", "related papers", etc., extract the main subject from the conversation history and combine it with any additional terms in the current query.
 
 Return only JSON, no other content.
 """
@@ -163,7 +168,7 @@ Return only JSON, no other content.
         # Clear paper search keywords
         paper_keywords = [
             "paper", "papers", "literature", "research", "study", "find", "search",
-            "article", "publication", "related research"
+            "article", "publication", "related research", "show me", "this topic"
         ]
         
         # Broad query keywords
@@ -231,11 +236,29 @@ Return only JSON, no other content.
             if msg.get('role') == 'user':
                 recent_content += msg.get('content', '') + " "
         
-        # Extract technical keywords
+        # Extract technical keywords - expanded list
         tech_keywords = [
             "transformer", "bert", "gpt", "lstm", "cnn", "gan", "vae",
             "machine learning", "deep learning", "neural network", 
-            "computer vision", "nlp", "natural language"
+            "computer vision", "nlp", "natural language", "random walk",
+            "attention", "reinforcement learning", "federated learning",
+            "graph neural network", "graph neural networks", "gnn",
+            "convolutional", "recurrent", "autoencoder", "variational",
+            "bayesian", "optimization", "gradient", "backpropagation",
+            "clustering", "classification", "regression", "supervised",
+            "unsupervised", "semi-supervised", "transfer learning",
+            "meta learning", "few shot", "zero shot", "multimodal",
+            "vision transformer", "swin transformer", "efficientnet",
+            "resnet", "vgg", "alexnet", "inception", "mobilenet",
+            "yolo", "faster r-cnn", "mask r-cnn", "detr", "vit",
+            "word2vec", "glove", "fasttext", "elmo", "ulmfit",
+            "roberta", "albert", "distilbert", "xlnet", "t5", "bart",
+            "gpt-2", "gpt-3", "gpt-4", "chatgpt", "llama", "palm",
+            "stable diffusion", "dall-e", "midjourney", "clip",
+            "contrastive learning", "self-supervised", "pre-training",
+            "fine-tuning", "prompt engineering", "chain of thought",
+            "retrieval augmented generation", "rag", "vector database",
+            "embedding", "similarity", "cosine", "euclidean", "manhattan"
         ]
         
         content_lower = recent_content.lower()
@@ -243,16 +266,33 @@ Return only JSON, no other content.
             if keyword in content_lower:
                 return keyword
         
+        # If no specific keyword found, try to extract any meaningful phrase
+        # Look for patterns like "what is X" or "explain X"
+        import re
+        patterns = [
+            r'what is ([a-zA-Z\s]+?)\?',
+            r'explain ([a-zA-Z\s]+?)\?',
+            r'tell me about ([a-zA-Z\s]+?)\?'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, content_lower)
+            if match:
+                topic = match.group(1).strip()
+                if len(topic) > 2:  # Avoid very short topics
+                    return topic
+        
         return ""
 
     def _extract_search_keywords(self, query: str, context_topic: str = "") -> str:
         """
-        Extract search keywords
+        Extract search keywords with improved context handling
         """
         # Remove stop words
         stop_words = [
             "find", "search", "papers", "about", "on", "for", "i", "want", "to",
-            "the", "a", "an", "is", "are", "some", "get", "show", "me"
+            "the", "a", "an", "is", "are", "some", "get", "show", "me", "this",
+            "topic", "related", "related to", "concerning", "regarding"
         ]
         
         words = query.lower().split()
@@ -335,16 +375,28 @@ Return only JSON, no other content.
 
     async def _handle_chat(self, query: str, conversation_history: List[dict]) -> dict:
         """
-        Handle general chat
+        Handle general chat with improved context awareness
         """
         try:
             # Build conversation context
             messages = []
             
-            # System prompt
+            # Extract recent context for better suggestions
+            recent_context = ""
+            for msg in conversation_history[-4:]:
+                if msg.get('role') == 'user':
+                    recent_context += msg.get('content', '') + " "
+            
+            # System prompt with context awareness
+            system_prompt = """You are a friendly academic research assistant. You can explain research concepts, discuss academic topics, and answer general questions. 
+
+When explaining concepts, be clear and concise. If users ask about a specific topic, you can suggest they search for related papers to learn more.
+
+Keep the conversation natural and friendly. If the user has been discussing a specific topic, acknowledge that context in your response."""
+            
             messages.append({
                 "role": "system",
-                "content": "You are a friendly academic research assistant. You can explain research concepts, discuss academic topics, and answer general questions. If users want to search for specific papers, you can suggest they clarify their search needs. Keep the conversation natural and friendly."
+                "content": system_prompt
             })
             
             # Add conversation history
@@ -363,16 +415,15 @@ Return only JSON, no other content.
             # Call LLM
             response = await llm_service.conversation(messages=messages)
             
+            # Generate context-aware suggestions
+            suggestions = self._generate_context_aware_suggestions(recent_context, query)
+            
             return {
                 "action": "chat",
                 "message": response,
                 "papers": [],
                 "count": 0,
-                "suggestions": [
-                    "Find papers on this topic",
-                    "Tell me more about recent advances",
-                    "What are the main challenges in this area?"
-                ]
+                "suggestions": suggestions
             }
             
         except Exception as e:
@@ -388,6 +439,63 @@ Return only JSON, no other content.
                     "What are the current trends in machine learning?"
                 ]
             }
+
+    def _generate_context_aware_suggestions(self, recent_context: str, current_query: str) -> List[str]:
+        """
+        Generate context-aware suggestions based on conversation history
+        """
+        context_lower = recent_context.lower()
+        query_lower = current_query.lower()
+        
+        # Extract potential topics from context
+        topics = []
+        
+        # Look for technical terms in context
+        tech_terms = [
+            "random walk", "transformer", "bert", "gpt", "lstm", "cnn", "gan", "vae",
+            "machine learning", "deep learning", "neural network", "attention",
+            "reinforcement learning", "federated learning", "graph neural network"
+        ]
+        
+        for term in tech_terms:
+            if term in context_lower:
+                topics.append(term)
+                break  # Use the first found topic
+        
+        # If no specific topic found, look for patterns
+        if not topics:
+            import re
+            patterns = [
+                r'what is ([a-zA-Z\s]+?)\?',
+                r'explain ([a-zA-Z\s]+?)\?',
+                r'tell me about ([a-zA-Z\s]+?)\?'
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, context_lower)
+                if match:
+                    topic = match.group(1).strip()
+                    if len(topic) > 2:
+                        topics.append(topic)
+                        break
+        
+        # Generate suggestions based on context
+        if topics:
+            topic = topics[0]
+            return [
+                f"Find papers about {topic}",
+                f"What are the latest developments in {topic}?",
+                f"Show me review papers on {topic}",
+                "Explain another research concept to me"
+            ]
+        else:
+            # Default suggestions
+            return [
+                "Find papers on a specific topic",
+                "Explain a research concept to me",
+                "What are the current trends in machine learning?",
+                "Show me recent papers in computer vision"
+            ]
 
 # Create service instance
 improved_conversational_search_service = ImprovedConversationalSearchService()
