@@ -8,7 +8,7 @@ import { fileSelectionStore } from '@/stores/fileSelectionStore';
 export interface IApiService {
   getRecentPapers(limit?: number, keyword?: string, offset?: number): Promise<Paper[]>;
   countPapers(): Promise<number>;
-  searchPapers(payload: { query: string, limit?: number }): Promise<any>;
+  searchPapers(payload: { query: string, limit?: number, include_summary?: boolean, summary_type?: string }): Promise<any>;
   getUserId(): Promise<string>;
   attach_paper(paperId: string, platform?: string): Promise<boolean>;
   process_embeddings(paperId: string, platform?: string): Promise<boolean>;
@@ -168,18 +168,34 @@ class ApiService implements IApiService {
   
   /**
    * Search papers by query
-   * @param payload { query, limit }
+   * @param payload { query, limit, include_summary, summary_type }
    * @returns Promise with search results
    */
-  async searchPapers(payload: { query: string, limit?: number }): Promise<any> {
+  async searchPapers(payload: { query: string, limit?: number, include_summary?: boolean, summary_type?: string }): Promise<any> {
     try {
       const response = await this.api.post('/api/search/', {
         query: payload.query,
-        limit: payload.limit ?? 30
+        limit: payload.limit ?? 30,
+        include_summary: payload.include_summary ?? false,
+        summary_type: payload.summary_type ?? 'full'
       });
       return response.data;
     } catch (error) {
       console.error('Failed to search papers:', error);
+      throw error;
+    }
+  }
+
+  async generateSearchSummary(payload: { query: string, papers: any[], summary_type?: string }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/search-summary/', {
+        query: payload.query,
+        papers: payload.papers,
+        summary_type: payload.summary_type ?? 'full'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate search summary:', error);
       throw error;
     }
   }

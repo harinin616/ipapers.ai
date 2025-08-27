@@ -11,6 +11,7 @@ from app.services.keyword_search_service import keyword_search_service
 from app.services.llm_service import llm_service
 from app.services import search_log_service
 from app.services.arxiv_search_service import arxivsearch_service
+from app.services.search_summary_service import search_summary_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -85,13 +86,16 @@ async def search_papers(search_request: PaperSearchRequest):
                 platform=p.platform  # 直接使用返回的platform属性
             ) for p in new_papers
         ]
+        
+        # Always return papers immediately, no summary generation in main search
         await search_log_service.append_record(
             query=search_request.query,
             results=[r.model_dump() for r in paper_responses]
         )
         return PaperSearchResponse(
             results=paper_responses,
-            count=len(paper_responses)
+            count=len(paper_responses),
+            summary=None  # Summary will be generated separately
         )
         
     except Exception as e:

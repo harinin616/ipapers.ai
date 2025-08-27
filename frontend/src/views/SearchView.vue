@@ -33,6 +33,22 @@
         </div>
         
         <div v-else-if="results.length > 0" class="papers-list">
+          <!-- AI Summary Section -->
+          <SummaryProgress 
+            v-if="searchStore.getIsSummaryLoading()" 
+            :is-loading="searchStore.getIsSummaryLoading()"
+            :paper-count="results.length"
+            :error="searchStore.getSummaryError()"
+            @retry="retrySummaryGeneration"
+          />
+          
+          <SearchSummary 
+            v-else-if="summary" 
+            :summary="summary" 
+            :paper-count="results.length"
+          />
+          
+          <!-- Paper Cards -->
           <PaperCard v-for="paper in sortedResults" :key="paper.paper_id" :paper="paper" />
         </div>
         <div v-else class="search-instructions">
@@ -47,20 +63,25 @@
 import api from '../services/api'
 import SearchBox from '../components/SearchBox.vue'
 import PaperCard from '../components/PaperCard.vue'
+import SearchSummary from '../components/SearchSummary.vue'
+import SummaryProgress from '../components/SummaryProgress.vue'
 import { searchStore } from '../stores/searchStore'
 
 export default {
   name: 'SearchView',
   components: {
     SearchBox,
-    PaperCard
+    PaperCard,
+    SearchSummary,
+    SummaryProgress
   },
   data() {
     return {
       searchQuery: '',
       results: [],
       isLoading: false,
-      sortBy: searchStore.getSortBy()
+      sortBy: searchStore.getSortBy(),
+      summary: null
     }
   },
   watch: {
@@ -74,12 +95,18 @@ export default {
           if (searchStore.hasCachedResults(newQuery)) {
             // use cached results instead of searching again
             this.results = searchStore.getResults();
+            this.summary = searchStore.getSummary();
+            // Note: we don't restore loading states as cache implies completion
             return;
           }
           
           // only perform search if query actually changed or don't have cached results
           if (oldQuery !== newQuery || !searchStore.getHasSearched()) {
-            this.performSearch();
+            // Check if this is an AI search request from the home page
+            const includeSummary = searchStore.getIncludeSummary();
+            this.performSearch(includeSummary);
+            // Reset the flag after use
+            searchStore.setIncludeSummary(false);
           }
         }
       }
@@ -91,6 +118,7 @@ export default {
       this.searchQuery = searchStore.getQuery();
       this.results = searchStore.getResults();
       this.sortBy = searchStore.getSortBy();
+      this.summary = searchStore.getSummary();
     }
   },
   computed: {
@@ -112,30 +140,45 @@ export default {
       }
       searchStore.setSortBy(this.sortBy);
       return resultsCopy;
+    },
+    searchStore() {
+      return searchStore;
     }
   },
   methods: {
-    handleSearchBoxSearch(query) {
+    handleSearchBoxSearch(query, includeSummary = false) {
       // clear cache when user performs a new search from the search box
       searchStore.clearSearch();
       this.searchQuery = query;
-      this.performSearch();
+      // Explicitly clear summary before new search
+      this.summary = null;
+      this.performSearch(includeSummary);
     },
     
-    async performSearch() {
+    async performSearch(includeSummary = false) {
       if (!this.searchQuery.trim()) return;
+      
+      console.log('🔍 Starting search with includeSummary:', includeSummary);
       
       this.isLoading = true;
       this.results = [];
+      this.summary = null;
       
       // update store
       searchStore.setQuery(this.searchQuery.trim());
+      searchStore.setSummary(null);
+      searchStore.setSummaryError(null);
       
       try {
+        // Step 1: Get paper results immediately (no summary)
         const data = await api.searchPapers({
           query: this.searchQuery.trim(),
-          limit: 30
+          limit: 30,
+          include_summary: false,  // Always false now
+          summary_type: 'full'
         });
+        
+        console.log('📊 API response data:', { resultsCount: data.results?.length || 0 });
         
         if (data && Array.isArray(data.results)) {
           this.results = data.results.map(paper => ({
@@ -151,6 +194,11 @@ export default {
           
           // update store with results
           searchStore.setResults(this.results);
+          
+          // Step 2: Generate summary separately if requested
+          if (includeSummary && this.results.length > 0) {
+            this.generateSummary();
+          }
         } else {
           console.error('Invalid search results format', data);
           this.results = [];
@@ -167,6 +215,39 @@ export default {
       } finally {
         this.isLoading = false;
       }
+    },
+
+    async generateSummary() {
+      if (!this.results.length) return;
+      
+      searchStore.setIsSummaryLoading(true);
+      searchStore.setSummaryError(null);
+      
+      try {
+        console.log('🤖 Generating AI summary for', this.results.length, 'papers');
+        
+        const summaryData = await api.generateSearchSummary({
+          query: this.searchQuery.trim(),
+          papers: this.results,
+          summary_type: 'full'
+        });
+        
+        if (summaryData && summaryData.summary) {
+          this.summary = summaryData.summary;
+          searchStore.setSummary(summaryData.summary);
+          console.log('✅ AI summary generated successfully');
+        }
+      } catch (error) {
+        console.error('Error generating summary:', error);
+        const errorMessage = error.response?.data?.detail || error.message || 'Failed to generate AI summary';
+        searchStore.setSummaryError(errorMessage);
+      } finally {
+        searchStore.setIsSummaryLoading(false);
+      }
+    },
+
+    async retrySummaryGeneration() {
+      await this.generateSummary();
     }
   }
 }
@@ -221,8 +302,7 @@ export default {
   margin-bottom: 1rem;
 }
 
-.sort-options {
-}
+
 
 .sort-options label {
   margin-right: 0.5rem;
@@ -257,6 +337,16 @@ export default {
 @media (max-width: 768px) {
   .papers-list {
     grid-template-columns: 1fr;
+  }
+  
+  .sort-options-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .sort-options {
+    align-self: flex-end;
   }
 }
 </style> 

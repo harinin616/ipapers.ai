@@ -74,9 +74,12 @@ export default defineComponent({
 
 
     // Handle search
-    const handleSearch = (query) => {
+    const handleSearch = (query, includeSummary = false) => {
       // Clear previous search cache when starting a new search
       searchStore.clearSearch();
+      
+      // Store the includeSummary flag so SearchView can pick it up
+      searchStore.setIncludeSummary(includeSummary);
       
       router.push({ 
         name: 'search',
