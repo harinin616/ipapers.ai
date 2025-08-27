@@ -7,8 +7,8 @@
         <router-link to="/conversational-search">Conversational Search</router-link>
         <router-link to="/monitor">Paper Monitor</router-link>
         <router-link to="/recommendations">Recommendations</router-link>
-        <!--<-router-link to="/rwf">Library</router-link>-->
-        <!--<router-link to="/review">Related Work Generation</router-link>-->
+        <router-link to="/rwf">Library</router-link>
+        <!-- <router-link to="/review">Related Work Generation</router-link> -->
         <router-link to="/daily-feed">Daily Feed</router-link>
         <router-link to="/contact">Contact Us</router-link>
 
