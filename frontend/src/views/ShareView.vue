@@ -71,7 +71,7 @@
                     <button class="regen-btn"
                             :disabled="recommendationsLoading"
                             @click="generateRecommendations">
-                      {{ recommendations.length ? 'Regenerate' : 'Generate' }}
+                      {{ hasRecommendations ? 'Regenerate' : 'Generate' }}
                     </button>
                   </div>
                   <div v-if="recommendationsLoading" class="loading">Loading…</div>
@@ -583,8 +583,18 @@ const abstractExpanded = ref(false)
 
 /* ---------- 推荐功能 state ---------- */
 const activeTab = ref<'summary' | 'recommendations'>('summary')
-const recommendations = ref<ApiPaper[]>([])
+const recommendationsMap = reactive<Record<number, ApiPaper[]>>({}) // 每个文件夹的推荐缓存
 const recommendationsLoading = ref(false)
+
+// 当前文件夹的推荐内容（计算属性）
+const recommendations = computed(() => {
+  return activeId.value ? (recommendationsMap[activeId.value] || []) : []
+})
+
+// 检查当前文件夹是否有推荐内容
+const hasRecommendations = computed(() => {
+  return activeId.value && recommendationsMap[activeId.value] && recommendationsMap[activeId.value].length > 0
+})
 
 /* ---------- API 封装 ---------- */
 async function fetchSummary(folderId: number) {
@@ -620,7 +630,8 @@ async function generateRecommendations() {
       limit: 20,
       exclude_existing: true
     })
-    recommendations.value = result || []
+    // 将推荐结果存储到对应文件夹的缓存中
+    recommendationsMap[activeId.value] = result || []
   } catch (error) {
     console.error('Failed to generate recommendations:', error)
     alert('Failed to generate recommendations')
@@ -653,6 +664,12 @@ async function handleUpdateMode(p: { folder_id: number; is_public: boolean }) {
 async function handleRemove(folderId: number) {
     await api.delete_shared_folder(folderId)
     await loadShares()
+    
+    // 清理对应的推荐缓存
+    if (recommendationsMap[folderId]) {
+      delete recommendationsMap[folderId]
+    }
+    
     // 如果删除的正是当前 active，清空右侧
     if (activeId.value === folderId) activeId.value = null
 }
@@ -682,6 +699,9 @@ async function refreshRightPane(folderId: number) {
     papersMap[folderId] = await api.get_files_by_folderId(folderId)
   }
   const files = papersMap[folderId]
+
+  /* ③ 重置推荐loading状态（当切换文件夹时） */
+  recommendationsLoading.value = false
 
   /* ③ 计算余弦 → citeMap → graphData （原来 watch 里的代码整段搬过来） */
   const citeMap = new Map<string, string[]>();
