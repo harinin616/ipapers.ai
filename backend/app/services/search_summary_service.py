@@ -65,14 +65,13 @@ Categories: {', '.join(paper.categories) if paper.categories else 'Unknown'}"""
 Write a compelling news-style article that highlights the most relevant and exciting research papers found for this search. Your article should:
 
 **WRITING STYLE:**
-- Use an engaging, accessible tone that excites readers about scientific progress
 - Write like a science journalist for a general audience, not academic researchers
 - Focus on "breakthroughs," "advances," "innovations," and "discoveries"
 - Make complex concepts understandable and exciting
 - Use active voice and dynamic language
 
 **ARTICLE STRUCTURE:**
-1. **Opening Hook** (1 paragraph with 1-2 sentences): Start with an exciting lead about the research landscape for "{query}"
+1. **Opening Hook** (1 paragraph with 1-2 sentences): Start with an exciting lead about the research landscape for "{query}", mentioning how many papers were found.
 2. **Key Findings** (2-3 paragraphs): Highlight the most significant discoveries and what makes them important
 3. **Research Landscape** (1-2 paragraphs): Discuss the breadth of research and emerging trends in this area
 4. **Future Implications** (1-2 paragraphs): Explore how these findings will advance the field

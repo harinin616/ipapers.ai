@@ -5,13 +5,15 @@
         v-model="localSearchQuery" 
         class="search-input" 
         :placeholder="placeholder" 
-        @keyup.enter="handleSearch(false)"
+        @keyup.enter="handleSearch(true)"
         aria-label="Search papers"
       />
+      <!-- Normal search button (hidden but code preserved) -->
       <button 
         @click="handleSearch(false)" 
-        class="search-button" 
+        class="search-button search-button-hidden" 
         :disabled="isLoading || !localSearchQuery.trim()"
+        style="display: none;"
       >
         <span v-if="isLoading && !searchWithSummary">Searching...</span>
         <span v-else>🔍 Search</span>
@@ -93,7 +95,7 @@ export default {
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border: 1px solid #ddd;
-  border-radius: 4px 0 0 0;
+  border-radius: 4px 0 0 4px;
   outline: none;
 }
 
@@ -134,6 +136,7 @@ export default {
 .search-button-ai {
   background-color: #ff6b35;
   border-left: 1px solid #fff;
+  border-radius: 0 4px 4px 0;
 }
 
 .search-button-ai:hover {
