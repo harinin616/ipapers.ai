@@ -182,6 +182,20 @@ class ApiService implements IApiService {
       throw error;
     }
   }
+
+  async generateSearchSummary(payload: { query: string, papers: any[], summary_type?: string }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/search-summary/', {
+        query: payload.query,
+        papers: payload.papers,
+        summary_type: payload.summary_type ?? 'full'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate search summary:', error);
+      throw error;
+    }
+  }
 async share_folder(payload: { folder_id: number; is_public: boolean }): Promise<void> {
   try {
     await this.api.post(

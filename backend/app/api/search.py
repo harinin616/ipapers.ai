@@ -86,25 +86,8 @@ async def search_papers(search_request: PaperSearchRequest):
                 platform=p.platform  # 直接使用返回的platform属性
             ) for p in new_papers
         ]
-        # Generate summary if requested
-        summary = None
-        if search_request.include_summary and paper_responses:
-            try:
-                if search_request.summary_type == "quick":
-                    summary = search_summary_service.generate_quick_summary(
-                        query=search_request.query,
-                        papers=paper_responses
-                    )
-                else:
-                    summary = search_summary_service.generate_search_summary(
-                        query=search_request.query,
-                        papers=paper_responses
-                    )
-                logger.info(f"Generated {search_request.summary_type} summary for query: {search_request.query}")
-            except Exception as e:
-                logger.error(f"Error generating summary: {e}")
-                summary = f"Error generating summary: {str(e)}"
-
+        
+        # Always return papers immediately, no summary generation in main search
         await search_log_service.append_record(
             query=search_request.query,
             results=[r.model_dump() for r in paper_responses]
@@ -112,7 +95,7 @@ async def search_papers(search_request: PaperSearchRequest):
         return PaperSearchResponse(
             results=paper_responses,
             count=len(paper_responses),
-            summary=summary
+            summary=None  # Summary will be generated separately
         )
         
     except Exception as e:

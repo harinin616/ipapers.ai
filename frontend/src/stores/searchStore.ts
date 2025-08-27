@@ -7,6 +7,8 @@ interface SearchState {
   sortBy: string
   summary: string | null
   includeSummary: boolean
+  isSummaryLoading: boolean
+  summaryError: string | null
 }
 
 const searchState = reactive<SearchState>({
@@ -15,7 +17,9 @@ const searchState = reactive<SearchState>({
   hasSearched: false,
   sortBy: 'relevance',
   summary: null,
-  includeSummary: false
+  includeSummary: false,
+  isSummaryLoading: false,
+  summaryError: null
 })
 
 export const searchStore = {
@@ -26,6 +30,8 @@ export const searchStore = {
   getSortBy: () => searchState.sortBy,
   getSummary: () => searchState.summary,
   getIncludeSummary: () => searchState.includeSummary,
+  getIsSummaryLoading: () => searchState.isSummaryLoading,
+  getSummaryError: () => searchState.summaryError,
 
   setSortBy: (sortBy: string) => {
     searchState.sortBy = sortBy
@@ -33,6 +39,14 @@ export const searchStore = {
 
   setIncludeSummary: (includeSummary: boolean) => {
     searchState.includeSummary = includeSummary
+  },
+
+  setIsSummaryLoading: (loading: boolean) => {
+    searchState.isSummaryLoading = loading
+  },
+
+  setSummaryError: (error: string | null) => {
+    searchState.summaryError = error
   },
   
   // Actions
@@ -54,6 +68,8 @@ export const searchStore = {
     searchState.results = []
     searchState.hasSearched = false
     searchState.summary = null
+    searchState.isSummaryLoading = false
+    searchState.summaryError = null
   },
   
   // Check if we have cached results for a query
