@@ -24,24 +24,67 @@
                ref="graphRef"
                v-model="selected"
                :papers="graphData"
-                @node-click="openDetailModal($event)"
+                @node-click="handleNodeClick($event)"
                class="graph-detail"
              />
           </div>
 
-            <!-- 摘要放在图下方 -->
-            <div class="summary-area">
-              <div class="summary-header">
-                <h3>Summary</h3>
-                <button class="regen-btn"
-                        :disabled="summaryLoading"
-                        @click="generateSummary">
-                  {{ summaryText ? 'Regenerate' : 'Generate' }}
+            <!-- 摘要和推荐区域 -->
+            <div class="bottom-area">
+              <!-- 标签页导航 -->
+              <div class="tab-nav">
+                <button 
+                  class="tab-btn" 
+                  :class="{ active: activeTab === 'summary' }"
+                  @click="activeTab = 'summary'"
+                >
+                  Summary
+                </button>
+                <button 
+                  class="tab-btn" 
+                  :class="{ active: activeTab === 'recommendations' }"
+                  @click="activeTab = 'recommendations'"
+                >
+                  Recommendations
                 </button>
               </div>
-              <div v-if="summaryLoading" class="loading">Loading…</div>
-              <div v-else-if="summaryText" class="summary-content" v-html="renderedSummary"></div>
-              <div v-else class="no-summary">No summary yet.</div>
+
+              <!-- 标签页内容 -->
+              <div class="tab-content">
+                <!-- Summary Tab -->
+                <div v-if="activeTab === 'summary'" class="summary-section">
+                  <div class="section-header">
+                    <button class="regen-btn"
+                            :disabled="summaryLoading"
+                            @click="generateSummary">
+                      {{ summaryText ? 'Regenerate' : 'Generate' }}
+                    </button>
+                  </div>
+                  <div v-if="summaryLoading" class="loading">Loading…</div>
+                  <div v-else-if="summaryText" class="summary-content" v-html="renderedSummary"></div>
+                  <div v-else class="no-content">No summary yet.</div>
+                </div>
+
+                <!-- Recommendations Tab -->
+                <div v-if="activeTab === 'recommendations'" class="recommendations-section">
+                  <div class="section-header">
+                    <button class="regen-btn"
+                            :disabled="recommendationsLoading"
+                            @click="generateRecommendations">
+                      {{ hasRecommendations ? 'Regenerate' : 'Generate' }}
+                    </button>
+                  </div>
+                  <div v-if="recommendationsLoading" class="loading">Loading…</div>
+                  <div v-else-if="recommendations.length" class="recommendations-content">
+                    <PaperCard 
+                      v-for="paper in recommendations" 
+                      :key="`${paper.paper_id}-${paper.platform || 'arxiv'}`" 
+                      :paper="paper" 
+                    />
+                  </div>
+                  <div v-else class="no-content">No recommendations yet.</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -183,16 +226,35 @@ import { ref, watch, onMounted, onBeforeUnmount,computed,reactive, nextTick } fr
 import SharedSidebar   from '@/components/SharedSidebar.vue'
 import GraphWithDetail from '@/components/GraphWithDetail.vue'
 import SharedGraph3D   from '@/components/SharedGraph3D.vue'
+import PaperCard       from '@/components/PaperCard.vue'
 import api             from '@/services/api'
 import MarkdownIt from 'markdown-it'
+import type { Paper as ApiPaper } from '@/types/paper'
 const md = new MarkdownIt({ linkify: true, breaks: true })
-const papersMap = reactive<Record<number, Paper[]>>({})
+const papersMap = reactive<Record<number, LocalPaper[]>>({})
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 
 const props = defineProps<{ folderId: number | null }>()
+
+// 本地Paper类型（用于图表显示）
+interface LocalPaper {
+  link?: string
+  cites?: string[] 
+  id: string
+  size: number
+  paper_id: string
+  title: string
+  pdf_url: string
+  abstract: string
+  authors: string[]
+  categories: string[]
+  published_date: string
+  platform?: string
+  embedding?: number[]
+}
 
 /* ② 用它初始化 activeId */
 const activeId = ref<number | null>(props.folderId)
@@ -374,13 +436,14 @@ export interface Paper {
   authors: string[]
   categories: string[]
   published_date: string
+  platform?: string
   embedding?: number[]  // 可选的向量表示
 
 }
 type Dir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 
 interface ModalState {
-  paper: Paper
+  paper: LocalPaper
   top: number
   left: number
   width: number
@@ -423,7 +486,7 @@ function cascadePosition(w: number, h: number, idx: number) {
   return { left, top }
 }
 
-async function openDetailModal(p: Paper) {
+async function openDetailModal(p: LocalPaper) {
   // 已打开则置顶
   const i = findModalIndex(p.paper_id)
   if (i >= 0) { bringToFront(openModals.value[i]); return }
@@ -442,6 +505,15 @@ async function openDetailModal(p: Paper) {
   }
   openModals.value.push(m)
   await loadPaperCommentsInto(m)
+}
+
+
+
+// 处理图表节点点击
+function handleNodeClick(paper: LocalPaper | null) {
+  if (paper) {
+    openDetailModal(paper)
+  }
 }
 
 function closeModal(paperId: string) {
@@ -493,8 +565,8 @@ function formatDate(timestamp: string): string {
 
 // --- 响应式数据 ---
 const shares   = ref<ShareMeta[]>([])
-const graphData = ref<Paper[]>([])
-const selected = ref<Paper|null>(null)
+const graphData = ref<LocalPaper[]>([])
+const selected = ref<LocalPaper|null>(null)
 const comments = ref<Array<{
   id: number
   content: string
@@ -508,6 +580,21 @@ const userId = localStorage.getItem('X-User-ID') || ''
 const summaryText   = ref<string | null>(null)
 const summaryLoading = ref(false)
 const abstractExpanded = ref(false)
+
+/* ---------- 推荐功能 state ---------- */
+const activeTab = ref<'summary' | 'recommendations'>('summary')
+const recommendationsMap = reactive<Record<number, ApiPaper[]>>({}) // 每个文件夹的推荐缓存
+const recommendationsLoading = ref(false)
+
+// 当前文件夹的推荐内容（计算属性）
+const recommendations = computed(() => {
+  return activeId.value ? (recommendationsMap[activeId.value] || []) : []
+})
+
+// 检查当前文件夹是否有推荐内容
+const hasRecommendations = computed(() => {
+  return activeId.value && recommendationsMap[activeId.value] && recommendationsMap[activeId.value].length > 0
+})
 
 /* ---------- API 封装 ---------- */
 async function fetchSummary(folderId: number) {
@@ -531,6 +618,25 @@ async function generateSummary() {
     alert('Failed to generate summary')
   } finally {
     summaryLoading.value = false
+  }
+}
+
+/* ---------- 推荐功能 API ---------- */
+async function generateRecommendations() {
+  if (!activeId.value) return
+  recommendationsLoading.value = true
+  try {
+    const result = await api.getFolderRecommendations(activeId.value, {
+      limit: 20,
+      exclude_existing: true
+    })
+    // 将推荐结果存储到对应文件夹的缓存中
+    recommendationsMap[activeId.value] = result || []
+  } catch (error) {
+    console.error('Failed to generate recommendations:', error)
+    alert('Failed to generate recommendations')
+  } finally {
+    recommendationsLoading.value = false
   }
 }
 
@@ -558,6 +664,12 @@ async function handleUpdateMode(p: { folder_id: number; is_public: boolean }) {
 async function handleRemove(folderId: number) {
     await api.delete_shared_folder(folderId)
     await loadShares()
+    
+    // 清理对应的推荐缓存
+    if (recommendationsMap[folderId]) {
+      delete recommendationsMap[folderId]
+    }
+    
     // 如果删除的正是当前 active，清空右侧
     if (activeId.value === folderId) activeId.value = null
 }
@@ -587,6 +699,9 @@ async function refreshRightPane(folderId: number) {
     papersMap[folderId] = await api.get_files_by_folderId(folderId)
   }
   const files = papersMap[folderId]
+
+  /* ③ 重置推荐loading状态（当切换文件夹时） */
+  recommendationsLoading.value = false
 
   /* ③ 计算余弦 → citeMap → graphData （原来 watch 里的代码整段搬过来） */
   const citeMap = new Map<string, string[]>();
@@ -1028,9 +1143,84 @@ watch(detailPaper, async (p) => {
   margin-top: .5rem;
 }
 
-.loading, .no-summary {
+.loading, .no-content {
   color: #6b7280;
   font-size: 0.9rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.summary-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.recommendations-content {
+  flex: 1;
+  overflow-y: scroll !important; /* 强制显示滚动条 */
+  overflow-x: hidden; /* 隐藏水平滚动条 */
+  padding: 1rem;
+  display: block !important; /* 改为block布局，确保滚动生效 */
+  gap: 0.75rem;
+  max-height: 200px !important; /* 设置固定最大高度，强制滚动 */
+  min-height: 0; /* 允许容器收缩 */
+}
+
+/* 推荐区域的PaperCard样式覆盖 */
+.recommendations-content :deep(.paper-card) {
+  padding: 0.75rem !important;
+  min-height: auto !important;
+  height: auto !important; /* 覆盖固定高度 */
+  margin-bottom: 0.75rem !important; /* 为block布局添加间距 */
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.recommendations-content :deep(.paper-card):last-child {
+  margin-bottom: 0 !important;
+}
+
+.recommendations-content :deep(.paper-title) {
+  font-size: 0.95rem !important;
+  line-height: 1.3 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.recommendations-content :deep(.paper-authors) {
+  font-size: 0.85rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.recommendations-content :deep(.paper-meta) {
+  font-size: 0.8rem !important;
+}
+
+.recommendations-content :deep(.paper-abstract) {
+  font-size: 0.85rem !important;
+  line-height: 1.4 !important;
+  max-height: 3.5em !important;
+  overflow: hidden !important;
+}
+
+/* 自定义滚动条样式 */
+.recommendations-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recommendations-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.recommendations-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.recommendations-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* 评论区域：单列 */
@@ -1164,12 +1354,71 @@ watch(detailPaper, async (p) => {
   display: block;
 }
 
-/* 底部摘要：固定高度，可自行调 */
-.summary-area {
-  flex: 0 0 300px; /* 固定 200px，高度可以自行调整 */
-  overflow-y: auto;
+/* 底部区域：固定高度，可自行调 */
+.bottom-area {
+  flex: 0 0 320px; /* 增加到 320px，为推荐内容提供更多空间 */
   border-top: 1px solid #e5e7eb;
   background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 标签页导航 */
+.tab-nav {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+  background: #f9fafb;
+  color: #374151;
+}
+
+.tab-btn.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  background: #fff;
+}
+
+/* 标签页内容 */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 允许收缩 */
+  height: 100%; /* 明确的高度 */
+}
+
+.summary-section,
+.recommendations-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0; /* 确保子元素可以正确收缩 */
+  height: 100%; /* 明确的高度 */
+}
+
+.section-header {
+  padding: 1rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
 }
 .graph-area {
   flex: 1;
