@@ -30,7 +30,13 @@
           </div>
 
             <!-- 摘要和推荐区域 -->
-            <div class="bottom-area">
+            <div class="bottom-area" :style="{ height: bottomAreaHeight + 'px' }">
+              <!-- 拖拽调整手柄 -->
+              <div 
+                class="resize-handle-horizontal"
+                @mousedown="startResize"
+                title="Drag to resize"
+              ></div>
               <!-- 标签页导航 -->
               <div class="tab-nav">
                 <button 
@@ -54,14 +60,14 @@
                 <!-- Summary Tab -->
                 <div v-if="activeTab === 'summary'" class="summary-section">
                   <div class="section-header">
-                    <button class="regen-btn"
-                            :disabled="summaryLoading"
-                            @click="generateSummary">
-                      {{ summaryText ? 'Regenerate' : 'Generate' }}
-                    </button>
-                  </div>
-                  <div v-if="summaryLoading" class="loading">Loading…</div>
-                  <div v-else-if="summaryText" class="summary-content" v-html="renderedSummary"></div>
+                <button class="regen-btn"
+                        :disabled="summaryLoading"
+                        @click="generateSummary">
+                  {{ summaryText ? 'Regenerate' : 'Generate' }}
+                </button>
+              </div>
+              <div v-if="summaryLoading" class="loading">Loading…</div>
+              <div v-else-if="summaryText" class="summary-content" v-html="renderedSummary"></div>
                   <div v-else class="no-content">No summary yet.</div>
                 </div>
 
@@ -89,32 +95,46 @@
           </div>
 
           <!-- 侧栏：仅评论区域 -->
-          <div class="comment-area">
-            <h3>Comments</h3>
-            <div class="comment-input-wrap">
-              <textarea v-model="newComment"
-                        placeholder="Leave a comment..."
-                        class="comment-input"></textarea>
-              <button :disabled="!newComment.trim()"
-                      class="submit-btn"
-                      @click="submitComment">
-                Submit
+          <div class="comment-area" :class="{ collapsed: isCommentsCollapsed }">
+            <div class="comment-header">
+              <h3 v-show="!isCommentsCollapsed">Comments</h3>
+              <button 
+                class="collapse-toggle-btn"
+                @click="toggleComments"
+                :title="isCommentsCollapsed ? 'Expand comments' : 'Collapse comments'"
+              >
+                <!-- 汉堡菜单图标 (三条横线) -->
+                <svg class="collapse-icon" viewBox="0 0 24 24">
+                  <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/>
+                </svg>
               </button>
             </div>
-            <ul class="comment-list">
-              <li v-for="c in comments" :key="c.id">
-                <div class="comment-author">
-                  {{ c.commenter_name }}:
-                  <button v-if="c.commenter_id === userId"
-                          class="delete-btn"
-                          @click="deleteComment(c.id)">
-                    ✖
-                  </button>
-                </div>
-                <div class="comment-content">{{ c.content }}</div>
-                <div class="comment-date">{{ formatDate(c.created_at) }}</div>
-              </li>
-            </ul>
+            <div class="comment-content-wrapper" v-show="!isCommentsCollapsed">
+              <div class="comment-input-wrap">
+                <textarea v-model="newComment"
+                          placeholder="Leave a comment..."
+                          class="comment-input"></textarea>
+                <button :disabled="!newComment.trim()"
+                        class="submit-btn"
+                        @click="submitComment">
+                  Submit
+                </button>
+              </div>
+              <ul class="comment-list">
+                <li v-for="c in comments" :key="c.id">
+                  <div class="comment-author">
+                    {{ c.commenter_name }}:
+                    <button v-if="c.commenter_id === userId"
+                            class="delete-btn"
+                            @click="deleteComment(c.id)">
+                      ✖
+                    </button>
+                  </div>
+                  <div class="comment-content">{{ c.content }}</div>
+                  <div class="comment-date">{{ formatDate(c.created_at) }}</div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </template>
@@ -411,6 +431,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onWindowMouseMove)
   window.removeEventListener('mouseup', onWindowMouseUp)
   window.removeEventListener('keydown', onKeydown)
+  
+  // 清理拖拽相关事件
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
 })
 
 // --- 类型定义 ---
@@ -595,6 +619,52 @@ const recommendations = computed(() => {
 const hasRecommendations = computed(() => {
   return activeId.value && recommendationsMap[activeId.value] && recommendationsMap[activeId.value].length > 0
 })
+
+/* ---------- 评论区折叠功能 ---------- */
+const isCommentsCollapsed = ref(false)
+
+function toggleComments() {
+  isCommentsCollapsed.value = !isCommentsCollapsed.value
+}
+
+/* ---------- 底部区域拖拽调整功能 ---------- */
+const bottomAreaHeight = ref(320) // 初始高度
+const isResizing = ref(false)
+const initialMouseY = ref(0)
+const initialHeight = ref(0)
+
+function startResize(event: MouseEvent) {
+  isResizing.value = true
+  initialMouseY.value = event.clientY
+  initialHeight.value = bottomAreaHeight.value
+  
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  document.body.style.cursor = 'ns-resize'
+  
+  // 防止文本选择
+  event.preventDefault()
+}
+
+function handleResize(event: MouseEvent) {
+  if (!isResizing.value) return
+  
+  const deltaY = initialMouseY.value - event.clientY // 向上拖拽为正值
+  const newHeight = initialHeight.value + deltaY
+  
+  // 设置最小和最大高度限制
+  const minHeight = 80 // 降低最小高度，只保留标签页导航的空间
+  const maxHeight = window.innerHeight * 0.8 // 增加最大高度到80%
+  
+  bottomAreaHeight.value = Math.max(minHeight, Math.min(maxHeight, newHeight))
+}
+
+function stopResize() {
+  isResizing.value = false
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+  document.body.style.cursor = ''
+}
 
 /* ---------- API 封装 ---------- */
 async function fetchSummary(folderId: number) {
@@ -1233,6 +1303,69 @@ watch(detailPaper, async (p) => {
   background: #f9fafb;
   overflow: hidden;
   min-height: 0;
+  transition: flex 0.3s ease;
+}
+
+.comment-area.collapsed {
+  flex: 0 0 auto;
+  min-width: 50px;
+  overflow: visible;
+  padding: 1rem 0.5rem;
+}
+
+.comment-area.collapsed .comment-header {
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.comment-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.collapse-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-toggle-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.collapse-icon {
+  width: 20px;
+  height: 20px;
+  fill: #6b7280;
+  transition: fill 0.2s ease;
+}
+
+.collapse-toggle-btn:hover .collapse-icon {
+  fill: #374151;
+}
+
+.comment-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .comment-input-wrap {
@@ -1354,13 +1487,48 @@ watch(detailPaper, async (p) => {
   display: block;
 }
 
-/* 底部区域：固定高度，可自行调 */
+/* 底部区域：可拖拽调整高度 */
 .bottom-area {
-  flex: 0 0 320px; /* 增加到 320px，为推荐内容提供更多空间 */
+  flex: 0 0 auto; /* 改为auto，使用动态高度 */
   border-top: 1px solid #e5e7eb;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
+  position: relative;
+  min-height: 80px; /* 降低最小高度，只保留标签页导航的空间 */
+  max-height: 80vh; /* 增加最大高度到80% */
+}
+
+/* 水平拖拽手柄 */
+.resize-handle-horizontal {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-handle-horizontal:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.resize-handle-horizontal::before {
+  content: '';
+  width: 40px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.resize-handle-horizontal:hover::before {
+  background: #3b82f6;
 }
 
 /* 标签页导航 */
@@ -1437,13 +1605,19 @@ watch(detailPaper, async (p) => {
   height: 100% !important;
   max-width: 100%;
 }
-/* 把内容两栏改成网格：左自适应，右固定 300px */
+/* 把内容两栏改成网格：左自适应，右固定宽度 */
 .content-wrap{
   display: grid;
   grid-template-columns: 1fr 300px;  /* 300 可调 */
   width: 100%;
   min-width: 0;   /* 关键：允许整体收缩 */
   min-height: 0;  /* 允许子元素再收缩 */
+  transition: grid-template-columns 0.3s ease;
+}
+
+/* 当评论区折叠时，调整网格布局 */
+.content-wrap:has(.comment-area.collapsed) {
+  grid-template-columns: 1fr 50px;  /* 折叠时评论区只占50px */
 }
 
 /* 主列、评论列都要能收缩或固定 */
