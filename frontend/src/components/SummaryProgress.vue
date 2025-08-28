@@ -4,7 +4,7 @@
       <div class="progress-icon">🤖</div>
       <div class="progress-text">
         <h4>Generating AI Summary...</h4>
-        <p>Analyzing {{ paperCount }} papers to create insights</p>
+        <p>Analyzing papers to create summary</p>
       </div>
     </div>
     

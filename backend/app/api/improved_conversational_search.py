@@ -25,6 +25,15 @@ class ImprovedConversationalSearchResponse(BaseModel):
     refined_query: Optional[str] = None
     suggestions: Optional[List[str]] = []
 
+class PaperAnalysisRequest(BaseModel):
+    paper_id: str
+    platform: str = "arxiv"
+
+class PaperAnalysisResponse(BaseModel):
+    analysis: str
+    success: bool
+    error_message: Optional[str] = None
+
 @router.post("/search", response_model=ImprovedConversationalSearchResponse)
 async def improved_conversational_search(
     request: Request,
@@ -79,4 +88,45 @@ async def improved_conversational_search(
             papers=[],
             count=0,
             suggestions=["Please describe your needs again", "Try using more specific keywords"]
+        )
+
+@router.post("/analyze-paper", response_model=PaperAnalysisResponse)
+async def analyze_paper(
+    request: Request,
+    body: PaperAnalysisRequest
+):
+    """
+    Analyze a paper by extracting its full text and using LLM to provide insights
+    """
+    try:
+        user_id = request.headers.get('X-User-ID')
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="User ID not found"
+            )
+        
+        if user_id.isdigit():
+            from app.services.db_service import db_service
+            user_id = await db_service.get_uuid_by_user_id(int(user_id))
+
+        # Call paper analysis service
+        result = await improved_conversational_search_service.analyze_paper(
+            user_id=str(user_id),
+            paper_id=body.paper_id,
+            platform=body.platform
+        )
+
+        return PaperAnalysisResponse(
+            analysis=result["analysis"],
+            success=result["success"],
+            error_message=result.get("error_message")
+        )
+
+    except Exception as e:
+        logger.error(f"Error in paper analysis: {e}")
+        return PaperAnalysisResponse(
+            analysis="",
+            success=False,
+            error_message=f"Error analyzing paper: {str(e)}"
         )

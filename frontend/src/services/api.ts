@@ -929,6 +929,19 @@ async get_shared_folders(): Promise<any[]> {
     }
   }
 
+  async analyzePaper(payload: {
+    paper_id: string;
+    platform: string;
+  }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/improved-conversational/analyze-paper', payload)
+      return response.data
+    } catch (err) {
+      console.error('Failed to analyze paper:', err)
+      throw err
+    }
+  }
+
   async getSearchSuggestions(params: { 
     session_id: string; 
     context?: string 

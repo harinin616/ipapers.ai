@@ -51,7 +51,7 @@
                 
                 <!-- Papers Section -->
                 <div v-if="conversation.response.papers?.length > 0" class="papers-section">
-                  <h4>📄 Related Papers ({{ conversation.response.papers.length }})</h4>
+                  <h4>📄 Related Papers</h4>
                   <div class="papers-grid">
                     <div 
                       v-for="paper in conversation.response.papers.slice(0, conversation.showAllPapers ? conversation.response.papers.length : 6)" 
@@ -64,7 +64,18 @@
                         <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
                       </div>
                       <div class="paper-actions" @click.stop>
-                        <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
+                        <div class="action-buttons">
+                          <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
+                          <button 
+                            @click="analyzePaper(paper)"
+                            class="analyze-btn"
+                            :disabled="paper.analyzing"
+                          >
+                            <span v-if="paper.analyzing" class="loading-icon">⏳</span>
+                            <span v-else>📖</span>
+                            <span class="btn-text">Analyze</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -75,7 +86,7 @@
                     @click="showMorePapers(conversation)"
                     class="show-more-btn"
                   >
-                    Show {{ conversation.response.papers.length - 6 }} more papers
+                    Show more papers
                   </button>
                   
                   <!-- Show less papers button -->
@@ -138,6 +149,28 @@
       </div>
     </div>
   </div>
+
+  <!-- Paper Analysis Modal -->
+  <div v-if="showAnalysisModal" class="analysis-modal-overlay" @click="closeAnalysisModal">
+    <div class="analysis-modal" @click.stop>
+      <div class="modal-header">
+        <h3>📖 Paper Analysis</h3>
+        <button @click="closeAnalysisModal" class="close-btn">×</button>
+      </div>
+      <div class="modal-content">
+        <div v-if="currentAnalysis.loading" class="loading-analysis">
+          <div class="loading-spinner"></div>
+          <p>Analyzing paper...</p>
+        </div>
+        <div v-else-if="currentAnalysis.error" class="error-analysis">
+          <p>❌ {{ currentAnalysis.error }}</p>
+        </div>
+        <div v-else-if="currentAnalysis.content" class="analysis-content">
+          <div v-html="formatAnalysis(currentAnalysis.content)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -150,6 +183,14 @@ const conversations = ref([])
 const currentQuery = ref('')
 const isSearching = ref(false)
 const searchInput = ref(null)
+
+// Analysis modal state
+const showAnalysisModal = ref(false)
+const currentAnalysis = ref({
+  loading: false,
+  content: '',
+  error: ''
+})
 
 // Example queries
 const examples = ref([
@@ -260,6 +301,63 @@ const showMorePapers = (conversation) => {
 const showLessPapers = (conversation) => {
   conversation.showAllPapers = false
   scrollToBottom()
+}
+
+const analyzePaper = async (paper) => {
+  // Set analyzing state
+  paper.analyzing = true
+  
+  try {
+    // Show modal and set loading state
+    showAnalysisModal.value = true
+    currentAnalysis.value = {
+      loading: true,
+      content: '',
+      error: ''
+    }
+    
+    // Call API
+    const response = await api.analyzePaper({
+      paper_id: paper.paper_id,
+      platform: paper.platform || 'arxiv'
+    })
+    
+    if (response.success) {
+      currentAnalysis.value = {
+        loading: false,
+        content: response.analysis,
+        error: ''
+      }
+    } else {
+      currentAnalysis.value = {
+        loading: false,
+        content: '',
+        error: response.error_message || 'Analysis failed'
+      }
+    }
+  } catch (error) {
+    console.error('Paper analysis error:', error)
+    currentAnalysis.value = {
+      loading: false,
+      content: '',
+      error: 'Failed to analyze paper. Please try again.'
+    }
+  } finally {
+    paper.analyzing = false
+  }
+}
+
+const closeAnalysisModal = () => {
+  showAnalysisModal.value = false
+  currentAnalysis.value = {
+    loading: false,
+    content: '',
+    error: ''
+  }
+}
+
+const formatAnalysis = (content) => {
+  return content.replace(/\n/g, '<br>')
 }
 
 const scrollToBottom = () => {
@@ -433,12 +531,9 @@ onMounted(() => {
   background: #f7fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1.5rem;
   transition: all 0.2s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  cursor: pointer;
 }
 
 .paper-card:hover {
@@ -447,12 +542,46 @@ onMounted(() => {
 }
 
 .paper-content {
-  flex: 1;
   cursor: pointer;
+  margin-bottom: 1rem;
 }
 
 .paper-actions {
-  flex-shrink: 0;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.analyze-btn {
+  background: #38a169;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.analyze-btn:hover {
+  background: #2f855a;
+}
+
+.analyze-btn:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.btn-text {
+  font-size: 0.8rem;
 }
 
 .paper-title {
@@ -461,6 +590,104 @@ onMounted(() => {
   font-size: 0.9rem;
   line-height: 1.4;
   margin-bottom: 0.5rem;
+}
+
+/* Analysis Modal */
+.analysis-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.analysis-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f7fafc;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #718096;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e2e8f0;
+}
+
+.modal-content {
+  padding: 2rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.loading-analysis {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-analysis p {
+  margin-top: 1rem;
+  color: #718096;
+}
+
+.error-analysis {
+  text-align: center;
+  padding: 2rem;
+  color: #e53e3e;
+}
+
+.analysis-content {
+  line-height: 1.6;
+  color: #2d3748;
+}
+
+.analysis-content h1,
+.analysis-content h2,
+.analysis-content h3,
+.analysis-content h4,
+.analysis-content h5,
+.analysis-content h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #1a202c;
+}
+
+.analysis-content strong {
+  color: #1a202c;
+  font-weight: 600;
 }
 
 .paper-authors {

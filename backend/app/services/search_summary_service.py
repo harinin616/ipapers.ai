@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 class SearchSummaryService:
     def __init__(self):
         """Initialize the SearchSummaryService with Gemini API configuration."""
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("LLM_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+            raise ValueError("LLM_API_KEY not found in environment variables")
         
         # Configure OpenAI client for Gemini API
         self.client = openai.OpenAI(
@@ -66,12 +66,10 @@ Write a compelling news-style article that highlights the most relevant and exci
 
 **WRITING STYLE:**
 - Write like a science journalist for a general audience, not academic researchers
-- Focus on "breakthroughs," "advances," "innovations," and "discoveries"
 - Make complex concepts understandable and exciting
-- Use active voice and dynamic language
 
 **ARTICLE STRUCTURE:**
-1. **Opening Hook** (1 paragraph with 1-2 sentences): Start with an exciting lead about the research landscape for "{query}", mentioning how many papers were found.
+1. **Opening Hook** (1 paragraph with 1-2 sentences): Start with a background introductionabout the research landscape for "{query}", and say the followins papers are the most relevant to the query.
 2. **Key Findings** (2-3 paragraphs): Highlight the most significant discoveries and what makes them important
 3. **Research Landscape** (1-2 paragraphs): Discuss the breadth of research and emerging trends in this area
 4. **Future Implications** (1-2 paragraphs): Explore how these findings will advance the field

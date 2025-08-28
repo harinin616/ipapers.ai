@@ -23,8 +23,8 @@
         class="search-button search-button-ai" 
         :disabled="isLoading || !localSearchQuery.trim()"
       >
-        <span v-if="isLoading && searchWithSummary">🤖 AI Search...</span>
-        <span v-else>🤖 AI Search</span>
+        <span v-if="isLoading && searchWithSummary">Searching...</span>
+        <span v-else>Search</span>
       </button>
     </div>
   </div>
@@ -134,16 +134,16 @@ export default {
 }
 
 .search-button-ai {
-  background-color: #ff6b35;
+  background-color: #3b82f6;
   border-left: 1px solid #fff;
   border-radius: 0 4px 4px 0;
 }
 
 .search-button-ai:hover {
-  background-color: #e55a2b;
+  background-color: #2563eb;
 }
 
 .search-button-ai:disabled {
-  background-color: #ffccb3;
+  background-color: #bfdbfe;
 }
 </style> 

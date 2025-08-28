@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional
 import json
 from app.services.llm_service import llm_service
 from app.services.db_service import db_service
+from app.services.pdf_service import pdf_service
 from app.models.paper import PaperSearchRequest
 from app.api.search import search_papers
 from datetime import datetime
@@ -389,7 +390,7 @@ Examples:
             
             return {
                 "action": "results",
-                "message": f"Based on your request, I found {len(papers)} related papers:",
+                "message": "Based on your request, I found these related papers:",
                 "papers": papers,
                 "count": len(papers),
                 "refined_query": refined_query,
@@ -545,6 +546,90 @@ Keep the conversation natural and friendly. If the user has been discussing a sp
                 "What are the current trends in machine learning?",
                 "Show me recent papers in computer vision"
             ]
+
+    async def analyze_paper(
+        self,
+        user_id: str,
+        paper_id: str,
+        platform: str = "arxiv"
+    ) -> Dict[str, Any]:
+        """
+        Analyze a paper by extracting its full text and using LLM to provide insights
+        """
+        try:
+            logger.info(f"Starting paper analysis for {paper_id} (platform: {platform})")
+            
+            # Get paper details from database
+            paper_details = await db_service.get_paper_by_id(paper_id, platform)
+            if not paper_details:
+                return {
+                    "analysis": "",
+                    "success": False,
+                    "error_message": "Paper not found in database"
+                }
+            
+            # Get PDF file path
+            pdf_path = await pdf_service.get_pdf(paper_id, platform)
+            if not pdf_path:
+                return {
+                    "analysis": "",
+                    "success": False,
+                    "error_message": "PDF file not available"
+                }
+            
+            # Extract text from PDF
+            text_content = await pdf_service.extract_text_from_pdf(pdf_path)
+            if not text_content:
+                return {
+                    "analysis": "",
+                    "success": False,
+                    "error_message": "Failed to extract text from PDF"
+                }
+            
+            # Limit text content to avoid token limits (keep first 8000 characters)
+            if len(text_content) > 8000:
+                text_content = text_content[:8000] + "..."
+            
+            # Create analysis prompt
+            analysis_prompt = f"""
+You are an expert academic paper analyst. Please provide a comprehensive analysis of the following research paper.
+
+Paper Title: {paper_details.title}
+Authors: {paper_details.authors}
+Platform: {platform}
+
+Paper Content:
+{text_content}
+
+Please provide a structured analysis including:
+1. **Main Research Question/Objective**: What is the primary research question or objective?
+2. **Key Contributions**: What are the main contributions of this paper?
+3. **Methodology**: What methods or approaches are used?
+4. **Key Findings**: What are the main results or findings?
+5. **Significance**: Why is this research important?
+6. **Limitations**: What are the potential limitations or areas for improvement?
+
+Please be concise but comprehensive. Focus on the most important aspects and provide clear, academic-level insights.
+"""
+
+            # Get LLM analysis
+            response = await llm_service.conversation(
+                messages=[{"role": "user", "content": analysis_prompt}]
+            )
+            
+            return {
+                "analysis": response,
+                "success": True,
+                "error_message": None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analyzing paper {paper_id}: {e}")
+            return {
+                "analysis": "",
+                "success": False,
+                "error_message": f"Analysis failed: {str(e)}"
+            }
 
 # Create service instance
 improved_conversational_search_service = ImprovedConversationalSearchService()
