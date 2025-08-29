@@ -1,17 +1,27 @@
 <template>
   <div class="share-manager">
     <!-- 左侧：文件夹 -->
-    <SharedSidebar
-      :shares="shares"
-      :papers-map="papersMap"
-      :current-user-id="userId"
-      :activePaperId="selected ? selected.paper_id : null"
-      @select-folder="handleSelectFolder"
-      @load-papers="handleLoadPapers"
-      @select="onSelectPaper"
-      @remove="handleRemove"
-      @update-mode="handleUpdateMode"
-    />
+    <div class="sidebar-container">
+      <SharedSidebar
+        :shares="shares"
+        :papers-map="papersMap"
+        :current-user-id="userId"
+        :activePaperId="selected ? selected.paper_id : null"
+        @select-folder="handleSelectFolder"
+        @load-papers="handleLoadPapers"
+        @select="onSelectPaper"
+        @remove="handleRemove"
+        @update-mode="handleUpdateMode"
+        @sidebar-collapsed="(collapsed: boolean) => isSidebarCollapsed = collapsed"
+      />
+      <!-- 右侧拖拽手柄：只在非折叠状态显示 -->
+      <div 
+        v-show="!isSidebarCollapsed"
+        class="sidebar-resize-handle"
+        @mousedown="startSidebarResize"
+        title="Drag to resize sidebar"
+      ></div>
+    </div>
 
     <!-- 右侧整体面板 -->
     <div class="right-pane">
@@ -95,21 +105,17 @@
           </div>
 
           <!-- 侧栏：仅评论区域 -->
-          <div class="comment-area" :class="{ collapsed: isCommentsCollapsed }">
-            <div class="comment-header">
-              <h3 v-show="!isCommentsCollapsed">Comments</h3>
-              <button 
-                class="collapse-toggle-btn"
-                @click="toggleComments"
-                :title="isCommentsCollapsed ? 'Expand comments' : 'Collapse comments'"
-              >
-                <!-- 汉堡菜单图标 (三条横线) -->
-                <svg class="collapse-icon" viewBox="0 0 24 24">
-                  <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/>
-                </svg>
-              </button>
+          <div class="comment-area" :class="{ 'collapsed': isCommentCollapsed }">
+            <!-- 左侧拖拽手柄 -->
+            <div 
+              class="comment-resize-handle"
+              @mousedown="startCommentResize"
+              title="Drag to resize comments area"
+            ></div>
+            <div class="comment-header" v-show="!isCommentCollapsed">
+              <h3>Comments</h3>
             </div>
-            <div class="comment-content-wrapper" v-show="!isCommentsCollapsed">
+            <div class="comment-content-wrapper" v-show="!isCommentCollapsed">
               <div class="comment-input-wrap">
                 <textarea v-model="newComment"
                           placeholder="Leave a comment..."
@@ -435,6 +441,14 @@ onBeforeUnmount(() => {
   // 清理拖拽相关事件
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
+  
+  // 清理评论区拖拽事件
+  document.removeEventListener('mousemove', handleCommentResize)
+  document.removeEventListener('mouseup', stopCommentResize)
+  
+  // 清理侧边栏拖拽事件
+  document.removeEventListener('mousemove', handleSidebarResize)
+  document.removeEventListener('mouseup', stopSidebarResize)
 })
 
 // --- 类型定义 ---
@@ -620,11 +634,129 @@ const hasRecommendations = computed(() => {
   return activeId.value && recommendationsMap[activeId.value] && recommendationsMap[activeId.value].length > 0
 })
 
-/* ---------- 评论区折叠功能 ---------- */
-const isCommentsCollapsed = ref(false)
+/* ---------- 侧边栏拖拽调整功能 ---------- */
+const sidebarWidth = ref(260) // 初始宽度
+const isSidebarResizing = ref(false)
+const sidebarResizeStartX = ref(0)
+const sidebarResizeStartWidth = ref(0)
+const isSidebarCollapsed = ref(false) // 跟踪侧边栏折叠状态
 
-function toggleComments() {
-  isCommentsCollapsed.value = !isCommentsCollapsed.value
+// 计算侧边栏容器宽度
+const sidebarContainerWidth = computed(() => {
+  return isSidebarCollapsed.value ? '60px' : sidebarWidth.value + 'px'
+})
+
+/* ---------- 评论区拖拽调整功能 ---------- */
+const commentAreaWidth = ref(300) // 初始宽度
+const isCommentResizing = ref(false)
+const commentResizeStartX = ref(0)
+const commentResizeStartWidth = ref(0)
+
+// 计算属性：判断评论区是否应该完全折叠
+const isCommentCollapsed = computed(() => commentAreaWidth.value <= 20)
+
+function startCommentResize(event: MouseEvent) {
+  isCommentResizing.value = true
+  commentResizeStartX.value = event.clientX
+  commentResizeStartWidth.value = commentAreaWidth.value
+  
+  // 禁用过渡效果，避免拖拽延迟
+  const contentWrap = document.querySelector('.content-wrap') as HTMLElement
+  if (contentWrap) {
+    contentWrap.style.transition = 'none'
+  }
+  
+  document.addEventListener('mousemove', handleCommentResize)
+  document.addEventListener('mouseup', stopCommentResize)
+  document.body.style.cursor = 'ew-resize'
+  
+  event.preventDefault()
+}
+
+function handleCommentResize(event: MouseEvent) {
+  if (!isCommentResizing.value) return
+  
+  // 使用 requestAnimationFrame 确保平滑更新
+  requestAnimationFrame(() => {
+    const deltaX = commentResizeStartX.value - event.clientX // 向左拖拽为正值
+    const newWidth = commentResizeStartWidth.value + deltaX
+    
+      // 设置最小和最大宽度限制
+  const minWidth = 8 // 最小宽度改为只显示拖拽线
+  const maxWidth = window.innerWidth * 0.5 // 最大宽度为屏幕宽度的50%
+    
+    commentAreaWidth.value = Math.max(minWidth, Math.min(maxWidth, newWidth))
+  })
+}
+
+function stopCommentResize() {
+  isCommentResizing.value = false
+  document.removeEventListener('mousemove', handleCommentResize)
+  document.removeEventListener('mouseup', stopCommentResize)
+  document.body.style.cursor = ''
+  
+  // 恢复过渡效果
+  const contentWrap = document.querySelector('.content-wrap') as HTMLElement
+  if (contentWrap) {
+    contentWrap.style.transition = 'grid-template-columns 0.3s ease'
+  }
+}
+
+function startSidebarResize(event: MouseEvent) {
+  isSidebarResizing.value = true
+  sidebarResizeStartX.value = event.clientX
+  sidebarResizeStartWidth.value = sidebarWidth.value
+  
+  // 禁用过渡效果，避免拖拽延迟
+  const sidebarContainer = document.querySelector('.sidebar-container') as HTMLElement
+  const sharedSidebar = document.querySelector('.shared-sidebar') as HTMLElement
+  
+  if (sidebarContainer) {
+    sidebarContainer.style.transition = 'none'
+  }
+  if (sharedSidebar) {
+    sharedSidebar.style.transition = 'none'
+  }
+  
+  document.addEventListener('mousemove', handleSidebarResize)
+  document.addEventListener('mouseup', stopSidebarResize)
+  document.body.style.cursor = 'ew-resize'
+  
+  event.preventDefault()
+}
+
+function handleSidebarResize(event: MouseEvent) {
+  if (!isSidebarResizing.value) return
+  
+  // 使用 requestAnimationFrame 确保平滑更新
+  requestAnimationFrame(() => {
+    const deltaX = event.clientX - sidebarResizeStartX.value // 向右拖拽为正值
+    const newWidth = sidebarResizeStartWidth.value + deltaX
+    
+    // 设置最小和最大宽度限制
+    const minWidth = 200 // 最小宽度
+    const maxWidth = window.innerWidth * 0.4 // 最大宽度为屏幕宽度的40%
+    
+    sidebarWidth.value = Math.max(minWidth, Math.min(maxWidth, newWidth))
+  })
+}
+
+function stopSidebarResize() {
+  isSidebarResizing.value = false
+  document.removeEventListener('mousemove', handleSidebarResize)
+  document.removeEventListener('mouseup', stopSidebarResize)
+  document.body.style.cursor = ''
+  
+  // 恢复过渡效果
+  const sidebarContainer = document.querySelector('.sidebar-container') as HTMLElement
+  const sharedSidebar = document.querySelector('.shared-sidebar') as HTMLElement
+  
+  if (sidebarContainer) {
+    sidebarContainer.style.transition = 'flex 0.3s ease'
+  }
+  if (sharedSidebar) {
+    sharedSidebar.style.transition = 'all 0.3s ease'
+  }
 }
 
 /* ---------- 底部区域拖拽调整功能 ---------- */
@@ -858,7 +990,7 @@ function closeDetail() {
 
 // --- 生命周期钩子 ---
 onMounted(async () => {
-    window.addEventListener('popstate', await onPopState)
+  window.addEventListener('popstate', onPopState)
   await loadShares()
   const fid = Number(route.params.folderId)
   if (fid) {
@@ -1227,14 +1359,13 @@ watch(detailPaper, async (p) => {
 }
 
 .recommendations-content {
-  flex: 1;
-  overflow-y: scroll !important; /* 强制显示滚动条 */
-  overflow-x: hidden; /* 隐藏水平滚动条 */
+  flex: 1 1 auto;
+  overflow-y: auto; /* vertical scroll when overflow */
+  overflow-x: hidden;
   padding: 1rem;
-  display: block !important; /* 改为block布局，确保滚动生效 */
+  display: block; /* normal block is fine; no !important */
   gap: 0.75rem;
-  max-height: 200px !important; /* 设置固定最大高度，强制滚动 */
-  min-height: 0; /* 允许容器收缩 */
+  min-height: 0; /* allow shrinking within flex container */
 }
 
 /* 推荐区域的PaperCard样式覆盖 */
@@ -1295,7 +1426,6 @@ watch(detailPaper, async (p) => {
 
 /* 评论区域：单列 */
 .comment-area {
-  flex: 1;
   border-left: 1px solid #e5e7eb;
   padding: 1.5rem;
   display: flex;
@@ -1303,19 +1433,64 @@ watch(detailPaper, async (p) => {
   background: #f9fafb;
   overflow: hidden;
   min-height: 0;
-  transition: flex 0.3s ease;
+  position: relative;
+  transition: padding 0.3s ease;
 }
 
+/* 当评论区完全折叠时，只显示拖拽线 */
 .comment-area.collapsed {
-  flex: 0 0 auto;
-  min-width: 50px;
-  overflow: visible;
-  padding: 1rem 0.5rem;
+  padding: 0;
+  background: transparent;
+  border-left: none;
 }
 
-.comment-area.collapsed .comment-header {
+/* 评论区拖拽手柄 */
+.comment-resize-handle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  margin-bottom: 0;
+}
+
+.comment-resize-handle:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.comment-resize-handle::before {
+  content: '';
+  width: 4px;
+  height: 40px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.comment-resize-handle:hover::before {
+  background: #3b82f6;
+}
+
+/* 折叠状态下的拖拽手柄样式 */
+.comment-area.collapsed .comment-resize-handle {
+  left: 0;
+  width: 100%;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.comment-area.collapsed .comment-resize-handle::before {
+  background: #3b82f6;
+  width: 2px;
+  height: 60px;
+}
+
+.comment-area.collapsed .comment-resize-handle:hover {
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .comment-header {
@@ -1333,32 +1508,7 @@ watch(detailPaper, async (p) => {
   color: #374151;
 }
 
-.collapse-toggle-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.collapse-toggle-btn:hover {
-  background-color: #e5e7eb;
-}
-
-.collapse-icon {
-  width: 20px;
-  height: 20px;
-  fill: #6b7280;
-  transition: fill 0.2s ease;
-}
-
-.collapse-toggle-btn:hover .collapse-icon {
-  fill: #374151;
-}
 
 .comment-content-wrapper {
   flex: 1;
@@ -1449,11 +1599,58 @@ watch(detailPaper, async (p) => {
   height: calc(100vh - 4rem);
 }
 
-/* 左侧 Sidebar：固定宽度，带滚动 */
-.share-manager > *:first-child {
-  flex: 0 0 auto;
+/* 左侧容器：包含 Sidebar 和拖拽手柄 */
+.sidebar-container {
+  flex: 0 0 v-bind(sidebarContainerWidth);
+  display: flex;
+  position: relative;
   border-right: 1px solid #e5e7eb;
+  transition: flex 0.3s ease;
+  max-width: v-bind(sidebarContainerWidth); /* 强制最大宽度 */
+  min-width: v-bind(sidebarContainerWidth); /* 强制最小宽度 */
+  overflow: hidden; /* 防止内容溢出影响布局 */
+}
+
+/* SharedSidebar 组件：填满容器减去手柄宽度 */
+.sidebar-container :deep(.shared-sidebar) {
+  flex: 1;
+  width: 100%;
+  border-right: none;
   overflow-y: auto;
+  overflow-x: hidden; /* 防止水平滚动 */
+  min-width: 0; /* 允许收缩 */
+}
+
+/* 侧边栏拖拽手柄 */
+.sidebar-resize-handle {
+  position: absolute;
+  right: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-resize-handle:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.sidebar-resize-handle::before {
+  content: '';
+  width: 4px;
+  height: 40px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.sidebar-resize-handle:hover::before {
+  background: #3b82f6;
 }
 
 /* 右侧整体面板 */
@@ -1605,19 +1802,14 @@ watch(detailPaper, async (p) => {
   height: 100% !important;
   max-width: 100%;
 }
-/* 把内容两栏改成网格：左自适应，右固定宽度 */
+/* 把内容两栏改成网格：左自适应，右可调宽度 */
 .content-wrap{
   display: grid;
-  grid-template-columns: 1fr 300px;  /* 300 可调 */
+  grid-template-columns: 1fr v-bind(commentAreaWidth + 'px');  /* 使用响应式宽度 */
   width: 100%;
   min-width: 0;   /* 关键：允许整体收缩 */
   min-height: 0;  /* 允许子元素再收缩 */
   transition: grid-template-columns 0.3s ease;
-}
-
-/* 当评论区折叠时，调整网格布局 */
-.content-wrap:has(.comment-area.collapsed) {
-  grid-template-columns: 1fr 50px;  /* 折叠时评论区只占50px */
 }
 
 /* 主列、评论列都要能收缩或固定 */

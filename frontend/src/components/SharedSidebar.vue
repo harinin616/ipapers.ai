@@ -187,10 +187,13 @@ const emit = defineEmits<{
   (e:'select', paper_id:string): void
   (e:'remove', folder_id:number): void
   (e: 'update-mode', payload: { folder_id: number; is_public: boolean }): void
+  (e: 'sidebar-collapsed', collapsed: boolean): void // 新增折叠状态事件
 }>()
 const isCollapsed = ref(false)
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
+  // 向父组件发射折叠状态变化事件
+  emit('sidebar-collapsed', isCollapsed.value)
 }
 
 function getTagFull(s: ShareMeta) {
@@ -336,15 +339,16 @@ function onClickOutside(evt:MouseEvent){
   }
 }
 
-function savePermission(){
-  emit('update-permission', {
-    folder_id: panel.fid,
-    mode     : panel.mode,
-    users    : panel.usersText
-                .split('\n').map(t=>t.trim()).filter(Boolean)
-  })
-  panel.visible = false
-}
+// 移除不再使用的函数
+// function savePermission(){
+//   emit('update-permission', {
+//     folder_id: panel.fid,
+//     mode     : panel.mode,
+//     users    : panel.usersText
+//                 .split('\n').map(t=>t.trim()).filter(Boolean)
+//   })
+//   panel.visible = false
+// }
 
 function confirmDelete(){
   if (confirm('Delete this shared folder?')){
@@ -357,10 +361,21 @@ function confirmDelete(){
 <style scoped>
 /* ——— 基础容器保持原设计 ——— */
 .shared-sidebar{
-  width:260px;height:100%;
-  display:flex;flex-direction:column;
-  background:#fafbff;border-right:1px solid #e3e7ef;
-  overflow:hidden;
+  width: 100%; /* 改为100%，由父容器控制宽度 */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fafbff;
+  border-right: 1px solid #e3e7ef;
+  overflow: hidden;
+  min-width: 0; /* 允许收缩 */
+  max-width: 100%; /* 不能超过父容器 */
+  box-sizing: border-box; /* 确保padding包含在宽度内 */
+}
+
+/* 折叠状态：更窄的宽度 */
+.shared-sidebar.collapsed {
+  min-width: 60px;
 }
 .shared-sidebar__header{
   position:sticky;top:0;z-index:1;
@@ -372,19 +387,38 @@ function confirmDelete(){
 }
 
 .shared-sidebar__list{
-  margin:0;padding:.25rem 0;list-style:none;
-  overflow-y:auto;flex:1;
+  margin: 0;
+  padding: .25rem 0;
+  list-style: none;
+  overflow-y: auto;
+  overflow-x: hidden; /* 防止水平滚动 */
+  flex: 1;
+  width: 100%; /* 强制宽度 */
+  max-width: 100%; /* 不超过父容器 */
+  min-width: 0; /* 允许收缩 */
+  box-sizing: border-box;
 }
 
 /* ——— 文件夹行（沿用原 class） ——— */
 .shared-sidebar__item{
   --pad-x:.75rem;--pad-y:.45rem;
-  display:flex;align-items:center;gap:.45rem;
-  padding:var(--pad-y) var(--pad-x);margin:0 .25rem;
-  border-radius:6px;cursor:pointer;
-  font-size:.93rem;line-height:1.25;
-  transition:background .15s,color .15s;
-  position:relative;user-select:none;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: var(--pad-y) var(--pad-x);
+  margin: 0 .25rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .93rem;
+  line-height: 1.25;
+  transition: background .15s, color .15s;
+  position: relative;
+  user-select: none;
+  min-width: 0; /* 允许收缩 */
+  overflow: hidden; /* 防止内容溢出 */
+  width: calc(100% - 0.5rem); /* 减去margin */
+  max-width: calc(100% - 0.5rem); /* 确保不超出 */
+  box-sizing: border-box;
 }
 .shared-sidebar__item:hover{background:#eef2ff}
 .shared-sidebar__item.is-open{background:#e0e7ff;color:#1e3a8a}
@@ -395,8 +429,13 @@ function confirmDelete(){
 
 /* ——— 文件夹名 / 计数保留原样 ——— */
 .shared-sidebar__name{
-  flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  font-weight:500;
+  flex: 1;
+  min-width: 0; /* 关键：允许收缩 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  max-width: 100%; /* 防止超出父容器 */
 }
 .shared-sidebar__count{
   flex-shrink:0;min-width:1.5em;padding:0 .5em;text-align:center;
@@ -413,14 +452,27 @@ function confirmDelete(){
 
 /* ——— 论文子列表 ——— */
 .paper-wrap{
-  list-style:none;margin:0;padding:0 0 .5rem 1.55rem;
-  border-left:2px solid #e5e7ef;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 .5rem 1.55rem;
+  border-left: 2px solid #e5e7ef;
+  min-width: 0; /* 允许收缩 */
+  overflow: hidden; /* 防止溢出 */
 }
 .paper-row{
-  font-size:.82rem;line-height:1.3;
-  padding:.22rem .25rem;border-radius:4px;cursor:pointer;
-  max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; /* 🎯 超长截断 */
-  color:#374151;transition:background .15s;
+  font-size: .82rem;
+  line-height: 1.3;
+  padding: .22rem .25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  width: calc(100% - 0.5rem); /* 强制宽度，减去padding */
+  max-width: calc(100% - 0.5rem); /* 确保不超出父容器 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #374151;
+  transition: background .15s;
+  box-sizing: border-box; /* 包含padding在宽度内 */
 }
 .paper-row:hover{background:#f0f4ff}
 
