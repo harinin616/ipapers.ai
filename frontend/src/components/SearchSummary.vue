@@ -25,7 +25,7 @@
     
     <div v-if="!isExpanded" class="summary-footer">
       <small class="summary-meta">
-        AI-generated summary based on {{ paperCount }} papers
+        AI-generated summary based on the search results
       </small>
     </div>
   </div>
