@@ -2,19 +2,6 @@
   <div class="ideation-app">
     <div class="bg-gradient" />
 
-    <!--header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">★</div>
-        <span>Fancy Ideation Studio</span>
-      </div>
-      <div class="badges">
-        <span class="badge">Multi-Agent</span>
-        <span class="badge">2–3 rounds optimal</span>
-        <span class="badge">Persona diversity</span>
-      </div>
-      <button class="btn btn-outline">Settings</button>
-    </header-->
-
     <main class="container">
       <section class="main-left">
         <div class="card">
@@ -107,7 +94,47 @@
               </div>
               <div class="actions">
                 <button class="btn" @click="addToShortlist(idea)">Add to shortlist</button>
-                <button class="btn btn-outline" @click="expandProposal(idea)">Expand proposal →</button>
+                <button class="btn btn-outline" @click="togglePlan(idea as any)">
+                  <span v-if="(idea as any)._expanded">Hide plan ▴</span>
+                  <span v-else>View plan ▾</span>
+                </button>
+              </div>
+
+              <!-- Expandable detailed plan (inline instead of exporting) -->
+              <div v-if="(idea as any)._expanded" class="plan-panel">
+                <div class="plan-toolbar">
+                  <div class="plan-title">Detailed Plan</div>
+                  <div class="plan-spacer" />
+                  <button class="btn btn-outline small" @click="copyPlan(idea as any)">Copy</button>
+                  <button class="btn btn-outline small" @click="collapseOthers(idea as any)">Collapse others</button>
+                </div>
+
+                <div v-if="(idea as any)._planLoading" class="plan-loading">Loading plan…</div>
+
+                <template v-else>
+                  <!-- Sections accordion if backend provides structured sections -->
+                  <div v-if="(idea as any)._planSections?.length" class="accordion">
+                    <div
+                      v-for="(sec, si) in (idea as any)._planSections"
+                      :key="si"
+                      class="acc-item"
+                    >
+                      <button class="acc-header" @click="sec._open = !sec._open">
+                        <span class="acc-title">{{ sec.title || `Section ${si + 1}` }}</span>
+                        <span class="chev">{{ sec._open ? '▾' : '▸' }}</span>
+                      </button>
+                      <div v-show="sec._open" class="acc-body">
+                        <p v-if="sec.content" class="md">{{ sec.content }}</p>
+                        <ol v-if="sec.steps?.length" class="steps">
+                          <li v-for="(s, sj) in sec.steps" :key="sj">{{ s }}</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Fallback: render markdown (as preformatted text) -->
+                  <pre v-else class="md-block">{{ (idea as any)._planMd }}</pre>
+                </template>
               </div>
             </div>
           </div>
@@ -189,7 +216,7 @@
               <li>Type a topic or paste an abstract, then click <b>Generate ideas</b>.</li>
               <li>Tune <b>N</b> (reviewers) and <b>L</b> (rounds).</li>
               <li>Toggle personas to balance novelty vs feasibility.</li>
-              <li>Add top ideas to shortlist and export as a proposal.</li>
+              <li>Add top ideas to shortlist and expand the plan inline.</li>
             </ol>
             <p class="hint">This is wired to your backend; streaming progress is shown above.</p>
           </div>
@@ -211,7 +238,14 @@ import api, { type Idea, type Persona } from '@/services/api'
 
 interface ChartPoint { name: string; novelty: number; feasibility: number }
 
-const topic = ref<string>('Research Ideation for LLM Re-ranking')
+type UIIdea = Idea & {
+  _expanded?: boolean
+  _planLoading?: boolean
+  _planMd?: string
+  _planSections?: Array<{ title?: string; content?: string; steps?: string[]; _open?: boolean }>
+}
+
+const topic = ref<string>('')
 const rounds = ref<number>(3)
 const reviewers = ref<number>(3)
 
@@ -223,7 +257,7 @@ const personas = ref<Persona[]>([
   { key: 'mlops',name: 'MLOps', on: true, desc: 'Deployability' } as any,
 ] as unknown as Persona[])
 
-const ideas = ref<Idea[]>([])
+const ideas = ref<UIIdea[]>([])
 const nonDupRef = ref<number>(0)
 const pAt10Ref = ref<number>(0)
 const loading = ref<boolean>(false)
@@ -240,20 +274,44 @@ function addToShortlist (idea: Idea) {
   alert(`Added to shortlist: ${idea.title}`)
 }
 
-async function expandProposal (idea: Idea) {
+async function togglePlan (idea: UIIdea) {
+  idea._expanded = !idea._expanded
+  if (idea._expanded && !idea._planMd && !idea._planSections) {
+    idea._planLoading = true
+    try {
+      const res = await (api as any).expandProposal(idea.id)
+      // Prefer structured sections if provided by backend
+      if (res?.sections?.length) {
+        idea._planSections = (res.sections as any[]).map(s => ({ ...s, _open: true }))
+      }
+      const md = res?.markdown ?? `# Proposal: ${idea.title}\n\n${idea.summary}\n`
+      idea._planMd = md
+    } catch (e) {
+      console.error(e)
+      alert('Failed to load plan. Please try again.')
+      idea._expanded = false
+    } finally {
+      idea._planLoading = false
+    }
+  }
+}
+
+function collapseOthers (keep: UIIdea) {
+  ideas.value.forEach(it => {
+    if (it !== keep) it._expanded = false
+  })
+}
+
+async function copyPlan (idea: UIIdea) {
+  const text = idea._planSections?.length
+    ? idea._planSections.map((s, i) => `## ${s.title || `Section ${i + 1}`}\n` + (s.content || '') + (s.steps?.length ? `\n\nSteps:\n- ` + s.steps.join('\n- ') : '')).join('\n\n')
+    : (idea._planMd || '')
   try {
-    const res = await (api as any).expandProposal(idea.id)
-    const md = res.markdown ?? `# Proposal: ${idea.title}\n\n${idea.summary}\n`
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = idea.title.trim().split(' ').join('_') + '.md'
-    a.click()
-    URL.revokeObjectURL(url)
+    await navigator.clipboard.writeText(text)
+    alert('Plan copied to clipboard!')
   } catch (e) {
     console.error(e)
-    alert('Failed to expand proposal.')
+    alert('Copy failed. Select text and copy manually.')
   }
 }
 
@@ -307,7 +365,6 @@ async function generate () {
         for (const line of chunk.split('\n')) {
           if (line.startsWith('event:')) eventType = line.slice(6).trim()
           if (line.startsWith('data:')) dataStr += line.slice(5).trim()
-          if (line.startsWith('retry:')) { /* ignore */ }
         }
         if (!dataStr) continue
 
@@ -323,7 +380,6 @@ async function generate () {
             break
 
           case 'seed':
-            // 初始 8 个种子
             ideas.value = (payload.ideas || []) as any[]
             pushLog('seed', `Received ${ideas.value.length} seeds`)
             progress.value = Math.max(progress.value, 35)
@@ -379,27 +435,6 @@ async function generate () {
     }
   } finally {
     loading.value = false
-  }
-}
-
-
-async function generateFallback () {
-  try {
-    const res = await (api as any).generateIdeas({
-      topic: topic.value,
-      rounds: rounds.value,
-      reviewers: reviewers.value,
-      personas: personas.value,
-    })
-    ideas.value = res.ideas || []
-    if (res.kpis) {
-      if (typeof res.kpis.nonDup === 'number') nonDupRef.value = res.kpis.nonDup
-      if (typeof res.kpis.pAt10 === 'number') pAt10Ref.value = res.kpis.pAt10
-    }
-    progress.value = 100
-  } catch (e) {
-    console.error(e)
-    alert('Failed to generate ideas. Please try again.')
   }
 }
 
@@ -464,12 +499,6 @@ const RingProgress = defineComponent({
 <style scoped>
 .ideation-app { position: relative; min-height: 100vh; color: #0f172a; }
 .bg-gradient { position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, #c7d2fe 0%, #f5f3ff 50%, #ffe4e6 100%); }
-.topbar { position: sticky; top: 0; backdrop-filter: blur(8px); background: rgba(255,255,255,0.6); border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; }
-.brand-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: #111; color: #fff; }
-.badges { margin-left: auto; display: none; gap: 8px; }
-@media (min-width: 768px) { .badges { display: flex; } }
-.badge { border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.7); padding: 6px 10px; border-radius: 999px; font-size: 12px; }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 20px; grid-template-columns: 1fr; }
 @media (min-width: 1024px) { .container { grid-template-columns: 2fr 1fr; } }
@@ -485,6 +514,7 @@ const RingProgress = defineComponent({
 .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(0,0,0,0.12); }
 .btn-outline { background: transparent; color: #111; border-color: rgba(0,0,0,0.2); }
 .btn-outline:hover { background: #111; color: #fff; }
+.btn.small { padding: 6px 10px; border-radius: 10px; font-size: 12px; }
 
 .search-row { margin-bottom: 12px; }
 .search-box { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8); padding: 8px; border-radius: 16px; }
@@ -522,6 +552,26 @@ const RingProgress = defineComponent({
 .score { margin-left: auto; display: flex; align-items: center; gap: 6px; font-weight: 700; }
 .score-icon { font-size: 16px; }
 .actions { margin-top: 12px; display: flex; gap: 8px; }
+
+/* Inline plan panel */
+.plan-panel { margin-top: 12px; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.8); border-radius: 12px; padding: 12px; }
+.plan-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.plan-title { font-weight: 800; font-size: 14px; }
+.plan-spacer { flex: 1; }
+.plan-loading { font-size: 13px; color: #475569; padding: 6px 0; }
+
+/* Accordion */
+.accordion { display: grid; gap: 8px; }
+.acc-item { border: 1px solid rgba(0,0,0,0.06); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.9); }
+.acc-header { width: 100%; text-align: left; background: transparent; border: 0; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 700; }
+.acc-body { padding: 10px 12px; border-top: 1px solid rgba(0,0,0,0.06); }
+.acc-title { font-size: 13px; }
+.chev { font-size: 14px; }
+.steps { margin: 6px 0 0 18px; }
+
+/* Markdown fallback */
+.md-block { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(248,250,252,.7); border-radius: 8px; padding: 10px; font-size: 12px; color: #0f172a; }
+.md { white-space: pre-wrap; }
 
 .persona-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .persona-chip { border: 1px solid rgba(0,0,0,0.12); background: #fff; padding: 8px 12px; border-radius: 999px; font-size: 13px; cursor: pointer; transition: background .15s, color .15s, border .15s; }
