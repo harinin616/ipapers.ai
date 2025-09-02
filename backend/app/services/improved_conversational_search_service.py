@@ -36,6 +36,11 @@ class ImprovedConversationalSearchService:
         try:
             conversation_history = conversation_history or []
             
+            # Debug: Log the received conversation history
+            logger.info(f"Received conversation history: {conversation_history}")
+            logger.info(f"Conversation history type: {type(conversation_history)}")
+            logger.info(f"Conversation history length: {len(conversation_history)}")
+            
             # Record to search history
             await db_service.add_search_history(
                 session_id=session_id,
@@ -44,22 +49,38 @@ class ImprovedConversationalSearchService:
                 timestamp=datetime.now()
             )
 
-            # Analyze user intent
-            intent_result = await self._analyze_intent_with_context(
-                query, conversation_history
-            )
-
-            if intent_result["intent"] == "get_papers":
-                # User wants to get papers
-                return await self._handle_paper_request(
-                    intent_result, session_id, conversation_history
+            # First, check if this should be treated as "paper analysis" intent
+            # This is NOT determined by LLM, but by checking if:
+            # 1. Previous round returned papers
+            # 2. User selected some of those papers
+            logger.info(f"Starting paper analysis intent check for query: '{query}'")
+            selected_papers = self._check_paper_analysis_intent(conversation_history)
+            
+            if selected_papers:
+                # This is "paper analysis" intent - user is asking about selected papers
+                logger.info(f"Paper analysis intent detected: {len(selected_papers)} selected papers from previous round")
+                return await self._handle_paper_analysis_intent(
+                    query, selected_papers, session_id, conversation_history
                 )
-            elif intent_result["intent"] == "clarify":
-                # Need clarification
-                return self._handle_clarification(intent_result)
             else:
-                # General chat
-                return await self._handle_chat(query, conversation_history)
+                # Not paper analysis intent, proceed with normal LLM-based intent analysis
+                # This will determine if it's: chat, get_papers, or clarify
+                logger.info("No paper analysis intent detected, proceeding with LLM intent analysis")
+                intent_result = await self._analyze_intent_with_context(
+                    query, conversation_history
+                )
+
+                if intent_result["intent"] == "get_papers":
+                    # User wants to get papers
+                    return await self._handle_paper_request(
+                        intent_result, session_id, conversation_history
+                    )
+                elif intent_result["intent"] == "clarify":
+                    # Need clarification
+                    return self._handle_clarification(intent_result)
+                else:
+                    # General chat
+                    return await self._handle_chat(query, conversation_history)
 
         except Exception as e:
             logger.error(f"Error in conversational search: {e}")
@@ -353,6 +374,167 @@ Examples:
                         break
         
         return " ".join(keywords[:4])  # Maximum 4 keywords
+
+    def _check_paper_analysis_intent(self, conversation_history: List[dict]) -> List[dict]:
+        """
+        Check if current query should be treated as "paper analysis" intent
+        This is determined by two conditions:
+        1. Previous round returned papers
+        2. User selected some of those papers
+        
+        Returns list of selected papers if conditions are met, empty list otherwise
+        """
+        try:
+            logger.info(f"Checking paper analysis intent. Conversation history length: {len(conversation_history)}")
+            
+            # Look for the most recent conversation that returned papers
+            for i, conv in enumerate(reversed(conversation_history)):
+                logger.info(f"Checking conversation {i}: role={conv.get('role')}, content={conv.get('content')}, has_papers={conv.get('papers') is not None}")
+                logger.info(f"Conversation {i} full data: {conv}")
+                
+                # Check if this is a papers_returned message
+                if conv.get("role") == "assistant" and conv.get("content") == "papers_returned" and conv.get("papers"):
+                    papers = conv.get("papers", [])
+                    logger.info(f"Found papers_returned message with {len(papers)} papers")
+                    logger.info(f"Papers data: {papers}")
+                    
+                    # Check if any papers are selected
+                    selected_papers = [p for p in papers if p.get("selected", False)]
+                    logger.info(f"Selected papers: {len(selected_papers)}")
+                    logger.info(f"Selected papers details: {selected_papers}")
+                    
+                    if selected_papers:
+                        logger.info(f"Paper analysis intent detected: {len(selected_papers)} selected papers from previous round")
+                        return selected_papers
+                    else:
+                        logger.info("No papers are selected in this conversation")
+                else:
+                    logger.info(f"Conversation {i} is not a papers_returned message")
+            
+            logger.info("No paper analysis intent detected - no selected papers found")
+            return []
+        except Exception as e:
+            logger.error(f"Error checking paper analysis intent: {e}")
+            return []
+
+    async def _handle_paper_analysis_intent(
+        self,
+        query: str,
+        selected_papers: List[dict],
+        session_id: str,
+        conversation_history: List[dict]
+    ) -> Dict[str, Any]:
+        """
+        Handle "paper analysis" intent - user is asking about selected papers
+        Uses pdf_service to get full text content from local PDF files
+        """
+        try:
+            logger.info(f"Handling question about {len(selected_papers)} selected papers: {query}")
+            
+            # Get full text content from selected papers using pdf_service
+            papers_content = []
+            for paper in selected_papers:
+                try:
+                    logger.info(f"Getting content for paper: {paper['paper_id']} (platform: {paper.get('platform', 'arxiv')})")
+                    
+                    # Get PDF file path using pdf_service
+                    pdf_path = await pdf_service.get_pdf(paper["paper_id"], paper.get("platform", "arxiv"))
+                    if pdf_path:
+                        logger.info(f"PDF path obtained: {pdf_path}")
+                        
+                        # Extract text from PDF using pdf_service
+                        text_content = await pdf_service.extract_text_from_pdf(pdf_path)
+                        if text_content:
+                            logger.info(f"Text extracted, length: {len(text_content)} characters")
+                            
+                            # Limit text content to avoid token limits (keep first 6000 characters for better analysis)
+                            if len(text_content) > 6000:
+                                text_content = text_content[:6000] + "..."
+                                logger.info(f"Text truncated to 6000 characters")
+                            
+                            papers_content.append({
+                                "title": paper["title"],
+                                "authors": paper["authors"],
+                                "paper_id": paper["paper_id"],
+                                "platform": paper.get("platform", "arxiv"),
+                                "content": text_content
+                            })
+                        else:
+                            logger.warning(f"No text content extracted from PDF for paper {paper['paper_id']}")
+                    else:
+                        logger.warning(f"No PDF path returned for paper {paper['paper_id']}")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to get content for paper {paper['paper_id']}: {e}")
+                    continue
+            
+            if not papers_content:
+                logger.warning("No papers content could be extracted")
+                return {
+                    "action": "error",
+                    "message": "Unable to access the selected papers. Please try again.",
+                    "papers": [],
+                    "count": 0,
+                    "suggestions": ["Try selecting different papers", "Ask a general question instead"]
+                }
+            
+            logger.info(f"Successfully extracted content from {len(papers_content)} papers")
+            
+            # Create analysis prompt for multiple papers
+            papers_summary = "\n\n".join([
+                f"Paper ID: {p['paper_id']}\nTitle: {p['title']}\nAuthors: {p['authors']}\nPlatform: {p['platform']}\n\nContent:\n{p['content']}"
+                for p in papers_content
+            ])
+            
+            analysis_prompt = f"""
+You are an expert academic researcher. The user has selected {len(selected_papers)} papers and is asking a question about them.
+
+User's Question: {query}
+
+Selected Papers:
+{papers_summary}
+
+Please provide a comprehensive answer to the user's question based on the content of these selected papers. Your response should:
+
+1. Directly address the user's question
+2. Reference specific content from the selected papers (mention paper titles when relevant)
+3. Provide insights and connections between the papers if relevant
+4. Be clear, academic, and helpful
+5. If the user asks for a summary, provide a structured summary of the key points
+
+Focus on answering the user's specific question using the information available in these papers.
+"""
+
+            logger.info("Sending analysis prompt to LLM")
+            
+            # Get LLM response
+            response = await llm_service.conversation(
+                messages=[{"role": "user", "content": analysis_prompt}]
+            )
+            
+            logger.info(f"LLM response received, length: {len(response)} characters")
+            
+            return {
+                "action": "chat",
+                "message": response,
+                "papers": selected_papers,
+                "count": len(selected_papers),
+                "suggestions": [
+                    "Ask another question about these papers",
+                    "Select different papers to analyze",
+                    "Search for new papers on a topic"
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling selected papers question: {e}")
+            return {
+                "action": "error",
+                "message": "Sorry, I encountered an error while analyzing the selected papers. Please try again.",
+                "papers": [],
+                "count": 0,
+                "suggestions": ["Try selecting different papers", "Ask a general question instead"]
+            }
 
     async def _handle_paper_request(
         self,

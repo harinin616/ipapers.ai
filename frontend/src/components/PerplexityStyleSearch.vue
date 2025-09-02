@@ -58,10 +58,22 @@
                       :key="paper.paper_id"
                       class="paper-card"
                     >
-                      <div class="paper-content" @click="openPaper(paper)">
-                        <div class="paper-title">{{ paper.title }}</div>
-                        <div class="paper-authors">{{ paper.authors }}</div>
-                        <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
+                      <div class="paper-content">
+                        <div class="paper-header" @click="openPaper(paper)">
+                          <div class="paper-title">{{ paper.title }}</div>
+                          <div class="paper-authors">{{ paper.authors }}</div>
+                          <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
+                        </div>
+                        <div class="paper-selection" @click.stop>
+                          <label class="checkbox-container">
+                            <input 
+                              type="checkbox" 
+                              v-model="paper.selected"
+                            >
+                            <span class="checkmark"></span>
+                            <span class="selection-text">Select for analysis</span>
+                          </label>
+                        </div>
                       </div>
                       <div class="paper-actions" @click.stop>
                         <div class="action-buttons">
@@ -242,11 +254,44 @@ const handleSearch = async () => {
 
   try {
     // Build conversation history for context
-    const conversationHistory = conversations.value.slice(0, -1).map(conv => ([
-      { role: 'user', content: conv.query },
-      { role: 'assistant', content: conv.response?.message || '' }
-    ])).flat()
+    const conversationHistory = []
+    
+    // Add previous conversations
+    for (const conv of conversations.value.slice(0, -1)) {
+      // Add user query
+      conversationHistory.push({
+        role: 'user',
+        content: conv.query
+      })
+      
+      // Add assistant response
+      conversationHistory.push({
+        role: 'assistant',
+        content: conv.response?.message || ''
+      })
+      
+      // If this conversation has papers, include them in the history
+      if (conv.response && conv.response.papers) {
+        // Only include essential paper properties to avoid serialization issues
+        const papersData = conv.response.papers.map(paper => ({
+          paper_id: paper.paper_id,
+          title: paper.title,
+          authors: paper.authors,
+          platform: paper.platform || 'arxiv',
+          selected: paper.selected || false
+        }))
+        
+        conversationHistory.push({
+          role: 'assistant',
+          content: 'papers_returned',
+          papers: papersData
+        })
+      }
+    }
 
+    // Debug: Log conversation history
+    console.log('Sending conversation history:', JSON.stringify(conversationHistory, null, 2))
+    
     // Call improved conversational search API
     const response = await api.improvedConversationalSearch({
       session_id: conversation.sessionId,
@@ -256,6 +301,15 @@ const handleSearch = async () => {
 
     conversation.loading = false
     conversation.response = response
+    
+    // Initialize selected property for all papers
+    if (response.papers) {
+      response.papers.forEach(paper => {
+        if (paper.selected === undefined) {
+          paper.selected = false
+        }
+      })
+    }
 
   } catch (error) {
     console.error('Search error:', error)
@@ -358,6 +412,22 @@ const closeAnalysisModal = () => {
 
 const formatAnalysis = (content) => {
   return content.replace(/\n/g, '<br>')
+}
+
+const updatePaperSelection = (paper) => {
+  // This method is no longer needed since we use v-model
+  // But keeping it for potential future use
+  console.log(`Paper ${paper.paper_id} selection: ${paper.selected}`)
+}
+
+const getSelectedPapersCount = () => {
+  let count = 0
+  conversations.value.forEach(conv => {
+    if (conv.response && conv.response.papers) {
+      count += conv.response.papers.filter(p => p.selected).length
+    }
+  })
+  return count
 }
 
 const scrollToBottom = () => {
@@ -542,8 +612,62 @@ onMounted(() => {
 }
 
 .paper-content {
-  cursor: pointer;
   margin-bottom: 1rem;
+}
+
+.paper-header {
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+
+.paper-selection {
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #cbd5e0;
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.checkbox-container input[type="checkbox"]:checked + .checkmark {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.selection-text {
+  font-size: 0.85rem;
+  color: #718096;
 }
 
 .paper-actions {

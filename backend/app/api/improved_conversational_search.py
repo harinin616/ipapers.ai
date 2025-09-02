@@ -11,6 +11,7 @@ class ConversationMessage(BaseModel):
     role: str
     content: str
     timestamp: Optional[str] = None
+    papers: Optional[List[dict]] = None
 
 class ImprovedConversationalSearchRequest(BaseModel):
     session_id: str
@@ -60,7 +61,8 @@ async def improved_conversational_search(
             conversation_history.append({
                 "role": msg.role,
                 "content": msg.content,
-                "timestamp": msg.timestamp
+                "timestamp": msg.timestamp,
+                "papers": msg.papers
             })
 
         # Call improved conversational search service
