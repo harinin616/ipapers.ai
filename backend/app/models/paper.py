@@ -16,11 +16,19 @@ class Paper(BaseModel):
     platform: Optional[str] = "arxiv"
     
 
-
 class PaperSearchRequest(BaseModel):
     """Model for paper search request"""
     query: str
     limit: int = Field(30, ge=1, le=100)
+    categories: Optional[List[str]] = Field(None)
+    include_summary: bool = Field(False, description="Generate summary for search results")
+    summary_type: str = Field("full", description="Type of summary: 'full' or 'quick'")
+
+
+class ConvPaperSearchRequest(BaseModel):
+    """Model for paper search request"""
+    llm_output: dict
+    limit: Optional[int] = Field(None, ge=1, le=100)
     categories: Optional[List[str]] = Field(None)
     include_summary: bool = Field(False, description="Generate summary for search results")
     summary_type: str = Field("full", description="Type of summary: 'full' or 'quick'")

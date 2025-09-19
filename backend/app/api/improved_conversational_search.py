@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from typing import List, Optional
+from typing import List, Optional, Union
 import logging
 from pydantic import BaseModel
 from app.services.improved_conversational_search_service import improved_conversational_search_service
@@ -19,12 +19,25 @@ class ImprovedConversationalSearchRequest(BaseModel):
     conversation_history: Optional[List[ConversationMessage]] = []
 
 class ImprovedConversationalSearchResponse(BaseModel):
-    action: str  # "chat", "clarification", "results", "error"
+    action: str  # "chat", "clarification", "results", "comparison_results", "error"
     message: str
     papers: Optional[List[dict]] = []
     count: Optional[int] = 0
     refined_query: Optional[str] = None
     suggestions: Optional[List[str]] = []
+    
+    # Full paper analysis field
+    full_paper_analysis: Optional[dict] = None
+    
+    # Comparison results fields
+    comparative_summary: Optional[str] = None
+    papers_query1: Optional[List[dict]] = []
+    papers_query2: Optional[List[dict]] = []
+    count_query1: Optional[int] = 0
+    count_query2: Optional[int] = 0
+    comparison_query: Optional[str] = None
+    comparison_relation: Optional[Union[str, List[str]]] = None
+    comparison_aspects: Optional[List[str]] = []
 
 class PaperAnalysisRequest(BaseModel):
     paper_id: str
@@ -72,14 +85,25 @@ async def improved_conversational_search(
             query=body.query,
             conversation_history=conversation_history
         )
-
+        logger.info(f"dedddddd {result.get('full_paper_analysis')} (type: {type(result.get('full_paper_analysis'))})")
         return ImprovedConversationalSearchResponse(
             action=result["action"],
             message=result["message"],
             papers=result.get("papers", []),
             count=result.get("count", 0),
             refined_query=result.get("refined_query"),
-            suggestions=result.get("suggestions", [])
+            suggestions=result.get("suggestions", []),
+            # Full paper analysis field
+            full_paper_analysis=result.get("full_paper_analysis"),
+            # Comparison results fields
+            comparative_summary=result.get("comparative_summary"),
+            papers_query1=result.get("papers_query1", []),
+            papers_query2=result.get("papers_query2", []),
+            count_query1=result.get("count_query1", 0),
+            count_query2=result.get("count_query2", 0),
+            comparison_query=result.get("comparison_query"),
+            comparison_relation=result.get("comparison_relation"),
+            comparison_aspects=result.get("comparison_aspects", [])
         )
 
     except Exception as e:
@@ -89,7 +113,18 @@ async def improved_conversational_search(
             message="Sorry, encountered an error processing your request. Please try again.",
             papers=[],
             count=0,
-            suggestions=["Please describe your needs again", "Try using more specific keywords"]
+            suggestions=["Please describe your needs again", "Try using more specific keywords"],
+            # Include full paper analysis field even in error case
+            full_paper_analysis=None,
+            # Include comparison fields even in error case
+            comparative_summary=None,
+            papers_query1=[],
+            papers_query2=[],
+            count_query1=0,
+            count_query2=0,
+            comparison_query=None,
+            comparison_relation=None,
+            comparison_aspects=[]
         )
 
 @router.post("/analyze-paper", response_model=PaperAnalysisResponse)

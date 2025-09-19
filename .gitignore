@@ -16,3 +16,6 @@ frontend/public/
 backend/scripts/daily_tree/output/
 backend/arxiv_search_page.html
 backend/print_db.py
+ipap
+.idea/
+

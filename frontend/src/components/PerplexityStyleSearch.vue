@@ -49,8 +49,29 @@
               <div v-else-if="conversation.response" class="response-text">
                 <div v-html="formatResponse(conversation.response.message)"></div>
                 
-                <!-- Papers Section -->
-                <div v-if="conversation.response.papers?.length > 0" class="papers-section">
+
+                <!-- Full Paper Analysis Section for Comparison Results -->
+                <div v-if="conversation.response.action === 'comparison_results' && conversation.response.full_paper_analysis?.success" class="full-paper-analysis-section">
+                  <h4>🔬 Full Paper Analysis</h4>
+                  <div class="analysis-content" v-html="formatResponse(conversation.response.full_paper_analysis.analysis)"></div>
+                  <div class="analysis-meta">
+                    <small>📊 Analyzed {{ conversation.response.full_paper_analysis.papers_analyzed }} papers</small>
+                  </div>
+                </div>
+
+
+                <!-- Full Paper Analysis Section -->
+                <div v-if="conversation.response.action === 'results' && conversation.response.full_paper_analysis?.success" class="full-paper-analysis-section">
+                  <h4>🔬 Full Paper Analysis</h4>
+                  <div class="analysis-content" v-html="formatResponse(conversation.response.full_paper_analysis.analysis)"></div>
+                  <div class="analysis-meta">
+                    <small>📊 Analyzed {{ conversation.response.full_paper_analysis.papers_analyzed }} papers</small>
+                  </div>
+                </div>
+
+
+                <!-- Papers Section for Regular Results -->
+                <div v-if="conversation.response.action === 'results' && conversation.response.papers?.length > 0" class="papers-section">
                   <h4>📄 Related Papers</h4>
                   <div class="papers-grid">
                     <div 
@@ -109,6 +130,133 @@
                   >
                     Show less papers
                   </button>
+                </div>
+
+                <!-- Papers Section for Comparison Results -->
+                <div v-if="conversation.response.action === 'comparison_results'" class="comparison-papers-section">
+                  <!-- Query 1 Papers -->
+                  <div v-if="conversation.response.papers_query1?.length > 0" class="query-papers-section">
+                    <h4>📄 {{ conversation.response.refined_query }} Papers ({{ conversation.response.count_query1 }})</h4>
+                    <div class="papers-grid">
+                      <div 
+                        v-for="paper in conversation.response.papers_query1.slice(0, conversation.showAllQuery1Papers ? conversation.response.papers_query1.length : 6)" 
+                        :key="'q1-' + paper.paper_id"
+                        class="paper-card"
+                      >
+                        <div class="paper-content">
+                          <div class="paper-header" @click="openPaper(paper)">
+                            <div class="paper-title">{{ paper.title }}</div>
+                            <div class="paper-authors">{{ paper.authors }}</div>
+                            <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
+                          </div>
+                          <div class="paper-selection" @click.stop>
+                            <label class="checkbox-container">
+                              <input 
+                                type="checkbox" 
+                                v-model="paper.selected"
+                              >
+                              <span class="checkmark"></span>
+                              <span class="selection-text">Select for analysis</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div class="paper-actions" @click.stop>
+                          <div class="action-buttons">
+                            <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
+                            <button 
+                              @click="analyzePaper(paper)"
+                              class="analyze-btn"
+                              :disabled="paper.analyzing"
+                            >
+                              <span v-if="paper.analyzing" class="loading-icon">⏳</span>
+                              <span v-else>📖</span>
+                              <span class="btn-text">Analyze</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Show more papers button for query 1 -->
+                    <button 
+                      v-if="conversation.response.papers_query1.length > 6 && !conversation.showAllQuery1Papers"
+                      @click="showMoreQuery1Papers(conversation)"
+                      class="show-more-btn"
+                    >
+                      Show more {{ conversation.response.refined_query }} papers
+                    </button>
+                    
+                    <!-- Show less papers button for query 1 -->
+                    <button 
+                      v-if="conversation.response.papers_query1.length > 6 && conversation.showAllQuery1Papers"
+                      @click="showLessQuery1Papers(conversation)"
+                      class="show-more-btn"
+                    >
+                      Show less {{ conversation.response.refined_query }} papers
+                    </button>
+                  </div>
+
+                  <!-- Query 2 Papers -->
+                  <div v-if="conversation.response.papers_query2?.length > 0" class="query-papers-section">
+                    <h4>📄 {{ conversation.response.comparison_query }} Papers ({{ conversation.response.count_query2 }})</h4>
+                    <div class="papers-grid">
+                      <div 
+                        v-for="paper in conversation.response.papers_query2.slice(0, conversation.showAllQuery2Papers ? conversation.response.papers_query2.length : 6)" 
+                        :key="'q2-' + paper.paper_id"
+                        class="paper-card"
+                      >
+                        <div class="paper-content">
+                          <div class="paper-header" @click="openPaper(paper)">
+                            <div class="paper-title">{{ paper.title }}</div>
+                            <div class="paper-authors">{{ paper.authors }}</div>
+                            <div class="paper-date">{{ formatDate(paper.published_date) }}</div>
+                          </div>
+                          <div class="paper-selection" @click.stop>
+                            <label class="checkbox-container">
+                              <input 
+                                type="checkbox" 
+                                v-model="paper.selected"
+                              >
+                              <span class="checkmark"></span>
+                              <span class="selection-text">Select for analysis</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div class="paper-actions" @click.stop>
+                          <div class="action-buttons">
+                            <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
+                            <button 
+                              @click="analyzePaper(paper)"
+                              class="analyze-btn"
+                              :disabled="paper.analyzing"
+                            >
+                              <span v-if="paper.analyzing" class="loading-icon">⏳</span>
+                              <span v-else>📖</span>
+                              <span class="btn-text">Analyze</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Show more papers button for query 2 -->
+                    <button 
+                      v-if="conversation.response.papers_query2.length > 6 && !conversation.showAllQuery2Papers"
+                      @click="showMoreQuery2Papers(conversation)"
+                      class="show-more-btn"
+                    >
+                      Show more {{ conversation.response.comparison_query }} papers
+                    </button>
+                    
+                    <!-- Show less papers button for query 2 -->
+                    <button 
+                      v-if="conversation.response.papers_query2.length > 6 && conversation.showAllQuery2Papers"
+                      @click="showLessQuery2Papers(conversation)"
+                      class="show-more-btn"
+                    >
+                      Show less {{ conversation.response.comparison_query }} papers
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Follow-up Questions -->
@@ -287,6 +435,39 @@ const handleSearch = async () => {
           papers: papersData
         })
       }
+      
+      // If this conversation has comparison results, include both paper lists
+      if (conv.response && conv.response.action === 'comparison_results') {
+        const allPapers = []
+        
+        if (conv.response.papers_query1) {
+          allPapers.push(...conv.response.papers_query1.map(paper => ({
+            paper_id: paper.paper_id,
+            title: paper.title,
+            authors: paper.authors,
+            platform: paper.platform || 'arxiv',
+            selected: paper.selected || false
+          })))
+        }
+        
+        if (conv.response.papers_query2) {
+          allPapers.push(...conv.response.papers_query2.map(paper => ({
+            paper_id: paper.paper_id,
+            title: paper.title,
+            authors: paper.authors,
+            platform: paper.platform || 'arxiv',
+            selected: paper.selected || false
+          })))
+        }
+        
+        if (allPapers.length > 0) {
+          conversationHistory.push({
+            role: 'assistant',
+            content: 'papers_returned',
+            papers: allPapers
+          })
+        }
+      }
     }
 
     // Debug: Log conversation history
@@ -302,6 +483,9 @@ const handleSearch = async () => {
     conversation.loading = false
     conversation.response = response
     
+    // Temporary debug
+    console.log('Action:', response.action, 'Has summary:', !!response.comparative_summary)
+    
     // Initialize selected property for all papers
     if (response.papers) {
       response.papers.forEach(paper => {
@@ -309,6 +493,24 @@ const handleSearch = async () => {
           paper.selected = false
         }
       })
+    }
+    
+    // Initialize selected property for comparison results
+    if (response.action === 'comparison_results') {
+      if (response.papers_query1) {
+        response.papers_query1.forEach(paper => {
+          if (paper.selected === undefined) {
+            paper.selected = false
+          }
+        })
+      }
+      if (response.papers_query2) {
+        response.papers_query2.forEach(paper => {
+          if (paper.selected === undefined) {
+            paper.selected = false
+          }
+        })
+      }
     }
 
   } catch (error) {
@@ -354,6 +556,26 @@ const showMorePapers = (conversation) => {
 
 const showLessPapers = (conversation) => {
   conversation.showAllPapers = false
+  scrollToBottom()
+}
+
+const showMoreQuery1Papers = (conversation) => {
+  conversation.showAllQuery1Papers = true
+  scrollToBottom()
+}
+
+const showLessQuery1Papers = (conversation) => {
+  conversation.showAllQuery1Papers = false
+  scrollToBottom()
+}
+
+const showMoreQuery2Papers = (conversation) => {
+  conversation.showAllQuery2Papers = true
+  scrollToBottom()
+}
+
+const showLessQuery2Papers = (conversation) => {
+  conversation.showAllQuery2Papers = false
   scrollToBottom()
 }
 
@@ -425,6 +647,14 @@ const getSelectedPapersCount = () => {
   conversations.value.forEach(conv => {
     if (conv.response && conv.response.papers) {
       count += conv.response.papers.filter(p => p.selected).length
+    }
+    if (conv.response && conv.response.action === 'comparison_results') {
+      if (conv.response.papers_query1) {
+        count += conv.response.papers_query1.filter(p => p.selected).length
+      }
+      if (conv.response.papers_query2) {
+        count += conv.response.papers_query2.filter(p => p.selected).length
+      }
     }
   })
   return count
@@ -587,6 +817,74 @@ onMounted(() => {
 .papers-section h4 {
   margin: 0 0 1.5rem;
   font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* Comparative Summary Section */
+.comparative-summary-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.comparative-summary-section h4 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.full-paper-analysis-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(34, 197, 94, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.full-paper-analysis-section h4 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.analysis-content {
+  line-height: 1.6;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.analysis-meta {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.comparative-summary {
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Comparison Papers Section */
+.comparison-papers-section {
+  margin-top: 2rem;
+}
+
+.query-papers-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.query-papers-section h4 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #2d3748;
 }
