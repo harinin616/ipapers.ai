@@ -1,0 +1,1 @@
+/home/ec2-user/miniconda3/bin/python fetch_medrxiv_papers.py --days 100000 > logs/medrxiv.log 2>&1 &

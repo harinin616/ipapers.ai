@@ -1,0 +1,373 @@
+import os
+import logging
+import time
+import uuid
+from typing import List, Dict, Any, AsyncGenerator, Tuple
+import asyncio
+
+from app.services.llm_service import llm_service
+from app.services.pdf_service import pdf_service
+from app.services.db_service import db_service
+from datetime import datetime
+import uuid
+from collections import defaultdict
+
+logger = logging.getLogger(__name__)
+
+class ChatService:
+    """
+    Service for handling chat conversations
+    """
+    
+    def __init__(self):
+        """
+        initialize chat service
+        """
+        # chat config
+        self.max_context_messages = 10
+        
+        # active chats
+        self.active_chats = defaultdict(
+            lambda: {"files": [], "sessions": {}}
+        )
+        
+        #  track processing files
+        self.processing_files = set()
+        
+        logger.info(f"Chat Service initialized. Max context: {self.max_context_messages}")
+
+
+    async def load_user_history(self, user_id: uuid.UUID) -> None:
+        """
+        Load user chat history (files, sessions, messages) into self.active_chats cache.
+        如果已经加载过则直接返回。
+        """
+  #      if user_id in self.active_chats:
+ #           logger.info(f"user {user_id} history already loaded")
+#            return
+
+        # 初始化结构
+        if str(user_id).isdigit():
+            user_id = await db_service.get_uuid_by_user_id(int(user_id))
+        self.active_chats[str(user_id)] = { "files": [], "sessions": {} }
+
+        # 1) 加载文件列表
+        try:
+            files = await db_service.get_files_by_user_id(user_id)
+            self.active_chats[str(user_id)]["files"] = files
+        except Exception as e:
+            logger.error(f"Failed to load files for user {user_id}: {e}", exc_info=True)
+            # 即便失败，也继续尝试加载会话
+
+        # 2) 加载会话列表
+        try:
+            sessions = await db_service.get_sessions_by_user_id(user_id)
+        except Exception as e:
+            logger.error(f"Failed to load sessions for user {user_id}: {e}", exc_info=True)
+            sessions = []
+
+        # 3) 针对每个会话，加载它的消息
+        for sess in sessions:
+            sid = sess["session_id"]
+            entry: Dict[str, Any] = {
+                "session_id":      sid,
+                "title":           sess.get("title", "Untitled Session"),
+                "created_at":      sess.get("created_at"),
+                "last_message_at": sess.get("last_message_at"),
+                "messages":        []
+            }
+
+            try:
+                messages = await db_service.get_messages_by_session_id(sid)
+                entry["messages"] = messages
+            except Exception as e:
+                logger.error(f"Failed to load messages for session {sid}: {e}", exc_info=True)
+
+            self.active_chats[str(user_id)]["sessions"][sid] = entry
+
+        logger.info(
+            f"Loaded {len(self.active_chats[str(user_id)]['files'])} files and "
+            f"{len(self.active_chats[str(user_id)]['sessions'])} sessions for user {user_id}"
+        )
+
+    async def create_session(self, user_id: str, title: str = "Untitled Session") -> str:
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
+        if user_id not in self.active_chats:
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
+        if "sessions" not in self.active_chats[user_id]:
+            self.active_chats[user_id]["sessions"] = {}
+        session_id = str(uuid.uuid4())
+        self.active_chats[user_id]["sessions"][session_id] = {
+            "messages": [],
+            "title": title,
+            "lastMessageAt": time.time()
+        }
+        return session_id
+    
+    async def get_sessions(self, user_id: str):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
+        if user_id not in self.active_chats:
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
+            return []
+        return [
+            {
+                "id": sid,
+            "title": ctx.get("title", "Untitled Session"),
+            "lastMessageAt": ctx.get("lastMessageAt", 0)  # 新增
+        }
+        for sid, ctx in self.active_chats[user_id]["sessions"].items()
+    ]
+    async def update_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
+        if user_id not in self.active_chats:
+            self.active_chats[user_id] = {"files": [], "sessions": {}}
+        sessions = self.active_chats[user_id]["sessions"]
+        if session_id not in sessions:
+            return False
+        sessions[session_id]["title"] = title
+        return True
+
+    async def add_message(self, user_id: str, session_id: str, role: str, content: str):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
+        if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
+            logger.error(f"Chat session not found: {user_id} {session_id}")
+            return
+        now=    time.time()
+        self.active_chats[user_id]["sessions"][session_id]["messages"].append({
+            "role": role,
+            "content": content,
+            "timestamp": now
+        })
+        self.active_chats[user_id]["sessions"][session_id]["lastMessageAt"] = now
+
+    async def get_messages(self, user_id: str, session_id: str, limit: int = None):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
+        if user_id not in self.active_chats or session_id not in self.active_chats[user_id]["sessions"]:
+            return []
+        messages = self.active_chats[user_id]["sessions"][session_id]["messages"]
+        if limit:
+            return messages[-limit:]
+        return messages
+
+    async def delete_session(self, user_id: str, session_id: str):
+        await self.load_user_history(user_id)
+        user_id = str(user_id)
+        if user_id in self.active_chats and session_id in self.active_chats[user_id]["sessions"]:
+            del self.active_chats[user_id]["sessions"][session_id]
+    
+    async def attach_paper(self, user_id: str, paper_id: str, platform: str = "arxiv") -> bool:
+        """
+        Attach a paper to a chat session
+        """
+        if not user_id or not paper_id:
+            logger.warning("Invalid user_id or paper_id")
+            return False
+        
+        try:
+            paper_title = paper_id
+            paper = await db_service.get_paper_by_id(paper_id)
+            if paper:
+                paper_title = paper.title
+            
+            # Update chat files
+            success = await pdf_service.update_chat_files(user_id, paper_id, paper_title, platform)
+            if not success:
+                logger.warning(f"Failed to update chat files for user {user_id} with paper {paper_id}")
+                return False
+            
+            # Add the paper to the user's default folder if needed
+            await db_service.add_file_to_user(uuid.UUID(user_id), paper_id, platform)
+            
+            logger.info(f"Added paper {paper_id} (platform: {platform}) to chat session {user_id}.")
+            return True
+        except Exception as e:
+            logger.error(f"Error attaching paper {paper_id} (platform: {platform}) for chat session {user_id}: {str(e)}", exc_info=True)
+            return False
+
+    async def get_paper(self, user_id: str, paper_id: str, platform: str = "arxiv") -> bool:
+        """
+        Get a paper for chat session
+        """
+        if not user_id or not paper_id:
+            logger.warning("Invalid user_id or paper_id")
+            return False
+        
+        try:
+            file_path = await pdf_service.get_pdf(paper_id, platform)
+            if not file_path:
+                logger.warning(f"Failed to get PDF for paper {paper_id} (platform: {platform})")
+                return False
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error getting PDF for paper {paper_id} (platform: {platform}) for chat session {user_id}: {str(e)}", exc_info=True)
+            return False
+
+    async def process_embeddings(self, paper_id: str, platform: str = "arxiv") -> bool:
+        """
+        Process embeddings for a paper
+        """
+        try:
+            key = f"{paper_id}_{platform}"
+            
+            if key in self.processing_files:
+                while key in self.processing_files:
+                    await asyncio.sleep(0.5)
+                return True
+            
+            self.processing_files.add(key)
+            logger.info(f"Processing embeddings for paper {paper_id} (platform: {platform})")
+                
+            await pdf_service.generate_embeddings_for_paper(paper_id, platform)
+                
+            self.processing_files.discard(key)
+            logger.info(f"Successfully processed embeddings for paper {paper_id} (platform: {platform})")
+            return True
+        except Exception as e:
+            if platform is not None:
+                key = f"{paper_id}_{platform}"
+                self.processing_files.discard(key)
+            logger.error(f"Error processing embeddings for paper {paper_id} (platform: {platform}): {str(e)}", exc_info=True)
+            return False
+    
+    async def format_messages(self, user_id: str, session_id: str) -> List[Dict[str, str]]:
+        """
+        format messages for API call
+        """
+        user_id = str(user_id)
+        chat_data = self.active_chats.get(user_id)
+       # logger.error(f"Formatting messages for user {user_id}, session {session_id},{chat_data}")
+        
+        chat_file_names = []
+        if chat_data["files"]:
+            for file_data in chat_data["files"]:
+                if file_data.get("selected"):
+                    chat_file_names.append(file_data.get("filename", "Unknown file"))
+        
+        system_content = (
+            "You are a professional academic paper analysis assistant. You can analyze papers and answer questions based on the papers chunks "+
+            "However, if there is no paper chunk, you can still answer the user's question based on the user's query. "
+            f"There are {len(chat_file_names)} papers in user's file list: {', '.join(chat_file_names)}. Please cite specific content from the papers to help the user understand them deeply."
+        )
+        
+        api_messages = [{"role": "system", "content": system_content}]
+        user_messages = [m for m in chat_data["sessions"][session_id]["messages"] if m["role"] in ["user", "assistant"]]
+        recent_messages = user_messages[-self.max_context_messages:]
+        for msg in recent_messages:
+            api_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        return api_messages
+    
+    async def generate_response(self, user_id: str, session_id: str, query: str) -> AsyncGenerator[Tuple[str, bool], None]:
+        user_id = str(user_id)
+        await self.add_message(user_id, session_id, "user", query)
+        chat_data = self.active_chats[user_id]
+
+        chat_file_names = []
+        if chat_data.get("files"):
+            for f in chat_data["files"]:
+                if f.get("selected"):
+                    chat_file_names.append(f.get("filename", "Unknown file"))
+
+        if not chat_file_names:
+            # 直接返回预设答复
+            preset = "Please attach at least one file before I can answer questions about it. \nAdd papers to your file list, then select them and try again."
+            # 将预设答复写入历史
+            await self.add_message(user_id, session_id, "assistant", preset)
+            await db_service.add_message(
+                session_id,
+                preset,
+                "assistant",
+                datetime.now()
+            )
+            # yield 文本，并标记为结束
+            yield preset, True
+            return
+        
+        try:
+            relevant_chunks = []
+            if chat_data["files"]:
+                # get relevant chunks from pdf
+                relevant_chunks = await pdf_service.query_similar_chunks(
+                    user_id,
+                    query
+                )
+            
+            # format messages
+            api_messages = await self.format_messages(user_id,session_id)
+            
+            # add relevant chunks to the latest user message
+            if relevant_chunks:
+                context_text = "\n\n".join(relevant_chunks)
+                last_message_idx = len(api_messages) - 1
+                
+                # create a new message with context
+                enhanced_query = f"""
+                {query}
+                
+                Here are some relevant content from the papers:
+                ---
+                {context_text}
+                ---
+                """
+                
+                api_messages[last_message_idx]["content"] = enhanced_query
+        except Exception as e:
+            logger.error(f"Error performing RAG for chat {user_id}: {str(e)}")
+            # if failed, fallback to regular message format
+            api_messages = await self.format_messages(user_id,session_id)
+        
+        # generate response from LLM
+        assistant_response = ""
+        try:
+            # stream response from LLM
+            stream_response = await llm_service.get_conversation_completion(
+                messages=api_messages
+            )
+            
+            if not stream_response:
+                error_msg = "Sorry, I encountered an error while processing your request."
+                await self.add_message(user_id,session_id, "assistant", error_msg)
+                yield error_msg, True
+                return
+            
+            # process each chunk of the stream response
+            async for chunk in stream_response:
+                if chunk.text:
+                    content = chunk.text
+                    assistant_response += content
+                    # immediately send each token
+                    yield content, False
+            
+            # add to chat history after completion
+            if assistant_response:
+                await self.add_message(user_id,session_id, "assistant", assistant_response)
+                await db_service.add_message(session_id, assistant_response, "assistant", datetime.now())
+                
+            # send end flag
+            yield "", True
+                
+        except Exception as e:
+            logger.error(f"Error generating response for chat {user_id}: {str(e)}")
+            error_msg = "Sorry, I encountered an error while processing your request."
+            await self.add_message(user_id,session_id, "assistant", error_msg)
+            yield error_msg, True
+    def is_file_selected(self, user_id:str, paper_id:str):
+        """
+        Check if a file is selected in the user's chat context
+        """
+        user_id = str(user_id)
+        if user_id not in self.active_chats:
+            return False
+        for file_data in self.active_chats[user_id]["files"]:
+            if file_data.get("paper_id") == paper_id and file_data.get("selected"):
+                return True
+        return False
+chat_service = ChatService() 
