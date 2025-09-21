@@ -12,4 +12,3 @@ python-dotenv==1.1.0
 Requests==2.32.3
 SQLAlchemy==2.0.34
 uvicorn==0.34.2
-pgvector>=0.3.6

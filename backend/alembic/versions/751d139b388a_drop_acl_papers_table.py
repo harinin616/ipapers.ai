@@ -23,7 +23,7 @@ def upgrade() -> None:
     
     # Then drop the main table
    # op.drop_index('ix_acl_papers_paper_id', table_name='acl_papers')
-   # op.drop_table('acl_papers')
+    # op.drop_table('acl_papers')
     # ### end Alembic commands ###
 
 

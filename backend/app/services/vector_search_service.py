@@ -63,7 +63,6 @@ class VectorSearchService:
                     elif len(self.paper_platforms) > len(self.paper_ids):
                         self.paper_platforms = self.paper_platforms[:len(self.paper_ids)]
                 
-                logger.info(f"Loaded FAISS index with {self.index.ntotal} vectors and {len(self.paper_ids)} IDs.")
                 if self.index.ntotal != len(self.paper_ids):
                     logger.warning("Index vector count and ID count mismatch")
             else:
@@ -187,7 +186,7 @@ class VectorSearchService:
             # get query embedding
             query_embedding_list = await self.embed_texts([query])
             
-            logger.info(f"Query embedding for '{query}' generated, shape: {query_embedding_list[0].shape if query_embedding_list else 'None'}")
+            logger.info(f"Query embedding for in vectorrrrr '{query}' generated, shape: {query_embedding_list[0].shape if query_embedding_list else 'None'}")
 
             if not query_embedding_list or query_embedding_list[0] is None:
                  logger.error(f"Failed to get embedding for query: '{query}'")

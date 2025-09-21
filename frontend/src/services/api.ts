@@ -112,7 +112,7 @@ class ApiService implements IApiService {
     // Create axios instance
     this.api = axios.create({
       baseURL: '',  
-      timeout: 30000,
+      timeout: 180000, // 3 minutes timeout for full paper analysis
       headers: {
         'Content-Type': 'application/json',
       },

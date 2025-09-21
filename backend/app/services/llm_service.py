@@ -358,11 +358,8 @@ class LLMService:
             for i in range(0, len(texts), batch_size):
                 batch = texts[i:i + batch_size]
                 batch_idx = i // batch_size
-                
-                logger.info(f"Processing batch {batch_idx + 1}/{total_batches} with {len(batch)} texts")
                 batch_embeddings = self._sync_embed(batch)
                 all_embeddings.append(batch_embeddings)
-                logger.info(f"Completed batch {batch_idx + 1}/{total_batches}")
 
             # Concatenate all batches and convert to Python list
             embeddings = torch.cat(all_embeddings, dim=0).cpu().tolist()
@@ -396,7 +393,11 @@ class LLMService:
         documents:List[str],
         query:str
     ) -> List[int]:
+        logger.info(f"LLM RERANK: Starting reranking for query: '{query}' with {len(documents)} documents")
+        logger.info("LLM RERANK: Step 1 - Setting up DashScope API...")
         dashscope.api_key = self.embedding_api_key
+        
+        logger.info("LLM RERANK: Step 2 - Calling DashScope TextReRank API...")
         response = dashscope.TextReRank.call(
         model="gte-rerank-v2",
         query=query,
@@ -404,10 +405,16 @@ class LLMService:
         top_n=self.rerank_topn,
         return_documents=True
         )
+        logger.info(f"LLM RERANK: Step 2 complete - API response status: {response.status_code}")
+        
         if response.status_code == HTTPStatus.OK:
             # Return the sorted indices from the results
-            return [result['index'] for result in response.output['results']]
-        return []
+            result_indices = [result['index'] for result in response.output['results']]
+            logger.info(f"LLM RERANK: Successfully reranked, returning {len(result_indices)} indices")
+            return result_indices
+        else:
+            logger.error(f"LLM RERANK: API call failed with status {response.status_code}")
+            return []
 
     # ========== Conversational Search Methods ==========
     
@@ -426,7 +433,7 @@ class LLMService:
             
             convo_model = model or self.conversation_model
             if not convo_model:
-                convo_model = "gemini-2.0-flash"
+                convo_model = "gemini-2.5-flash"
             
             # Convert messages to Gemini format
             gemini_messages = []
