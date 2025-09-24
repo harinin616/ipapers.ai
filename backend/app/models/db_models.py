@@ -338,3 +338,22 @@ DBComment.shared_folders = relationship(
     secondary=shared_folder_comments,
     back_populates="comments"
 )
+
+class DBGrant(Base):
+    __tablename__ = "grants"
+
+    grant_id     = Column(String, primary_key=True, index=True)
+    title        = Column(String, nullable=False)
+    agency       = Column(String, nullable=True)
+    synopsis     = Column(Text, nullable=True)
+    detail_url   = Column(String, nullable=True)
+    posted_date  = Column(DateTime, nullable=True)
+    updated_date = Column(DateTime, nullable=True)
+    close_date   = Column(DateTime, nullable=True)
+    status       = Column(String, nullable=True)
+
+    # Vector embedding for grants (same dimensions as papers)
+    embedding    = Column(Vector(768), nullable=True)
+
+    def __repr__(self):
+        return f"<Grant {self.grant_id}: {self.title}>"

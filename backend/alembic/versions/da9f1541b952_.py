@@ -19,6 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    
+    # Ensure pgvector extension exists
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
     op.create_table('authors',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(), nullable=False),

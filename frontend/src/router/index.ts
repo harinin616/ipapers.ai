@@ -31,6 +31,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/grants',
+    name: 'grants',
+    component: () => import('../components/GrantSearch.vue'),
+    meta: {
+      title: 'Grant Search - iPapers',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/paper/:id/:platform?',
     name: 'paper-detail',
     component: () => import('../views/PaperDetailView.vue'),

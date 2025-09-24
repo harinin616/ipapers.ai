@@ -48,6 +48,9 @@ export interface IApiService {
   upload_rws_file(session_id: string, file: File): Promise<any>;
   get_rws_session_files(session_id: string): Promise<any[]>;
   remove_rws_session_file(session_id: string, paper_id: string, platform?: string): Promise<any>;
+  
+  // Grant search methods
+  improvedGrantSearch(payload: { session_id: string; query: string; conversation_history: any[] }): Promise<any>;
   add_files_to_rws_session(session_id: string, paper_ids: string[]): Promise<any>;
   
   // Graph management methods
@@ -938,6 +941,21 @@ async get_shared_folders(): Promise<any[]> {
       return response.data
     } catch (err) {
       console.error('Failed to analyze paper:', err)
+      throw err
+    }
+  }
+
+  // Grant search methods
+  async improvedGrantSearch(payload: {
+    session_id: string;
+    query: string;
+    conversation_history: any[]
+  }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/improved-grant-search/search', payload)
+      return response.data
+    } catch (err) {
+      console.error('Failed to perform improved grant search:', err)
       throw err
     }
   }
