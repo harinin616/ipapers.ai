@@ -175,7 +175,7 @@ class DBService:
                     .where(
                         and_(
                             DBPaper.paper_id.in_(incoming_ids),
-                            DBPaper.platform == (platform or "arxiv")
+                            DBPaper.platform == (platform or "pubmed")
                         )
                     )
                 )
@@ -531,10 +531,13 @@ class DBService:
         papers = []
         async for db in get_async_db():
             # Build base query
-            query = select(DBPaper).options(
-                selectinload(DBPaper.authors),
-                selectinload(DBPaper.categories)
-            ).order_by(DBPaper.published_date.desc()).limit(limit).offset(offset)
+
+            query = (select(DBPaper)
+                .options(selectinload(DBPaper.authors), selectinload(DBPaper.categories))
+                .where(sa.cast(DBPaper.published_date, Date) <= func.current_date())
+                .order_by(DBPaper.published_date.desc())
+                .limit(limit).offset(offset)
+            )
             
             # Add keyword filter if provided
             if keyword:
