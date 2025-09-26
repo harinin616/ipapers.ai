@@ -3,8 +3,8 @@ from app.db.database import get_async_db
 from app.services.db_service import db_service
 
 async def get_paper():
-    paper_id = "2308.07124"
-    platform = "arxiv"
+    paper_id = "39732694"
+    platform = "pubmed"
     print(f"Looking for paper_id: {paper_id}, platform: {platform}")
     
     # 使用数据库服务查询
