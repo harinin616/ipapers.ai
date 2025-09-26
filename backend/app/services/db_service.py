@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
 from sqlalchemy import distinct
+from sqlalchemy import Date, func
 
 from app.models.paper import Paper
 from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder

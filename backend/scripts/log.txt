@@ -1,0 +1,7 @@
+Adding grants from database to vector search index...
+Found 5000 grants with embeddings in database
+Successfully added 5000 grants to vector search index
+Total grants in vector index: 0
+
+Testing vector search...
+Search results for 'education research': []
