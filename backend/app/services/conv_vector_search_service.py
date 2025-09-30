@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Union
 import pickle
 from pathlib import Path
 import json
-
+from app.services.llm_service import llm_service 
 from app.models.paper import Paper
 from app.services.conv_llm_service import conv_llm_service 
 
