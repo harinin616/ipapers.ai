@@ -21,3 +21,4 @@ ipap
 
 backend/pub_csv
 backend/venv
+backend/scripts/pubmed_csvs

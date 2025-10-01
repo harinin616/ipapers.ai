@@ -44,7 +44,7 @@ async def upload_pdf(
             title=title.strip()if title else "Untitled",
             authors=[a.strip() for a in authors.split(",") if a.strip()],
             abstract=abstract.strip(),
-            pdf_url=f"/data/cached_pdfs/uploads/{filename}",
+            pdf_url=f"/api/data/cached_pdfs/uploads/{filename}",
             published_date=published.strip(),
             updated_date=published.strip(),
             platform="upload",
