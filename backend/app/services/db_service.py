@@ -10,6 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
 from sqlalchemy import distinct
 from sqlalchemy import Date, func
+    
+from typing import List
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload, load_only
 
 from app.models.paper import Paper
 from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
@@ -520,49 +524,60 @@ class DBService:
             return []
         
         return []
-
-
-    
     
     async def get_recent_papers(self, limit: int = 30, keyword: str = None, offset: int = 0) -> List[Paper]:
         """
-        get recent papers from database
+        Faster: push filters to SQL, avoid CAST on published_date, select only needed columns.
         """
-    
-        papers = []
-        async for db in get_async_db():
-            # Build base query
+        papers: List[Paper] = []
 
-            query = (select(DBPaper)
-                .options(selectinload(DBPaper.authors), selectinload(DBPaper.categories))
-                .where(sa.cast(DBPaper.published_date, Date) <= func.current_date())
-                .order_by(DBPaper.published_date.desc())
-                .limit(limit).offset(offset)
+        async for db in get_async_db():
+            stmt = (
+                select(DBPaper)
+                .options(
+                    load_only(
+                        DBPaper.paper_id,
+                        DBPaper.title,
+                        DBPaper.abstract,
+                        DBPaper.pdf_url,
+                        DBPaper.published_date,
+                        DBPaper.updated_date,
+                        DBPaper.platform,
+                    ),
+                    selectinload(DBPaper.authors),
+                    selectinload(DBPaper.categories),
+                )
+                # 在数据库端过滤掉 upload
+                .where(DBPaper.platform != "upload")
+                # 避免 CAST，直接和当前时间比较（等价于“截至今天”）
+                .where(DBPaper.published_date <= func.now())
             )
-            
-            # Add keyword filter if provided
+
             if keyword:
-                query = query.where(DBPaper.title.ilike(f"%{keyword}%"))
-            
-            result = await db.execute(query)
+                stmt = stmt.where(DBPaper.title.ilike(f"%{keyword}%"))
+
+            stmt = (
+                stmt.order_by(DBPaper.published_date.desc(), DBPaper.paper_id.desc())
+                    .limit(limit)
+                    .offset(offset)
+            )
+
+            result = await db.execute(stmt)
             db_papers = result.scalars().all()
-            
-            for db_paper in db_papers:
-                if db_paper.platform == "upload":
-                    logger.info(f"Paper {db_paper.paper_id} is uploaded, skipping")
-                    continue
+
+            for p in db_papers:
                 papers.append(Paper(
-                    paper_id=db_paper.paper_id,
-                    title=db_paper.title,
-                    authors=[author.name for author in db_paper.authors],
-                    abstract=db_paper.abstract,
-                    categories=[category.name for category in db_paper.categories],
-                    pdf_url=db_paper.pdf_url.replace("http://", "https://"),
-                    published_date=db_paper.published_date,
-                    updated_date=db_paper.updated_date,
-                    platform=paper_info_extractor.extract_platform(db_paper.paper_id)
+                    paper_id=p.paper_id,
+                    title=p.title,
+                    authors=[a.name for a in p.authors],
+                    abstract=p.abstract,
+                    categories=[c.name for c in p.categories],
+                    pdf_url=p.pdf_url.replace("http://", "https://", 1),
+                    published_date=p.published_date,
+                    updated_date=p.updated_date,
+                    platform=p.platform,  # 直接使用数据库列
                 ))
-        
+
         return papers
     
     
