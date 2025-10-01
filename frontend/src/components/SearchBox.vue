@@ -4,7 +4,7 @@
       <input 
         v-model="localSearchQuery" 
         class="search-input" 
-        :placeholder="placeholder" 
+        :placeholder="dynamicPlaceholder" 
         @keyup.enter="handleSearch(true)"
         aria-label="Search papers"
       />
@@ -31,6 +31,10 @@
 </template>
 
 <script>
+// 按你的项目实际情况替换导入：api.function名字
+// 例如：import { getPaperCount } from '@/api/papers'
+import api from '@/services/api'
+
 export default {
   name: 'SearchBox',
   props: {
@@ -42,6 +46,7 @@ export default {
       type: Boolean,
       default: false
     },
+    // 作为后备占位符（当后端不可用时用）
     placeholder: {
       type: String,
       default: 'Search papers...'
@@ -50,7 +55,8 @@ export default {
   emits: ['update:modelValue', 'search'],
   data() {
     return {
-      searchWithSummary: false
+      searchWithSummary: false,
+      dynamicPlaceholder: 'Search papers...' // 初始化，待后端返回后替换
     }
   },
   computed: {
@@ -64,12 +70,28 @@ export default {
     }
   },
   methods: {
+    async loadPaperCount() {
+      try {
+        // 如果你是 api.function名字()，就把下一行改成：const count = await api.function名字()
+        const count = await api.countPapers();
+        const n = Number(count);
+        const pretty = Number.isFinite(n) ? n.toLocaleString() : '**';
+        this.dynamicPlaceholder = `Search ${pretty} papers from all fields of science.`;
+      } catch (e) {
+        // 失败则退回到 props.placeholder
+        this.dynamicPlaceholder = this.placeholder || 'Search papers...';
+      }
+    },
     handleSearch(includeSummary = false) {
       if (this.localSearchQuery.trim()) {
         this.searchWithSummary = includeSummary;
         this.$emit('search', this.localSearchQuery.trim(), includeSummary);
       }
     }
+  },
+  mounted() {
+    // 组件挂载后拉取后端数量
+    this.loadPaperCount();
   }
 }
 </script>
@@ -146,4 +168,4 @@ export default {
 .search-button-ai:disabled {
   background-color: #bfdbfe;
 }
-</style> 
+</style>

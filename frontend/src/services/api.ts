@@ -104,6 +104,7 @@ export interface IApiService {
   generateIdeas(payload: GenerateIdeasRequest): Promise<GenerateIdeasResponse>;
   expandProposal(id: string): Promise<{ markdown: string }>;
   streamIdeasGenerate(payload: GenerateIdeasRequest): Promise<Response>;
+  getPaperCount(): Promise<number> ;
 }
 /**
  * API Service implementation
@@ -1040,8 +1041,8 @@ async get_shared_folders(): Promise<any[]> {
       throw err
     }
   }
-}
 
+}
 interface ChatFile {
   file_path: string
   filename:  string
