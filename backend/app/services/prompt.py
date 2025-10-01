@@ -81,7 +81,7 @@ Action: Before executing the search, generate a Plan Overview that outlines the 
   "fields": {
           "authors": author name or all authors in a list if mentioned in the query. If multiple authors are mentioned, list them all. If no author is mentioned, return an empty list. IMPORTANT: When user says 'papers by A and B', this means co-authored papers by BOTH A and B (AND logic). When user says 'papers by A or B', this means papers by EITHER A or B (OR logic).",
           "platform": platform name if mentioned in the query in a list. Common platforms include: "arxiv", "biorxiv", "medrxiv", "acl", "pubmed", etc. If multiple platforms are mentioned, list them all. If no platform is mentioned, return an empty list, 
-          "date": date related query if date is mentioned in the query in a list. If multiple dates are mentioned, list them all. If no date is mentioned, return an empty list. 
+          "date": date related query if date is mentioned in the query in a list. If multiple dates are mentioned, list them all. If no date is mentioned, return an empty list. If the query mentions something like 'latest', 'recent', 'last 3 years' give the corresponding years. Like if recent is mentioned then date should contain latest 2 years.
           "author_logic": "AND" if user wants co-authored papers by multiple authors (e.g., "papers by A and B"), "OR" if user wants papers by any of the authors (e.g., "papers by A or B"), "SINGLE" if only one author is mentioned. Default is "AND" when multiple authors are mentioned.
       
       IMPORTANT: Convert ALL natural language date expressions to standardized format:

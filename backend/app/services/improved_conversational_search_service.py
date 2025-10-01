@@ -600,12 +600,12 @@ class ImprovedConversationalSearchService:
             # Pre-fetch candidate IDs by metadata if effective
             allow_ids = None
             if has_effective_filters:
+                # No limit for metadata filtering - pass all results through
                 candidates = await conv_db_service.get_candidate_ids_by_metadata(
                     authors=authors_filters,
                     date_tokens=date_filters,
                     platforms=platform_filters,
                     author_logic=author_logic,
-                    limit=5000,
                 )
                 allow_ids = set(candidates)
                 if not allow_ids:
@@ -811,12 +811,36 @@ class ImprovedConversationalSearchService:
                 # Regular search (non-comparison)
                 logger.info(f"Performing regular search for: '{query}'")
                 
-                # Run vector and keyword search
+                # Run vector and keyword search with timeout handling for large datasets
                 vec_task = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=allow_ids))
                 keyword_task = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=allow_ids))
                 
                 try:
-                    paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.gather(vec_task, keyword_task)
+                    # Add timeout for large datasets to prevent hanging
+                    paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
+                        asyncio.gather(vec_task, keyword_task), 
+                        timeout=30.0  # 30 second timeout
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"Search timeout for query: '{query}' - this may indicate performance issues with large datasets")
+                    # Try fallback search without allow_ids if timeout occurs
+                    if allow_ids:
+                        logger.info("Attempting fallback search without metadata filters")
+                        try:
+                            vec_task_fallback = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=None))
+                            keyword_task_fallback = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=None))
+                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
+                                asyncio.gather(vec_task_fallback, keyword_task_fallback), 
+                                timeout=15.0
+                            )
+                        except asyncio.TimeoutError:
+                            logger.error("Fallback search also timed out")
+                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
+                        except Exception as e:
+                            logger.error(f"Error in fallback search: {e}")
+                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
+                    else:
+                        paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
                 except Exception as e:
                     logger.error(f"Error in vector/keyword search: {e}", exc_info=True)
                     paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
@@ -825,15 +849,38 @@ class ImprovedConversationalSearchService:
                 combined_local_ids = set(paper_id_platform_pairs).union(set(keyword_paper_id_platform_pairs))
                 combined_local_ids = list(combined_local_ids)
                 
+                logger.info(f"Vector search returned {len(paper_id_platform_pairs)} results")
+                logger.info(f"Keyword search returned {len(keyword_paper_id_platform_pairs)} results")
+                logger.info(f"Combined results: {len(combined_local_ids)} unique papers")
+                
                 if not combined_local_ids:
-                    return {
-                        "action": "results",
-                        "message": "No papers found for your query.",
-                        "papers": [],
-                        "count": 0,
-                        "refined_query": query,
-                        "suggestions": ["Try different keywords", "Use more general terms"]
-                    }
+                    # For recent queries, try a broader search approach
+                    is_recent_query = any(token.lower().strip() in ("recent", "latest") for token in date_filters)
+                    if is_recent_query:
+                        logger.info("No results found for recent query, trying broader search")
+                        # Try search without metadata filters for recent queries
+                        try:
+                            vec_task_broad = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=None))
+                            keyword_task_broad = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=None))
+                            broad_pairs, broad_keyword_pairs = await asyncio.wait_for(
+                                asyncio.gather(vec_task_broad, keyword_task_broad), 
+                                timeout=20.0
+                            )
+                            combined_local_ids = set(broad_pairs).union(set(broad_keyword_pairs))
+                            combined_local_ids = list(combined_local_ids)
+                            logger.info(f"Broad search returned {len(combined_local_ids)} results")
+                        except Exception as e:
+                            logger.error(f"Broad search also failed: {e}")
+                    
+                    if not combined_local_ids:
+                        return {
+                            "action": "results",
+                            "message": "No papers found for your query.",
+                            "papers": [],
+                            "count": 0,
+                            "refined_query": query,
+                            "suggestions": ["Try different keywords", "Use more general terms", "Remove date filters for broader results"]
+                        }
                 
                 # Get papers from database
                 papers = await conv_db_service.get_papers_by_ids(combined_local_ids)

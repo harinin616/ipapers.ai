@@ -20,3 +20,4 @@ ipap
 .idea/
 
 backend/pub_csv
+backend/venv
