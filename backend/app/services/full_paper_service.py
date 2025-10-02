@@ -18,6 +18,8 @@ from typing import List, Dict
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from Bio import Entrez
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 # Set email for NCBI (required by Entrez)
 Entrez.email = "your_email@example.com"  # required by NCBI
@@ -45,16 +47,20 @@ def download_pmc_pdf(pmid, download_dir):
     os.makedirs(download_dir, exist_ok=True)
     print(f"📁 Download directory set to: {download_dir}")
 
+    # inside download_pmc_pdf
+    service = Service(ChromeDriverManager().install())
+    temp_profile_dir = tempfile.mkdtemp(prefix="chrome_profile_", dir="/tmp")
+
+
     url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid}/pdf/"
 
     options = Options()
-    options.headless = True
+    options.add_argument("--headless=new")  # safer headless mode on Linux
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(f"--download-directory={download_dir}")
-    options.add_argument("--headless")  # if you don’t need UI
-    options.add_argument(f"--user-data-dir={tempfile.mkdtemp()}")  # unique profile each run
+    options.add_argument(f"--user-data-dir={temp_profile_dir}")  # unique temp profile
+
     prefs = {
         "download.default_directory": download_dir,
         "download.directory_upgrade": True,
@@ -64,7 +70,8 @@ def download_pmc_pdf(pmid, download_dir):
     }
     options.add_experimental_option("prefs", prefs)
 
-    driver = webdriver.Chrome(options=options)
+
+    driver = webdriver.Chrome(service=service, options=options)
     driver.get(url)
     time.sleep(5)  # wait for download
     driver.quit()
@@ -301,7 +308,7 @@ async def analyze_full_papers(papers: List[Dict], combined_query: str, reasoning
         finally:
             # Manually delete the directory after analysis
             try:
-                # shutil.rmtree(tmpdir)
+                shutil.rmtree(tmpdir)
                 logger.info(f"Cleaned up directory: {tmpdir}")
             except Exception as e:
                 logger.warning(f"Failed to clean up directory {tmpdir}: {e}")

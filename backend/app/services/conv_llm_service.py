@@ -442,7 +442,7 @@ class ConvLLMService:
             
             # Use the correct Gemini API call
             response = self.llm_client.models.generate_content(
-                model=convo_model,
+                model="gemini-2.0-flash",
                 contents=gemini_messages
             )
             
@@ -458,7 +458,7 @@ class ConvLLMService:
                     dict_part = err_str[err_str.index("{"):]  # substring starting from first '{'
                     err_dict = ast.literal_eval(dict_part)    # safely parse into dict
                     error_msg = err_dict.get("error", {}).get("message", "")
-                    return(f"Extracted error message: {error_msg}")
+                    return f"Extracted error message: {error_msg}"  # interpolates variable
                 except Exception as parse_err:
                     logger.warning(f"Failed to parse error details: {parse_err}")
                     return ""

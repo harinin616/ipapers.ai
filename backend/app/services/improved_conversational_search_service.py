@@ -819,7 +819,7 @@ class ImprovedConversationalSearchService:
                     # Add timeout for large datasets to prevent hanging
                     paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
                         asyncio.gather(vec_task, keyword_task), 
-                        timeout=30.0  # 30 second timeout
+                        timeout=180.0  # 30 second timeout
                     )
                 except asyncio.TimeoutError:
                     logger.warning(f"Search timeout for query: '{query}' - this may indicate performance issues with large datasets")
