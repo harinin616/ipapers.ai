@@ -35,6 +35,10 @@ class PaperInfoExtractor:
         # medrxiv format: medrxiv_XXX_YYY
         if paper_id.startswith("medrxiv_"):
             return "medrxiv"
+        
+        # pubmed format: numeric ID (e.g., 39732694)
+        if paper_id.isdigit():
+            return "pubmed"
 
         # arXiv format: YYMM.NNNNN[vN] (e.g., 2505.24877v1)
         arxiv_pattern = r"^\d{4}\.\d{4,5}(v\d+)?$"
@@ -242,6 +246,12 @@ class PaperInfoExtractor:
                 return f"https://www.medrxiv.org/content/10.1101/{doi_number}.full.pdf"
             else:
                 raise ValueError(f"Invalid medrxiv paper ID format: {paper_id}")
+        
+        elif platform == "pubmed":
+            # For PubMed papers, we need to get the PDF URL from the database
+            # since PubMed doesn't have a direct PDF URL pattern
+            # This will be handled by the download_pubmed_papers function
+            raise ValueError(f"PubMed papers require special download handling. Use download_pubmed_papers function instead.")
         
         elif platform in ["acl", "emnlp", "naacl", "eacl", "coling"]:
             # 检查是否是findings论文
