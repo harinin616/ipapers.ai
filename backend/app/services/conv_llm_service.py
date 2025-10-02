@@ -438,15 +438,20 @@ class ConvLLMService:
                         gemini_messages[-1]["parts"][0]["text"] = f"System: {content}\n\nUser: {gemini_messages[-1]['parts'][0]['text']}"
                     else:
                         gemini_messages.append({"role": "user", "parts": [{"text": f"System: {content}"}]})
-            
-            # Use the correct Gemini API call
-            response = self.llm_client.models.generate_content(
-                model=convo_model,
-                contents=gemini_messages
-            )
-            
-            return response.text if response and response.text else ""
-            
+            try:
+                # Use the correct Gemini API call
+                response = self.llm_client.models.generate_content(
+                    model=convo_model,
+                    contents=gemini_messages
+                )
+                
+                return response.text if response and response.text else ""
+                
+            except: ServiceUnavailable:
+            # 503 error specifically
+                return "LLM server is temporarily unavailable. Please try again later."
+    
+        
         except Exception as e:
             logger.error(f"Error in conversation: {e}")
             return ""

@@ -64,11 +64,6 @@ def download_pmc_pdf(pmid, download_dir):
     }
     options.add_experimental_option("prefs", prefs)
 
-
-
-
-
-    driver = webdriver.Chrome(options=options)
     driver = webdriver.Chrome(options=options)
     driver.get(url)
     time.sleep(5)  # wait for download
