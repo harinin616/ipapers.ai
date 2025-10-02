@@ -53,7 +53,8 @@ def download_pmc_pdf(pmid, download_dir):
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument(f"--download-directory={download_dir}")
-    
+    options.add_argument("--headless")  # if you don’t need UI
+    options.add_argument(f"--user-data-dir={tempfile.mkdtemp()}")  # unique profile each run
     prefs = {
         "download.default_directory": download_dir,
         "download.directory_upgrade": True,
@@ -63,6 +64,11 @@ def download_pmc_pdf(pmid, download_dir):
     }
     options.add_experimental_option("prefs", prefs)
 
+
+
+
+
+    driver = webdriver.Chrome(options=options)
     driver = webdriver.Chrome(options=options)
     driver.get(url)
     time.sleep(5)  # wait for download
