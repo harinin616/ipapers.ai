@@ -338,7 +338,7 @@ class DBService:
                 ))
         return papers
         
-    async def get_paper_by_id(self, paper_id: str, platform: str = "arxiv") -> Optional[Paper]:
+    async def get_paper_by_id(self, paper_id: str, platform: str = None) -> Optional[Paper]:
         """
         get paper Object by paper_id
         """
