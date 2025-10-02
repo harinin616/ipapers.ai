@@ -10,6 +10,7 @@ from openai import AsyncOpenAI, APIConnectionError, RateLimitError, APITimeoutEr
 import dashscope
 from http import HTTPStatus
 from google import genai
+import ast
 
 
 DAILY_LIMIT = int(os.getenv("LLM_CALLS_PER_DAY", "2000"))
@@ -438,23 +439,34 @@ class ConvLLMService:
                         gemini_messages[-1]["parts"][0]["text"] = f"System: {content}\n\nUser: {gemini_messages[-1]['parts'][0]['text']}"
                     else:
                         gemini_messages.append({"role": "user", "parts": [{"text": f"System: {content}"}]})
-            try:
-                # Use the correct Gemini API call
-                response = self.llm_client.models.generate_content(
-                    model=convo_model,
-                    contents=gemini_messages
-                )
-                
-                return response.text if response and response.text else ""
-                
-            except: ServiceUnavailable:
-            # 503 error specifically
-                return "LLM server is temporarily unavailable. Please try again later."
-    
-        
+            
+            # Use the correct Gemini API call
+            response = self.llm_client.models.generate_content(
+                model=convo_model,
+                contents=gemini_messages
+            )
+            
+            return response.text if response and response.text else ""
+            
         except Exception as e:
             logger.error(f"Error in conversation: {e}")
-            return ""
+        
+            err_str = str(e)
+
+            if "{" in err_str:
+                try:
+                    dict_part = err_str[err_str.index("{"):]  # substring starting from first '{'
+                    err_dict = ast.literal_eval(dict_part)    # safely parse into dict
+                    error_msg = err_dict.get("error", {}).get("message", "")
+                    return(f"Extracted error message: {error_msg}")
+                except Exception as parse_err:
+                    logger.warning(f"Failed to parse error details: {parse_err}")
+                    return ""
+            else:
+                return ""
+
+
+        
     
     async def enhance_search_query(
         self,
