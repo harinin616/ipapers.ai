@@ -31,7 +31,14 @@ def get_pmcid_from_pmid(pmid):
     handle.close()
     try:
         pmcid = records[0]["LinkSetDb"][0]["Link"][0]["Id"]
-        return f"PMC{pmcid}"
+        
+        handle2 = Entrez.efetch(db="pmc", id=pmcid, rettype="xml")
+        xml_bytes = handle2.read()
+        handle2.close()
+        xml = xml_bytes.decode("utf-8")
+
+        if f'<article-id pub-id-type="pmid">{pmid}</article-id>' in xml:
+            return f"PMC{pmcid}"
     except IndexError:
         return None
 
@@ -288,7 +295,7 @@ async def analyze_full_papers(papers: List[Dict], combined_query: str, reasoning
 
             # Run Gemini
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model= "gemini-2.5-flash",
                 contents=uploaded_files + [prompt]
             )
 
