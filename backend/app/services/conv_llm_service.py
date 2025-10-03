@@ -442,7 +442,7 @@ class ConvLLMService:
             
             # Use the correct Gemini API call
             response = self.llm_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=gemini_messages
             )
             
