@@ -333,122 +333,61 @@ class ConvDBService:
                 ))
         return papers
         
-    async def get_paper_by_id(self, paper_id: str, platform: str ) -> Optional[Paper]:
-        """
-        get paper Object by paper_id
-        """
-        logger.info(f"Looking up paper in database with ID: {paper_id}, platform: {platform}")
-
-        if not paper_id:
-            logger.warning("Attempted to get paper with empty ID")
-            return None
-            
-        try:
-            async for db in get_async_db():
-                # 直接join一次性查到所有需要的字段
-                stmt = (
-                    select(
-                        DBPaper,
-                        func.array_agg(distinct(DBAuthor.name)).label("authors"),
-                        func.array_agg(distinct(DBCategory.name)).label("categories")
-                    )
-                    .outerjoin(paper_authors, and_(
-                        paper_authors.c.paper_id == DBPaper.paper_id,
-                        paper_authors.c.platform == DBPaper.platform
-                    ))
-                    .outerjoin(DBAuthor, paper_authors.c.author == DBAuthor.name)
-                    .outerjoin(paper_categories, and_(
-                        paper_categories.c.paper_id == DBPaper.paper_id,
-                        paper_categories.c.platform == DBPaper.platform
-                    ))
-                    .outerjoin(DBCategory, paper_categories.c.category == DBCategory.name)
-                    .where(and_(DBPaper.paper_id == paper_id, DBPaper.platform == platform))
-                    .group_by(DBPaper)
-                )
-                
-                result = await db.execute(stmt)
-                record = result.first()
-                
-                if not record:
-                    logger.info(f"Paper with ID {paper_id} and platform {platform} not found in database")
-                    return None
-                    
-                db_paper = record[0]
-                authors = record[1] if record[1] and record[1][0] is not None else []
-                categories = record[2] if record[2] and record[2][0] is not None else []
-                
-                paper = Paper(
-                    paper_id=db_paper.paper_id,
-                    title=db_paper.title,
-                    authors=authors,
-                    abstract=db_paper.abstract,
-                    categories=categories,
-                    pdf_url=db_paper.pdf_url,
-                    published_date=db_paper.published_date,
-                    updated_date=db_paper.updated_date,
-                    platform=db_paper.platform
-                )
-                
-                logger.info(f"success get paper: {paper.title} (ID: {paper.paper_id}, platform: {paper.platform})")
-                return paper
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when getting paper by ID {paper_id} and platform {platform}: {str(e)}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error when getting paper by ID {paper_id} and platform {platform}: {str(e)}", exc_info=True)
-            return None
-        
-        logger.warning(f"Paper lookup completed with no result for ID: {paper_id}, platform: {platform}")
-        return None
-
     async def get_papers_by_ids(self, paper_ids_data: List[Union[str, Tuple[str, str]]]) -> List[Paper]:
         """
         Get paper Objects by a list of paper_ids or tuples of (paper_id, platform)
+        Uses batching to avoid asyncpg 32767 parameter limit
         """
         if not paper_ids_data:
             return []
-            
-        logger.info(f"get_papers_by_ids received data: {paper_ids_data[:3]}...")  # 只显示前3个
-        
-        # 提取paper_id和platform
+
+        logger.info(f"get_papers_by_ids received data: {paper_ids_data[:3]}...")
+
+        # Each (paper_id, platform) pair uses 2 SQL parameters → 16k pairs max per batch
+        BATCH_SIZE = 8000
+        all_papers = []
+
+        # Process in batches
+        for i in range(0, len(paper_ids_data), BATCH_SIZE):
+            batch = paper_ids_data[i:i + BATCH_SIZE]
+            batch_papers = await self._get_papers_by_ids_batch(batch)
+            all_papers.extend(batch_papers)
+
+        return all_papers
+
+
+    async def _get_papers_by_ids_batch(self, paper_ids_data: List[Union[str, Tuple[str, str]]]) -> List[Paper]:
+        """
+        Internal helper that fetches up to BATCH_SIZE papers in one query.
+        """
+        if not paper_ids_data:
+            return []
+
         paper_ids = []
         paper_platforms = {}
         for item in paper_ids_data:
             if isinstance(item, tuple) and len(item) == 2:
                 paper_id, platform = item
-                # 确保都是字符串
-                paper_id = str(paper_id)
-                platform = str(platform)
-                paper_ids.append(paper_id)
-                paper_platforms[paper_id] = platform
+                paper_ids.append(str(paper_id))
+                paper_platforms[str(paper_id)] = str(platform)
             else:
-                paper_id = str(item)  # 确保是字符串
+                paper_id = str(item)
                 paper_ids.append(paper_id)
-                paper_platforms[paper_id] = "arxiv"  # 默认平台
-        
+                paper_platforms[paper_id] = "arxiv"
 
         try:
             async for db in get_async_db():
-                # 构建查询条件列表
-                conditions = []
-                for paper_id in paper_ids:
-                    platform = paper_platforms.get(paper_id, "arxiv")
-                    # 再次确保参数都是字符串类型
-                    paper_id_str = str(paper_id)
-                    platform_str = str(platform)
-                    logger.debug(f"Adding condition: paper_id={paper_id_str} (type: {type(paper_id_str)}), platform={platform_str} (type: {type(platform_str)})")
-                    conditions.append(
-                        and_(
-                            DBPaper.paper_id == paper_id_str,
-                            DBPaper.platform == platform_str
-                        )
+                conditions = [
+                    and_(
+                        DBPaper.paper_id == str(paper_id),
+                        DBPaper.platform == str(paper_platforms.get(paper_id, "arxiv"))
                     )
-                
-                # 如果没有条件，直接返回空列表
+                    for paper_id in paper_ids
+                ]
+
                 if not conditions:
                     return []
-                
-                # 使用复杂的查询一次性获取所有论文及其作者、分类
+
                 stmt = (
                     select(
                         DBPaper.paper_id,
@@ -482,20 +421,16 @@ class ConvDBService:
                         DBPaper.updated_date
                     )
                 )
-                
+
                 result = await db.execute(stmt)
                 records = result.all()
-                
-                # 将结果转换为Paper对象列表，并保持原始顺序
-                papers = []
-                # 创建一个字典来快速查找结果
+
                 result_dict = {}
                 for record in records:
                     paper_id = record[0]
                     platform = record[1]
                     authors = record[7] if record[7] and record[7][0] is not None else []
                     categories = record[8] if record[8] and record[8][0] is not None else []
-                    
                     paper = Paper(
                         paper_id=paper_id,
                         platform=platform,
@@ -507,32 +442,27 @@ class ConvDBService:
                         authors=authors,
                         categories=categories
                     )
-                    # 使用 (paper_id, platform) 作为键
                     result_dict[(paper_id, platform)] = paper
-                
-                # 按照原始输入顺序返回结果
+
+                # preserve original order
+                ordered_papers = []
                 for item in paper_ids_data:
                     if isinstance(item, tuple) and len(item) == 2:
-                        paper_id, platform = item
-                        key = (str(paper_id), str(platform))
+                        key = (str(item[0]), str(item[1]))
                     else:
-                        paper_id = str(item)
-                        key = (paper_id, "arxiv")
-                    
+                        key = (str(item), "arxiv")
                     if key in result_dict:
-                        papers.append(result_dict[key])
-                
-                return papers
-                
+                        ordered_papers.append(result_dict[key])
+                logger.info(f"Fetched {len(records)} DB records for {len(paper_ids_data)} IDs in this batch")
+
+                return ordered_papers
+
         except SQLAlchemyError as e:
             logger.error(f"Database error when getting papers by IDs: {str(e)}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error when getting papers by IDs: {str(e)}", exc_info=True)
             return []
-        
-        return []
-
 
     
     

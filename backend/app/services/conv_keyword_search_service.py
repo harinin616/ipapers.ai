@@ -8,7 +8,7 @@ from app.services.conv_db_service import conv_db_service
 logger = logging.getLogger(__name__)
 
 class ConvKeywordSearchService:
-    async def search(self, query: str, limit: int = 20, allow_ids: set[tuple[str, str]] | None = None) -> list[tuple[str, str]]:
+    async def search(self, query: str, limit: int = 8000, allow_ids: set[tuple[str, str]] | None = None) -> list[tuple[str, str]]:
         """
         使用PostgreSQL FTS功能进行关键词搜索。
         

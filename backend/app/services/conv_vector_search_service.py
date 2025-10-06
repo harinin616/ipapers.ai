@@ -266,7 +266,7 @@ class ConvVectorSearchService:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
             
-    async def search(self, query: str, k: int = 80, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
+    async def search(self, query: str, k: int = 80000, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
             system_prompt = (
                 "You are a professional information-retrieval assistant. Given a user query, generate a concise and semantically faithful reformulation for vector search. The output should be a single line containing a few meaningful keywords or short phrases, separated by commas.\n\n"
                 "Requirements:\n\n"
