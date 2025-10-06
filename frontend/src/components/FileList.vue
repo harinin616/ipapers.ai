@@ -39,7 +39,10 @@
 </iframe>
     </div>
     
-    <div v-if="!showPdf || !currentPdfUrl" class="pdf-files-panel">
+    <div v-if="!showPdf || !currentPdfUrl" class="pdf-files-panel"
+         @dragover.prevent="handleDragOver"
+         @dragleave.prevent="handleDragLeave"
+         @drop.prevent="handleDrop">
       <div class="panel-header">
           <h3>File List</h3>
 
@@ -63,6 +66,24 @@
 
 
        
+      <!-- Drag and Drop Overlay -->
+      <div v-if="isDragging" class="drag-overlay">
+        <div class="drag-prompt">
+          <svg class="upload-icon" viewBox="0 0 24 24">
+            <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z" />
+          </svg>
+          <p>Drop PDF files here to upload</p>
+        </div>
+      </div>
+
+      <!-- 上传进度提示 -->
+      <div v-if="uploadingFiles.length > 0" class="upload-progress">
+        <div v-for="(file, idx) in uploadingFiles" :key="idx" class="upload-item">
+          <span class="upload-filename">{{ file.name }}</span>
+          <span class="upload-status">{{ file.status }}</span>
+        </div>
+      </div>
+
       <div class="folders-list">
         <div
           v-for="folder in folders"
@@ -153,7 +174,7 @@
                 </div>
                 <button
                   :class="['pdf-file-select',{selected:isFileSelected(file.paper_id)}]"
-                  @click.stop="handleToggleSelect(file.paper_id)"
+                  @click.stop="handleToggleSelect(file.paper_id, file.platform || 'arxiv')"
                 >
                   <svg class="icon-svg" viewBox="0 0 24 24">
                     <path v-if="isFileSelected(file.paper_id)" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
@@ -262,6 +283,7 @@
   <AddPaperView
     v-if="showAddModal"
     :paperId="lastPaperId"
+    :platform="lastPlatform"
     @added="loadFolders"
     @close="showAddModal = false"
   />
@@ -281,6 +303,7 @@ interface ChatFile {
   file_path: string;
   filename: string;
   paper_id: string;
+  platform?: string;
   paper_URL: string;
   added_at: string;
   folder_id: number;
@@ -331,8 +354,14 @@ export default defineComponent({
     };
     // ...
 const showAddModal = ref(false)        // 控制是否显示
-const lastPaperId  = ref('')     
+const lastPaperId  = ref('')
+const lastPlatform = ref<string>('arxiv')     
 const dlg  = ref<HTMLDialogElement | null>(null)
+
+// 拖拽上传相关
+const isDragging = ref(false)
+const uploadingFiles = ref<Array<{ name: string; status: string }>>([])
+let dragCounter = 0
 const maxDate = new Date().toISOString().slice(0, 10)
 const form = reactive({
   title:     '',
@@ -377,18 +406,102 @@ async function submitForm() {
   fd.append('abstract',    form.abstract)
 
   try {
-    const paper_id = await api.upload_file(fd)   // 改成你的接口
-    console.log('Upload success:', paper_id)
+    const result = await api.upload_file(fd)   // 改成你的接口
     closeDialog()
-    lastPaperId.value = paper_id
+    lastPaperId.value = result.paper_id
+    lastPlatform.value = result.platform || 'upload'
     showAddModal.value = true 
 
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
-    alert('Upload failed.')
+    const errorMsg = e.response?.data?.detail || e.message || 'Upload failed.'
+    alert(`Upload Failed\n\n${errorMsg}\n\nPlease try again.`)
   }
 }
 
+// ========== 拖拽上传处理 ==========
+const handleDragOver = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounter++
+  if (dragCounter === 1) {
+    isDragging.value = true
+  }
+}
+
+const handleDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounter--
+  if (dragCounter === 0) {
+    isDragging.value = false
+  }
+}
+
+const handleDrop = async (e: DragEvent) => {
+  e.preventDefault()
+  dragCounter = 0
+  isDragging.value = false
+
+  const files = Array.from(e.dataTransfer?.files || [])
+  const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'))
+
+  if (pdfFiles.length === 0) {
+    alert('Please drop PDF files')
+    return
+  }
+
+  // 批量上传
+  for (const file of pdfFiles) {
+    await uploadSingleFile(file)
+  }
+}
+
+// 上传单个文件
+const uploadSingleFile = async (file: File) => {
+  const uploadItem = { name: file.name, status: 'Uploading...' }
+  uploadingFiles.value.push(uploadItem)
+
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('title', file.name.replace('.pdf', ''))
+    fd.append('authors', '')
+    fd.append('published', '1900-01-01')
+    fd.append('abstract', '')
+
+    const result = await api.upload_file(fd)
+    uploadItem.status = '✓ Success'
+    
+    // 自动添加到当前文件夹
+    if (activeFid.value) {
+      await api.attach_to_folder({
+        folder_id: activeFid.value,
+        paper_id: result.paper_id,
+        platform: result.platform || 'upload'
+      })
+    }
+
+    // 延迟移除上传提示
+    setTimeout(() => {
+      const idx = uploadingFiles.value.indexOf(uploadItem)
+      if (idx > -1) uploadingFiles.value.splice(idx, 1)
+    }, 2000)
+
+    // 刷新文件列表
+    await loadFolders()
+  } catch (e: any) {
+    console.error('Upload failed:', e)
+    const errorMsg = e.response?.data?.detail || e.message || 'Unknown error'
+    uploadItem.status = `✗ Failed: ${errorMsg.substring(0, 30)}...`
+    
+    // 显示详细错误提示
+    alert(`Upload Failed: ${file.name}\n\n${errorMsg}\n\nPlease try again.`)
+    
+    setTimeout(() => {
+      const idx = uploadingFiles.value.indexOf(uploadItem)
+      if (idx > -1) uploadingFiles.value.splice(idx, 1)
+    }, 5000) // 延长显示时间到5秒
+  }
+}
 
   /* ---------- modal handlers ---------- */
   const confirmShare = async (isPublic: boolean) => {
@@ -527,11 +640,11 @@ const cancelEditFolder = () => {
         }
         const allFiles: ChatFile[] =
           folders.value.flatMap(f => f.files)
-        const selectedIds = allFiles
-          .filter(f => (f as any).selected)
-          .map(f => f.paper_id)
+        const selectedItems = allFiles
+          .filter(f => f.selected)
+          .map(f => ({ id: f.paper_id, platform: f.platform || 'arxiv' }))
         
-        fileSelectionStore.setSelection(selectedIds)
+        fileSelectionStore.setSelection(selectedItems)
         emit('files-updated', allFiles)
         emit('update-file-count', allFiles.length)
       } catch (err) {
@@ -558,8 +671,8 @@ const cancelEditFolder = () => {
       }
     }
     
-    const handleToggleSelect = async (paperId: string) => {
-      await fileSelectionStore.toggleFileSelection(paperId)
+    const handleToggleSelect = async (paperId: string, platform: string = 'arxiv') => {
+      await fileSelectionStore.toggleFileSelection(paperId, platform)
     }
     
     const isFileSelected = (paperId: string): boolean => {
@@ -723,6 +836,12 @@ const cancelEditFolder = () => {
       dlg,
       showAddModal,
       lastPaperId,
+      lastPlatform,
+      isDragging,
+      uploadingFiles,
+      handleDragOver,
+      handleDragLeave,
+      handleDrop,
     }
   }
 })
@@ -1418,6 +1537,98 @@ const cancelEditFolder = () => {
 }
 .folder-badge:hover {
   background-color: #d97706; /* hover 深一点 */
+}
+
+/* ========== 拖拽上传样式 ========== */
+.drag-overlay {
+  position: absolute;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(63, 81, 181, 0.1);
+  border: 3px dashed #3f51b5;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.drag-prompt {
+  text-align: center;
+  color: #3f51b5;
+}
+
+.upload-icon {
+  width: 64px;
+  height: 64px;
+  fill: currentColor;
+  margin-bottom: 1rem;
+}
+
+.drag-prompt p {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* 上传进度提示 */
+.upload-progress {
+  position: absolute;
+  top: 70px;
+  right: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 0.75rem;
+  max-width: 280px;
+  z-index: 150;
+}
+
+.upload-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+}
+
+.upload-item + .upload-item {
+  border-top: 1px solid #e5e7eb;
+}
+
+.upload-filename {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 0.5rem;
+  color: #374151;
+}
+
+.upload-status {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.upload-item .upload-status:contains('Success') {
+  color: #10b981;
+}
+
+.upload-item .upload-status:contains('Failed') {
+  color: #ef4444;
+}
+
+.upload-item .upload-status:contains('Uploading') {
+  color: #3f51b5;
 }
 
 </style> 

@@ -20,7 +20,7 @@
     </button>
 
     <!-- 标题只在展开时显示 -->
-    <h3 v-if="!isCollapsed">Paper Folders</h3>
+    <h3 v-if="!isCollapsed">{{ isLibraryMode ? 'My Library' : 'Shared Folders' }}</h3>
   </header>
 
   <!-- ── 列表 ─────────────────────────────── -->
@@ -49,7 +49,7 @@
             {{ s.folder_name }}
           </span>
               <button
-            v-if="!isCollapsed && s.owner_id === currentUserId"
+            v-if="!isCollapsed && !isLibraryMode && s.owner_id === currentUserId"
             class="setting-btn"
             @click.stop="openSetting(s.folder_id, $event)"
             title="Folder settings"
@@ -59,7 +59,7 @@
             {{ s.file_cnt }}
           </span>
           <span
-            v-if="!isCollapsed"
+            v-if="!isCollapsed && !isLibraryMode"
             class="folder-tag"
               :class="getTagClass(s)"
   :title="getTagFull(s)"      
@@ -178,6 +178,7 @@ const props = defineProps<{
   papersMap: Record<number, Paper[]>
   currentUserId: string | null
   activePaperId: string | null      // ★ 新增
+  isLibraryMode?: boolean            // Library 模式标志
 }>()
 
 // emit 类型多加一个事件

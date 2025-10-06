@@ -7,6 +7,7 @@
         :papers-map="papersMap"
         :current-user-id="userId"
         :activePaperId="selected ? selected.paper_id : null"
+        :is-library-mode="isLibraryMode"
         @select-folder="handleSelectFolder"
         @load-papers="handleLoadPapers"
         @select="onSelectPaper"
@@ -605,6 +606,9 @@ function formatDate(timestamp: string): string {
 const shares   = ref<ShareMeta[]>([])
 const graphData = ref<LocalPaper[]>([])
 const selected = ref<LocalPaper|null>(null)
+
+// 判断是否为用户文件夹模式（Library 模式）
+const isLibraryMode = computed(() => props.folderId === null)
 const comments = ref<Array<{
   id: number
   content: string
@@ -845,7 +849,22 @@ async function generateRecommendations() {
 
 // --- 加载分享列表 ---
 async function loadShares() {
-  shares.value = await api.get_shared_folders()
+  if (isLibraryMode.value) {
+    // Library 模式：加载用户自己的文件夹
+    const userFolders = await api.get_user_folders()
+    // 转换为 ShareMeta 格式
+    shares.value = userFolders.map(folder => ({
+      folder_id: folder.id,
+      folder_name: folder.name,
+      file_cnt: folder.files.length,
+      owner_id: userId.value || '', // 用户自己是 owner
+      is_public: false,
+      type: 'own' as const
+    }))
+  } else {
+    // 共享文件夹模式
+    shares.value = await api.get_shared_folders()
+  }
 }
 async function loadComments(folderId: number) {
   try {

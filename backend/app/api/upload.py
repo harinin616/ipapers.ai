@@ -3,10 +3,12 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse
 from app.services.db_service import db_service    
 from app.services.pdf_service import pdf_service   
+from app.services.llm_service import llm_service
 import os
 import shutil
 import uuid
 import logging
+import json
 from app.models.paper import Paper
 
 router = APIRouter()
@@ -14,6 +16,125 @@ logger = logging.getLogger("upload")
 
 UPLOAD_DIR = "./data/cached_pdfs/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+async def extract_paper_metadata(pdf_path: str) -> dict:
+    """
+    从PDF中提取论文元数据(title, abstract, authors, year)
+    策略：提取Introduction之前的所有内容，这部分通常包含论文的元数据
+    """
+    try:
+        # 提取完整PDF文本
+        full_text = await pdf_service.extract_text_from_pdf(pdf_path)
+        
+        if not full_text or len(full_text) < 50:
+            logger.warning(f"PDF text too short or empty: {len(full_text)} chars")
+            return {'title': '', 'abstract': '', 'authors': [], 'year': ''}
+        
+        # 查找Introduction或第一个章节的位置
+        text_lower = full_text.lower()
+        
+        # 常见的章节开始标记（按优先级排序）
+        section_markers = [
+            r'\b1\.?\s+(introduction|background|overview)',
+            r'\bintroduction\b',
+            r'\b1\.?\s+',
+            r'\bbackground\b',
+            r'\brelated\s+work\b',
+            r'\bmethods?\b',
+            r'\bmethodology\b',
+        ]
+        
+        intro_position = -1
+        for pattern in section_markers:
+            import re
+            match = re.search(pattern, text_lower)
+            if match:
+                intro_position = match.start()
+                logger.info(f"Found section marker at position {intro_position}: {match.group()}")
+                break
+        
+        # 提取Introduction之前的内容（前置部分）
+        if intro_position > 0:
+            frontmatter = full_text[:intro_position].strip()
+        else:
+            # 如果没找到章节标记，取前8000字符
+            frontmatter = full_text[:8000].strip()
+        
+        # 调试输出：显示提取的前置内容
+        print("\n" + "="*80)
+        print("🔍 PDF FRONTMATTER EXTRACTION DEBUG")
+        print("="*80)
+        print(f"Total PDF text length: {len(full_text)} chars")
+        print(f"Introduction position: {intro_position}")
+        print(f"Frontmatter length: {len(frontmatter)} chars")
+        print(f"\n📄 Extracted Frontmatter (first 2000 chars):")
+        print("-" * 80)
+        print(frontmatter[:2000])
+        print("-" * 80)
+        
+        # 使用LLM提取元数据
+        prompt = f"""Extract the following information from this academic paper's front matter. Return ONLY a valid JSON object with these fields:
+- title: the paper title (string)
+- abstract: the paper abstract (string)  
+- authors: list of author names (array of strings)
+- year: publication year (string, 4 digits, or empty if not found)
+
+If any field is not found, use empty string for title/abstract/year, or empty array for authors.
+
+Paper front matter:
+{frontmatter}
+
+Return ONLY the JSON object, no other text:"""
+
+        print(f"\n📤 Sending to LLM for extraction...")
+        
+        response = await llm_service.get_conversation_completion_non_streaming(
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        # 检查 LLM 响应是否有效
+        if response is None or not response.strip():
+            logger.error(f"LLM returned empty response for PDF metadata extraction")
+            raise Exception("LLM service returned empty response. The service may be unavailable.")
+        
+        print(f"\n📥 LLM Response:")
+        print("-" * 80)
+        print(response)
+        print("-" * 80)
+        
+        # 解析LLM返回的JSON
+        try:
+            # 尝试提取JSON（可能被包裹在其他文本中）
+            json_start = response.find('{')
+            json_end = response.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_str = response[json_start:json_end]
+                metadata = json.loads(json_str)
+            else:
+                metadata = json.loads(response)
+            
+            # 确保所有字段存在
+            metadata.setdefault('title', '')
+            metadata.setdefault('abstract', '')
+            metadata.setdefault('authors', [])
+            metadata.setdefault('year', '')
+            
+            print(f"\n✅ Parsed JSON successfully:")
+            print(json.dumps(metadata, indent=2, ensure_ascii=False))
+            print("="*80 + "\n")
+            
+            return metadata
+        except json.JSONDecodeError as je:
+            logger.error(f"JSON decode error: {je}\nResponse: {response}")
+            print(f"\n❌ JSON Parse Error: {je}")
+            print("="*80 + "\n")
+            return {'title': '', 'abstract': '', 'authors': [], 'year': ''}
+            
+    except Exception as e:
+        logger.error(f"Error extracting metadata from PDF: {e}", exc_info=True)
+        print(f"\n❌ Exception during extraction: {e}")
+        print("="*80 + "\n")
+        return {'title': '', 'abstract': '', 'authors': [], 'year': ''}
 
 @router.post("/")
 async def upload_pdf(
@@ -38,15 +159,67 @@ async def upload_pdf(
             shutil.copyfileobj(file.file, f)
         logger.info(f"Saved PDF: {save_path}")
 
-        # === 2. 写入数据库 ===
+        # === 2. 提取PDF元数据 ===
+        try:
+            extracted_metadata = await extract_paper_metadata(save_path)
+            
+            # 调试输出：打印提取到的信息
+            print("\n" + "="*80)
+            print("📄 PDF METADATA EXTRACTION DEBUG INFO")
+            print("="*80)
+            print(f"Paper ID: {paper_id}")
+            print(f"Filename: {file.filename}")
+            print(f"\n📝 Extracted Metadata:")
+            print(f"  Title:    {extracted_metadata.get('title', 'N/A')}")
+            print(f"  Authors:  {', '.join(extracted_metadata.get('authors', [])) if extracted_metadata.get('authors') else 'N/A'}")
+            print(f"  Year:     {extracted_metadata.get('year', 'N/A')}")
+            print(f"  Abstract: {extracted_metadata.get('abstract', 'N/A')[:200]}..." if len(extracted_metadata.get('abstract', '')) > 200 else f"  Abstract: {extracted_metadata.get('abstract', 'N/A')}")
+            print("="*80 + "\n")
+            
+            # 检查是否成功提取到关键信息（至少需要 title 或 abstract）
+            if not extracted_metadata.get('title') and not extracted_metadata.get('abstract'):
+                # 如果没有提取到任何关键信息，说明 LLM 调用可能失败了
+                logger.error(f"Failed to extract metadata from PDF: {file.filename}")
+                # 删除已保存的 PDF 文件
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Failed to extract paper metadata. Please try uploading again or check if the PDF is valid."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error during metadata extraction: {e}", exc_info=True)
+            # 删除已保存的 PDF 文件
+            if os.path.exists(save_path):
+                os.remove(save_path)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to process PDF: {str(e)}. Please try again."
+            )
+        
+        # 优先使用提取的元数据，如果提取失败则使用用户输入或默认值
+        final_title = extracted_metadata.get('title') or title.strip() or "Untitled"
+        final_authors = extracted_metadata.get('authors') or ([a.strip() for a in authors.split(",") if a.strip()])
+        final_abstract = extracted_metadata.get('abstract') or abstract.strip()
+        
+        # 处理年份
+        final_year = extracted_metadata.get('year', '')
+        if final_year and len(final_year) == 4 and final_year.isdigit():
+            final_published = f"{final_year}-01-01"
+        else:
+            final_published = published.strip() or "1900-01-01"
+
+        # === 3. 写入数据库 ===
         paper= Paper(
             paper_id=paper_id,
-            title=title.strip()if title else "Untitled",
-            authors=[a.strip() for a in authors.split(",") if a.strip()],
-            abstract=abstract.strip(),
+            title=final_title,
+            authors=final_authors,
+            abstract=final_abstract,
             pdf_url=f"/api/data/cached_pdfs/uploads/{filename}",
-            published_date=published.strip(),
-            updated_date=published.strip(),
+            published_date=final_published,
+            updated_date=final_published,
             platform="upload",
             is_public=False,
             categories=[]
@@ -66,7 +239,7 @@ async def upload_pdf(
       #  if not success:
        #     logger.warning(f"Embedding generation failed for paper {paper_id}")
 
-        return paper_id
+        return {"paper_id": paper_id, "platform": "upload"}
 
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
