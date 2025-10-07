@@ -671,7 +671,7 @@ User query: "can you analyze the paper named BERT4Beam"
 Output:
 {
   "intent": "get_papers",
-  "refined_query": "BERT4Beam, BERT for Beam Search, neural machine translation",
+  "refined_query": "BERT4Beam",
   "num_papers": 1,
   "fields": {
       "authors": [],

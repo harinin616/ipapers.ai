@@ -25,7 +25,7 @@ def count_pubmed_papers():
     session = SessionLocal()
 
     try:
-        count = session.query(func.count(DBPaper.paper_id)).filter(DBPaper.platform == "pubmed").scalar()
+        count = session.query(func.count(DBPaper.paper_id)).filter(DBPaper.platform == "arxiv").scalar()
         print(f"Total records with platform='pubmed': {count}")
     except Exception as e:
         print(f"Error during count: {e}")

@@ -9,7 +9,6 @@ from app.services.conv_db_service import conv_db_service
 from app.services.conv_vector_search_service import conv_vector_search_service
 from app.services.conv_keyword_search_service import conv_keyword_search_service
 from app.services.conv_llm_service import conv_llm_service
-from app.services.metadata_filter_service import filter_papers_by_metadata
 from app.services.prompt import PROMPT
 from app.services.full_paper_service import analyze_full_papers
 from datetime import datetime
@@ -23,7 +22,7 @@ class ImprovedConversationalSearchService:
     1. Intent recognition: chat vs get papers
     2. Context understanding: extract and refine queries from conversation history
     """
-
+    logger.info(f"ImprovedConversationalSearchService initialized")
     def __init__(self):
         self.max_context_turns = 8  # Keep recent 8 conversation turns
         self.session_contexts = {}  # Store session contexts
@@ -74,7 +73,7 @@ class ImprovedConversationalSearchService:
                 intent_result = await self._analyze_intent_with_context(
                     query, conversation_history
                 )
-                logger.info(f"DEBUG: full_paper_analysis in intent_result: {intent_result.get('full_paper_analysis')} (type: {type(intent_result.get('full_paper_analysis'))})")
+
                 if intent_result["intent"] == "get_papers":
                     # User wants to get papers
                     return await self._handle_paper_request(
@@ -137,8 +136,9 @@ class ImprovedConversationalSearchService:
                 cleaned_response = cleaned_response.strip()
 
                 # Try to parse JSON
-                analysis = json.loads(cleaned_response)
-                return analysis
+                intent_result = json.loads(cleaned_response)
+                logger.info(f"Intent result: {intent_result}")
+                return intent_result
                 
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON parsing failed: {e}")
@@ -550,17 +550,13 @@ class ImprovedConversationalSearchService:
         session_id: str, 
         conversation_history: List[dict]
     ) -> dict:
-        """
-        Handle paper search requests, directly call search.py API
-        """
+
         try:
             refined_query = intent_result["refined_query"]
-            logger.info(f"Type of intent_result: {intent_result}")
 
             logger.info(f"Searching papers with refined query: {refined_query}")
 
             
-            # Perform the search directly using the conversational search logic
             query = intent_result.get("refined_query", "")
             fields = intent_result.get("fields", {}) or {}
             num_papers = intent_result.get("num_papers", "")
@@ -587,16 +583,11 @@ class ImprovedConversationalSearchService:
             
             # Determine if full paper analysis is requested
             full_paper_analysis_requested = intent_result.get("full_paper_analysis", "False") in ["True", "true", True]
-            logger.info(f"Is comparison query: {is_comparison}")
-            logger.info(f"Refined query: {query}")
-            logger.info(f"Comparison query: {comparison_query}")
-            logger.info(f"Comparison relation: {comparison_relation}")
-            logger.info(f"Comparison aspects: {comparison_aspects}")
-            
+
             # Check for effective filters
             has_effective_date = any(date_filters)
             has_effective_filters = bool(authors_filters) or has_effective_date or bool(platform_filters)
-            
+            logger.info(f"Has effective filtersssss: {has_effective_filters}")
             # Pre-fetch candidate IDs by metadata if effective
             allow_ids = None
             if has_effective_filters:
@@ -608,6 +599,24 @@ class ImprovedConversationalSearchService:
                     author_logic=author_logic,
                 )
                 allow_ids = set(candidates)
+                logger.info(f"Allow ids: {allow_ids}")
+                
+                # Debug: Print paper titles for allowed IDs
+                if allow_ids:
+                    logger.info(f"=== ALLOWED IDS DEBUG ===")
+                    logger.info(f"Total allowed IDs: {len(allow_ids)}")
+                    logger.info(f"Sample allowed IDs: {list(allow_ids)[:5]}")
+                    
+                    # Get paper titles for allowed IDs
+                    try:
+                        allowed_papers = await conv_db_service.get_papers_by_ids(list(allow_ids)[:10])  # Limit to first 10 for debugging
+                        # logger.info(f"Sample allowed paper titles:")
+                        for i, paper in enumerate(allowed_papers[:5]):
+                            logger.info(f"  {i+1}. [{paper.paper_id}] {paper.title}")
+                    except Exception as e:
+                        logger.error(f"Error fetching allowed paper titles: {e}")
+                    logger.info(f"=== END ALLOWED IDS DEBUG ===")
+                
                 if not allow_ids:
                     return {
                         "action": "results",
@@ -649,22 +658,7 @@ class ImprovedConversationalSearchService:
                 papers1 = await conv_db_service.get_papers_by_ids(list(combined_local_ids1))
                 papers2 = await conv_db_service.get_papers_by_ids(list(combined_local_ids2))
                 
-                # Apply metadata filtering to each list separately
-                papers1 = filter_papers_by_metadata(
-                    papers=papers1,
-                    authors_filters=authors_filters,
-                    date_filters=date_filters,
-                    platform_filters=platform_filters,
-                    author_logic=author_logic,
-                )
-                
-                papers2 = filter_papers_by_metadata(
-                    papers=papers2,
-                    authors_filters=authors_filters,
-                    date_filters=date_filters,
-                    platform_filters=platform_filters,
-                    author_logic=author_logic,
-                )
+                # Skip metadata filtering - already done in database via allow_ids
                 
                 # Remove duplicates from each list
                 def remove_duplicates(papers_list):
@@ -819,7 +813,7 @@ class ImprovedConversationalSearchService:
                     # Add timeout for large datasets to prevent hanging
                     paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
                         asyncio.gather(vec_task, keyword_task), 
-                        timeout=180.0  # 30 second timeout
+                        timeout=180.0 
                     )
                 except asyncio.TimeoutError:
                     logger.warning(f"Search timeout for query: '{query}' - this may indicate performance issues with large datasets")
@@ -882,17 +876,10 @@ class ImprovedConversationalSearchService:
                             "suggestions": ["Try different keywords", "Use more general terms", "Remove date filters for broader results"]
                         }
                 
-                # Get papers from database
+                # Get papers from database (already metadata-filtered via allow_ids)
                 papers = await conv_db_service.get_papers_by_ids(combined_local_ids)
                 
-                # Apply metadata filtering
-                papers = filter_papers_by_metadata(
-                    papers=papers,
-                    authors_filters=authors_filters,
-                    date_filters=date_filters,
-                    platform_filters=platform_filters,
-                    author_logic=author_logic,
-                )
+                # Skip metadata filtering - already done in database via allow_ids
                 
                 # Remove duplicates while preserving order
                 unique = []
@@ -906,10 +893,12 @@ class ImprovedConversationalSearchService:
                 papers = unique
                 
                 # Rerank papers
-                documents = [p.title + p.abstract for p in papers]
+                documents = [p.title + p.abstract for p in papers][:500]
+                logger.info(f"Documentsssssssss")
                 rerank = await conv_llm_service.get_rerank(documents=documents, query=query)
+                logger.info(f"Rerank:")
                 new_papers = [papers[idx] for idx in rerank]
-                
+                logger.info(f"New papers:")
                 # Apply num_papers filtering AFTER reranking but before formatting
                 num_papers = intent_result.get("num_papers", "")
                 if num_papers and isinstance(num_papers, (int, str)) and str(num_papers).isdigit():
