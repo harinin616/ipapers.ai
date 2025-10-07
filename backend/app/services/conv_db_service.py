@@ -2338,7 +2338,15 @@ class ConvDBService:
                 """)
                 res = await db.execute(sql_to, params)
                 rows = res.fetchall()
-                return [(row[0], row[1]) for row in rows]
+                result_tuples = [(row[0], row[1]) for row in rows]
+                
+                # Debug: Print keyword search results
+                logger.info(f"=== KEYWORD SEARCH DEBUG ===")
+                logger.info(f"Keyword search returned {len(result_tuples)} results")
+                logger.info(f"Sample keyword search results: {result_tuples[:5]}")
+                logger.info(f"=== END KEYWORD SEARCH DEBUG ===")
+                
+                return result_tuples
 
             except SQLAlchemyError as e:
                 logger.warning(f"to_tsquery failed, fallback to websearch_to_tsquery: {e}")
@@ -2366,7 +2374,15 @@ class ConvDBService:
                     """)
                     res = await db.execute(sql_web, params)
                     rows = res.fetchall()
-                    return [(row[0], row[1]) for row in rows]
+                    result_tuples = [(row[0], row[1]) for row in rows]
+                    
+                    # Debug: Print keyword search results (fallback)
+                    logger.info(f"=== KEYWORD SEARCH DEBUG (FALLBACK) ===")
+                    logger.info(f"Keyword search (fallback) returned {len(result_tuples)} results")
+                    logger.info(f"Sample keyword search results: {result_tuples[:5]}")
+                    logger.info(f"=== END KEYWORD SEARCH DEBUG (FALLBACK) ===")
+                    
+                    return result_tuples
                 except SQLAlchemyError as e2:
                     logger.error(f"DB error in keyword_search (fallback failed): {e2}")
                     return []
@@ -2528,8 +2544,7 @@ class ConvDBService:
         authors: list[str] | None = None,
         date_tokens: list[str] | None = None,
         platforms: list[str] | None = None,
-        author_logic: str = "AND",
-        limit: int = 5000,
+        author_logic: str = "AND"
     ) -> list[tuple[str, str]]:
         """
         Return list of (paper_id, platform) that satisfy metadata filters.
@@ -2548,8 +2563,7 @@ class ConvDBService:
 
         # Build SQL dynamically
         conditions = []
-        effective_limit = 20 if recent_flag else max(1, min(int(limit), 20000))
-        params: dict[str, object] = {"lim": effective_limit}
+        params = {}  # Initialize params dictionary
 
         # Authors EXISTS clause (AND/OR logic based on author_logic)
         if authors:
@@ -2758,6 +2772,9 @@ class ConvDBService:
 
         async for db in get_async_db():  # type: AsyncSession
             try:
+                # Add limit parameter - use a reasonable default for metadata filtering
+                params["lim"] = 10000  # Large limit for metadata filtering
+                
                 sql = sa.text(
                     f"""
                     SELECT p.paper_id, p.platform
@@ -2768,6 +2785,7 @@ class ConvDBService:
                     """
                 )
                 res = await db.execute(sql, params)
+                logger.info(f"ressssss: {res}")
                 rows = res.fetchall()
                 return [(row[0], row[1]) for row in rows]
             except SQLAlchemyError as e:

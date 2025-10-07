@@ -244,6 +244,13 @@ class ConvVectorSearchService:
                         paper_id = self.paper_ids[pos]
                         platform = self.paper_platforms[pos]
                         result_tuples.append((paper_id, platform))
+                    
+                    # Debug: Print vector search results
+                    logger.info(f"=== VECTOR SEARCH DEBUG ===")
+                    logger.info(f"Vector search returned {len(result_tuples)} results")
+                    logger.info(f"Sample vector search results: {result_tuples[:5]}")
+                    logger.info(f"=== END VECTOR SEARCH DEBUG ===")
+                    
                     return result_tuples
                 except Exception as e:
                     logger.error(f"Restricted vector search failed, falling back to full search: {e}")
@@ -259,6 +266,12 @@ class ConvVectorSearchService:
                     platform = self.paper_platforms[idx]
                     result_tuples.append((paper_id, platform))
                    
+            # Debug: Print vector search results (full search)
+            logger.info(f"=== VECTOR SEARCH DEBUG (FULL) ===")
+            logger.info(f"Vector search returned {len(result_tuples)} results")
+            logger.info(f"Sample vector search results: {result_tuples[:5]}")
+            logger.info(f"=== END VECTOR SEARCH DEBUG (FULL) ===")
+            
             logger.debug(f"Search query'{query}' found {len(result_tuples)} results.")
             return result_tuples
             
@@ -266,36 +279,12 @@ class ConvVectorSearchService:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
             
-    async def search(self, query: str, k: int = 80000, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
-            system_prompt = (
-                "You are a professional information-retrieval assistant. Given a user query, generate a concise and semantically faithful reformulation for vector search. The output should be a single line containing a few meaningful keywords or short phrases, separated by commas.\n\n"
-                "Requirements:\n\n"
-                "Stay semantically close to the original query\n\n"
-                "Avoid irrelevant or overly broad expansions\n\n"
-                "Be concise: a few keywords or short noun phrases only\n\n"
-                "Output only the result line, no explanation, no quotes, no numbering"
-            )
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": query}
-            ]
-            try:
-                response = await conv_llm_service.get_conversation_completion(
-                    messages=messages,
-                    stream=False,
-                    model=llm_service.query_model
-                )
-                reformulated = response.text.strip()
-                if not reformulated:
-                    logger.warning("LLM returned empty string; fallback to original query")
-                    reformulated = query
-            except Exception as e:
-                logger.error(f"LLM call failed ({e}); fallback to original query")
-                reformulated = query
+    async def search(self, query: str, k: int = 500, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
 
-            # 一半用原始查询，一半用重写后的查询
-#            k_half = k# // 2
-            #original_results = []#await self.vector_search(query, k=k_half)
+
+            reformulated = query
+
+            logger.info(f"Reformulated query: {reformulated}")
             reformulated_results = await self.vector_search(reformulated, k=k, allow_ids=allow_ids)
             
             # 合并结果并去重
