@@ -2318,15 +2318,58 @@ class ConvDBService:
                 in_filter = ""
                 params = {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit}
                 if allow_ids:
-                    # Build a VALUES table for allowed ids
-                    rows = list(allow_ids)
-                    values = ",".join([f"(:pid{i}, :plat{i})" for i in range(len(rows))])
-                    for i, (pid, plat) in enumerate(rows):
-                        params[f"pid{i}"] = pid
-                        params[f"plat{i}"] = plat
-                    allow_cte = f"WITH allowlist(paper_id, platform) AS (VALUES {values})"
-                    in_filter = "AND (p.paper_id, p.platform) IN (SELECT paper_id, platform FROM allowlist)"
 
+                    rows = list(allow_ids)
+                    num_rows = len(rows)
+
+                    if num_rows <= 15000:
+
+                        # Build a VALUES table for allowed ids
+                        rows = list(allow_ids)
+                        values = ",".join([f"(:pid{i}, :plat{i})" for i in range(len(rows))])
+                        for i, (pid, plat) in enumerate(rows):
+                            params[f"pid{i}"] = pid
+                            params[f"plat{i}"] = plat
+                        allow_cte = f"WITH allowlist(paper_id, platform) AS (VALUES {values})"
+                        in_filter = "AND (p.paper_id, p.platform) IN (SELECT paper_id, platform FROM allowlist)"
+                        print(f"Executing small allow_ids keyword search with {num_rows} entries using VALUES()")
+
+                    elif num_rows <= 100000:
+                        # --- Use ANY(:allow_array) ---
+                        combined_ids = [f"{pid}::{plat}" for pid, plat in rows]
+                        params["allow_array"] = combined_ids
+                        allow_cte = ""
+                        in_filter = "AND (p.paper_id || '::' || p.platform) = ANY(:allow_array)"
+                        print(f"Executing medium allow_ids keyword search with {num_rows} entries using ANY()")
+
+                    else:
+                        async with db.begin():
+                            await db.execute(sa.text("CREATE TEMP TABLE allowlist (paper_id TEXT, platform TEXT) ON COMMIT DROP"))
+
+                            insert_stmt = sa.text("INSERT INTO allowlist (paper_id, platform) VALUES (:pid, :plat)")
+
+                            # Batch insert in manageable chunks (for large allow_ids)
+                            batch_size = 10000
+                            for i in range(0, len(rows), batch_size):
+                                batch = rows[i:i + batch_size]
+                                await db.execute(insert_stmt, [{"pid": pid, "plat": plat} for pid, plat in batch])
+
+
+                            sql_to = sa.text("""
+                                SELECT p.paper_id, p.platform
+                                FROM papers p
+                                JOIN allowlist a ON p.paper_id = a.paper_id AND p.platform = a.platform
+                                WHERE p.tsv @@ to_tsquery(:cfg, unaccent(:q))
+                                ORDER BY ts_rank_cd(p.tsv, to_tsquery(:cfg, unaccent(:q))) DESC
+                                LIMIT :lim
+                            """)
+                            print(f"Executing large allow_ids keyword search by creating temp table with {num_rows} entries")
+                            res = await db.execute(sql_to, params)
+                            rows = res.fetchall()
+                            result_tuples = [(row[0], row[1]) for row in rows]
+                            return result_tuples
+
+                print(f"Executing keyword search with limit={limit}")
                 sql_to = sa.text(f"""
                     {allow_cte}
                     SELECT p.paper_id, p.platform

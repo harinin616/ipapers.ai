@@ -171,115 +171,104 @@ class ConvVectorSearchService:
             raise 
 
 
-    async def vector_search(self, query: str, k: int = 50, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
+    async def vector_search(
+        self, query: str, k: int = 50, allow_ids: Optional[set[Tuple[str, str]]] = None
+    ) -> List[Tuple[str, str]]:
         """
-        vector search by a certain query
-        
-        Returns:
-            List of tuples (paper_id, platform)
+        Vector search by query.
+        Returns: List of tuples (paper_id, platform)
         """
         try:
             logger.info(f"Starting vector search for query: '{query}' with k={k}")
-            
-            if self.index is None or self.index.ntotal == 0:
-                logger.warning("empty index!!!")
-                return []
-            
-            # get query embedding
-            query_embedding_list = await self.embed_texts([query])
-            
-            logger.info(f"Query embedding for '{query}' generated, shape: {query_embedding_list[0].shape if query_embedding_list else 'None'}")
 
+            if self.index is None or self.index.ntotal == 0:
+                logger.warning("Empty index!")
+                return []
+
+            # Step 1: Get query embedding
+            query_embedding_list = await self.embed_texts([query])
             if not query_embedding_list or query_embedding_list[0] is None:
-                 logger.error(f"Failed to get embedding for query: '{query}'")
-                 return []
-                 
-            query_embedding = query_embedding_list[0].reshape(1, -1) 
-            # If an allowlist is provided, restrict computation to only those IDs
+                logger.error(f"Failed to get embedding for query: '{query}'")
+                return []
+
+            query_embedding = query_embedding_list[0].reshape(1, -1).astype("float32")
+            logger.info(f"Query embedding ready, shape={query_embedding.shape}")
+
+            # Step 2: If allowlist provided, restrict to those IDs
             if allow_ids:
                 logger.info(f"Vector search: allow_ids provided with {len(allow_ids)} entries")
-                logger.info(f"Vector search: sample allow_ids: {list(allow_ids)[:3]}")
-                # Map allowed (paper_id, platform) to index positions
-                allowed_positions: List[int] = []
-                tuple_to_pos = {}
-                for pos, (pid, plat) in enumerate(zip(self.paper_ids, self.paper_platforms)):
-                    tuple_to_pos[(pid, plat)] = pos
-                
-                matched_count = 0
-                for tup in allow_ids:
-                    pos = tuple_to_pos.get(tup)
-                    if pos is not None:
-                        allowed_positions.append(pos)
-                        matched_count += 1
-                
-                logger.info(f"Vector search: {matched_count}/{len(allow_ids)} allow_ids matched in index")
+
+                # Map (paper_id, platform) -> FAISS index positions
+                tuple_to_pos = {
+                    (pid, plat): i for i, (pid, plat) in enumerate(zip(self.paper_ids, self.paper_platforms))
+                }
+                allowed_positions = [tuple_to_pos[tup] for tup in allow_ids if tup in tuple_to_pos]
 
                 if not allowed_positions:
                     logger.warning("Allowlist provided but none matched index; returning empty result")
                     return []
 
-                # Reconstruct vectors for allowed positions and compute scores manually
+                logger.info(f"{len(allowed_positions)} / {len(allow_ids)} allow_ids matched FAISS index")
+
+                allowed_positions_np = np.array(allowed_positions, dtype="int64")
+
+                # Try native FAISS filtering (if IVF type) but willnot work currently because we use IndexFlatIP
                 try:
-                    allowed_vecs = []
-                    for pos in allowed_positions:
-                        try:
-                            vec = self.index.reconstruct(pos)
-                            allowed_vecs.append(vec)
-                        except Exception:
-                            continue
-                    if not allowed_vecs:
-                        return []
-                    vecs = np.stack(allowed_vecs).astype('float32')
-                    # Normalize reconstructed vectors in case they are not unit-length
-                    vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
-                    # Dot product with query embedding
-                    scores = vecs @ query_embedding.squeeze(0)
-                    topk = min(k, scores.shape[0])
-                    top_indices = np.argpartition(-scores, topk - 1)[:topk]
-                    # Sort topk by score desc
-                    top_indices = top_indices[np.argsort(-scores[top_indices])]
+                    if "IVF" in type(self.index).__name__:
+                        sel = faiss.IDSelectorBatch(allowed_positions_np)
+                        params = faiss.SearchParametersIVF(sel=sel, nprobe=self.index.nprobe)
+                        scores, indices = self.index.search(query_embedding, k, params=params)
+                        logger.info(f"Vector search (filtered) returned {len(indices[0])} results")
+                    else:
+                        raise AttributeError("Index type does not support IDSelectorBatch")
 
-                    result_tuples = []
-                    for idx_local in top_indices:
-                        pos = allowed_positions[idx_local]
-                        paper_id = self.paper_ids[pos]
-                        platform = self.paper_platforms[pos]
-                        result_tuples.append((paper_id, platform))
-                    
-                    # Debug: Print vector search results
-                    logger.info(f"=== VECTOR SEARCH DEBUG ===")
-                    logger.info(f"Vector search returned {len(result_tuples)} results")
-                    logger.info(f"Sample vector search results: {result_tuples[:5]}")
-                    logger.info(f"=== END VECTOR SEARCH DEBUG ===")
-                    
-                    return result_tuples
                 except Exception as e:
-                    logger.error(f"Restricted vector search failed, falling back to full search: {e}")
-                    # Fall through to full-index search and filter
+                    logger.warning(f"IDSelector filtering failed ({e}); using fallback search")
 
-            # Default: full-index search
+                    allowed_vecs = np.stack(
+                        [self.index.reconstruct(pos) for pos in allowed_positions]
+                    ).astype("float32")
+                    allowed_vecs /= np.linalg.norm(allowed_vecs, axis=1, keepdims=True)
+
+                    temp_index = faiss.IndexFlatIP(self.index.d)
+                    temp_index.add(allowed_vecs)
+
+                    scores, local_indices = temp_index.search(query_embedding, k)
+                    indices = np.array([[allowed_positions[i] for i in local_indices[0]]])
+
+                # Collect filtered results and return immediately ✅
+                result_tuples = [
+                    (self.paper_ids[idx], self.paper_platforms[idx])
+                    for idx in indices[0]
+                    if 0 <= idx < len(self.paper_ids)
+                ]
+
+                logger.info(f"=== VECTOR SEARCH DEBUG (ALLOWLIST) ===")
+                logger.info(f"Scores sample: {scores[0][:5]}")
+                logger.info(f"Sample results: {result_tuples[:5]}")
+                logger.info(f"=== END VECTOR SEARCH DEBUG (ALLOWLIST) ===")
+
+                return result_tuples  # ✅ ensure function exits here
+
+            # Step 3: Default (full) FAISS search
             scores, indices = self.index.search(query_embedding, k)
+            result_tuples = [
+                (self.paper_ids[idx], self.paper_platforms[idx])
+                for idx in indices[0]
+                if 0 <= idx < len(self.paper_ids)
+            ]
 
-            result_tuples = []
-            for idx in indices[0]:
-                if idx >= 0 and idx < len(self.paper_ids):
-                    paper_id = self.paper_ids[idx]
-                    platform = self.paper_platforms[idx]
-                    result_tuples.append((paper_id, platform))
-                   
-            # Debug: Print vector search results (full search)
             logger.info(f"=== VECTOR SEARCH DEBUG (FULL) ===")
             logger.info(f"Vector search returned {len(result_tuples)} results")
             logger.info(f"Sample vector search results: {result_tuples[:5]}")
             logger.info(f"=== END VECTOR SEARCH DEBUG (FULL) ===")
-            
-            logger.debug(f"Search query'{query}' found {len(result_tuples)} results.")
+
             return result_tuples
-            
+
         except Exception as e:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
-            
+        
     async def search(self, query: str, k: int = 50, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
 
 
