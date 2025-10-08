@@ -807,6 +807,7 @@ class ImprovedConversationalSearchService:
                 
                 # Run vector and keyword search with timeout handling for large datasets
                 vec_task = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=allow_ids))
+                logger.info(f"Vector search task createddd")
                 keyword_task = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=allow_ids))
                 
                 try:
