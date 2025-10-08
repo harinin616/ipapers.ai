@@ -133,7 +133,7 @@ class ConvVectorSearchService:
         for paper in papers:
             paper_id = paper.paper_id
             # 确保获取platform属性，如果不存在则默认为"arxiv"
-            platform = getattr(paper, 'platform', 'arxiv')
+            platform = getattr(paper, 'platform')
             
             if (paper_id, platform) not in processed_paper_keys:
                 text = f"{paper.title} {paper.abstract or ''}".strip()
@@ -168,8 +168,9 @@ class ConvVectorSearchService:
              
         except Exception as e:
             logger.error(f"Error adding vectors to index or saving: {e}")
-            raise
-    
+            raise 
+
+
     async def vector_search(self, query: str, k: int = 50, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
         """
         vector search by a certain query
@@ -279,7 +280,7 @@ class ConvVectorSearchService:
             logger.error(f"Error searching index: {e}", exc_info=True)
             return []
             
-    async def search(self, query: str, k: int = 500, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
+    async def search(self, query: str, k: int = 50, allow_ids: Optional[set[Tuple[str, str]]] = None) -> List[Tuple[str, str]]:
 
 
             reformulated = query

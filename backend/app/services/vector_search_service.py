@@ -124,6 +124,8 @@ class VectorSearchService:
         # 使用元组(paper_id, platform)作为去重键
         processed_paper_keys = set((paper_id, platform) for paper_id, platform in zip(self.paper_ids, self.paper_platforms))
         
+        print(f"Index currently has {len(processed_paper_keys)} unique papers")
+
         texts_to_embed = []
         new_paper_ids = [] 
         new_paper_platforms = []
@@ -205,6 +207,8 @@ class VectorSearchService:
                     result_tuples.append((paper_id, platform))
             
             logger.debug(f"Search query'{query}' found {len(result_tuples)} results.")
+            logger.info(f"FAISS index currently holdssss {len(self.paper_ids)} papers.")
+
             return result_tuples
             
         except Exception as e:

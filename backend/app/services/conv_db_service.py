@@ -23,7 +23,7 @@ import re
 import sqlalchemy as sa
 logger = logging.getLogger(__name__)
 
-FTS_CONFIG = "simple"
+FTS_CONFIG = "english"
 
 class ConvDBService:
     """
@@ -2370,7 +2370,6 @@ class ConvDBService:
                         WHERE p.tsv @@ websearch_to_tsquery(:cfg, unaccent(:q))
                         {in_filter}
                         ORDER BY ts_rank_cd(p.tsv, websearch_to_tsquery(:cfg, unaccent(:q))) DESC
-                        LIMIT :lim
                     """)
                     res = await db.execute(sql_web, params)
                     rows = res.fetchall()
@@ -2567,72 +2566,51 @@ class ConvDBService:
 
         # Authors EXISTS clause (AND/OR logic based on author_logic)
         if authors:
-            if author_logic.upper() == "AND" and len(authors) > 1:
-                # AND logic: paper must have ALL authors
-                author_conditions = []
-                for idx, a in enumerate(authors):
-                    key = f"auth_{idx}"
-                    author_name = (a or '').strip()
-                    if not author_name:
-                        continue
-                        
-                    params[key] = author_name.lower()
-                    
-                    # Handle full names and partial names
-                    if ' ' in author_name:
-                        # Full name: use exact match or word boundary matching
-                        author_conditions.append(
-                            f"EXISTS (SELECT 1 FROM paper_authors pa JOIN authors au ON au.name = pa.author WHERE pa.paper_id = p.paper_id AND pa.platform = p.platform AND (lower(au.name) = :{key} OR lower(au.name) ~ :{key}_regex))"
-                        )
-                        # Create regex pattern that matches complete words only
-                        search_parts = author_name.split()
-                        regex_pattern = r'\y' + r'\y.*\y'.join(search_parts) + r'\y'
-                        params[f"{key}_regex"] = regex_pattern
-                    else:
-                        # Partial name: match exact word boundaries only (not substrings)
-                        author_conditions.append(
-                            f"EXISTS (SELECT 1 FROM paper_authors pa JOIN authors au ON au.name = pa.author WHERE pa.paper_id = p.paper_id AND pa.platform = p.platform AND (lower(au.name) = :{key} OR lower(au.name) LIKE :{key}_start OR lower(au.name) LIKE :{key}_end OR lower(au.name) LIKE :{key}_middle))"
-                        )
-                        # Use word boundaries to prevent substring matching
-                        params[f"{key}_start"] = f"{params[key]} %"  # First name
-                        params[f"{key}_end"] = f"% {params[key]}"    # Last name  
-                        params[f"{key}_middle"] = f"% {params[key]} %"  # Middle name
-                        
-                if author_conditions:
-                    conditions.append("(" + " AND ".join(author_conditions) + ")")
+            author_clauses = []
+            for idx, a in enumerate(authors):
+                author_name = (a or "").strip()
+                if not author_name:
+                    continue
+                key = f"auth_{idx}"
+                params[key] = author_name.lower()
+                
+                if ' ' in author_name:
+                    # Full name: use regex matching with Postgres word boundaries (\m start, \M end)
+                    search_parts = author_name.split()
+                    regex_pattern = r'\m' + r'.*\M'.join(search_parts) + r'\M'
+                    params[f"{key}_regex"] = regex_pattern
+                    author_clauses.append(
+                        f"""EXISTS (
+                                SELECT 1 FROM paper_authors pa
+                                JOIN authors au ON au.name = pa.author
+                                WHERE pa.paper_id = p.paper_id
+                                AND pa.platform = p.platform
+                                AND (lower(au.name) = :{key} OR lower(au.name) ~ :{key}_regex)
+                            )"""
+                    )
+                else:
+                    # Partial name: match using ILIKE with word boundaries
+                    author_clauses.append(
+                        f"""EXISTS (
+                                SELECT 1 FROM paper_authors pa
+                                JOIN authors au ON au.name = pa.author
+                                WHERE pa.paper_id = p.paper_id
+                                AND pa.platform = p.platform
+                                AND (lower(au.name) = :{key}
+                                    OR lower(au.name) ILIKE :{key}_start
+                                    OR lower(au.name) ILIKE :{key}_end
+                                    OR lower(au.name) ILIKE :{key}_middle)
+                            )"""
+                    )
+                    # ILIKE patterns for deterministic matching
+                    params[f"{key}_start"] = f"{params[key]} %"   # First name
+                    params[f"{key}_end"] = f"% {params[key]}"     # Last name
+                    params[f"{key}_middle"] = f"% {params[key]} %" # Middle name
+
+            if author_logic.upper() == "AND" and len(author_clauses) > 1:
+                conditions.append("(" + " AND ".join(author_clauses) + ")")
             else:
-                # OR logic: paper must have ANY of the authors
-                author_clauses = []
-                for idx, a in enumerate(authors):
-                    key = f"auth_{idx}"
-                    author_name = (a or '').strip()
-                    if not author_name:
-                        continue
-                        
-                    params[key] = author_name.lower()
-                    
-                    # Handle full names and partial names
-                    if ' ' in author_name:
-                        # Full name: use exact match or word boundary matching
-                        author_clauses.append(
-                            f"EXISTS (SELECT 1 FROM paper_authors pa JOIN authors au ON au.name = pa.author WHERE pa.paper_id = p.paper_id AND pa.platform = p.platform AND (lower(au.name) = :{key} OR lower(au.name) ~ :{key}_regex))"
-                        )
-                        # Create regex pattern that matches complete words only
-                        search_parts = author_name.split()
-                        regex_pattern = r'\y' + r'\y.*\y'.join(search_parts) + r'\y'
-                        params[f"{key}_regex"] = regex_pattern
-                    else:
-                        # Partial name: match exact word boundaries only (not substrings)
-                        author_clauses.append(
-                            f"EXISTS (SELECT 1 FROM paper_authors pa JOIN authors au ON au.name = pa.author WHERE pa.paper_id = p.paper_id AND pa.platform = p.platform AND (lower(au.name) = :{key} OR lower(au.name) LIKE :{key}_start OR lower(au.name) LIKE :{key}_end OR lower(au.name) LIKE :{key}_middle))"
-                        )
-                        # Use word boundaries to prevent substring matching
-                        params[f"{key}_start"] = f"{params[key]} %"  # First name
-                        params[f"{key}_end"] = f"% {params[key]}"    # Last name  
-                        params[f"{key}_middle"] = f"% {params[key]} %"  # Middle name
-                        
-                if author_clauses:
-                    conditions.append("(" + " OR ".join(author_clauses) + ")")
+                conditions.append("(" + " OR ".join(author_clauses) + ")")
 
         # Date conditions: OR across tokens; '&' splits into AND parts
         def parse_part(part: str, idx: int, subidx: int) -> tuple[str, dict[str, object]] | None:
@@ -2773,7 +2751,6 @@ class ConvDBService:
         async for db in get_async_db():  # type: AsyncSession
             try:
                 # Add limit parameter - use a reasonable default for metadata filtering
-                params["lim"] = 10000  # Large limit for metadata filtering
                 
                 sql = sa.text(
                     f"""
@@ -2781,12 +2758,19 @@ class ConvDBService:
                     FROM papers p
                     WHERE {where_sql}
                     {order_sql}
-                    LIMIT :lim
+
                     """
                 )
                 res = await db.execute(sql, params)
-                logger.info(f"ressssss: {res}")
+
+                logger.info(f"=== AUTHOR QUERY EXECUTION DEBUG ===")
+                logger.info(f"SQL Query: {sql}")
+                logger.info(f"Query Parameters: {params}")
                 rows = res.fetchall()
+                result_length = len(rows)
+                logger.info(f"RESULT LENGTH: {result_length}")
+                logger.info(f"Sample rows: {rows[:5] if rows else 'No rows'}")
+                logger.info(f"=== END AUTHOR QUERY DEBUG ===")
                 return [(row[0], row[1]) for row in rows]
             except SQLAlchemyError as e:
                 logger.error(f"DB error in get_candidate_ids_by_metadata: {e}")

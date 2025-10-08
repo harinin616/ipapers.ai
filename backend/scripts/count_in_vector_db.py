@@ -2,7 +2,7 @@ import faiss
 import pickle
 
 # Path to your faiss index file
-index_path = "/home/ec2-user/PMo/backend/data/faiss_index.index"
+index_path = "/home/ec2-user/PMo/backend/data/paper_index.faiss"
 
 # Load the index
 index = faiss.read_index(index_path)

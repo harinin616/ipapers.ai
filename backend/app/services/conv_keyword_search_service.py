@@ -4,10 +4,74 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 import logging
 from app.services.conv_db_service import conv_db_service
+import re
+import sqlalchemy as sa
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.db_service import get_async_db
+import logging
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
 class ConvKeywordSearchService:
+
+    async def keyword_search(
+            self,
+            query: str,
+            limit: int = 50,
+            similarity_threshold: float = 0.3,  # 0.3 ~ ~90% similarity
+        ) -> List[Tuple[str, str]]:
+            """
+            关键词检索，支持模糊匹配（pg_trgm similarity）
+            """
+            if not query or not query.strip():
+                return []
+
+            terms = re.split(r"\s+", query.strip())
+            processed_query = " & ".join(t for t in terms if t)
+            limit = max(1, min(int(limit), 1000))
+            print(f"keyword_search: query='{query}', processed='{processed_query}', limit={limit}")
+
+            async for db in get_async_db():  # type: AsyncSession
+                try:
+                    # 1️⃣ 尝试原 FTS
+                    sql_to = sa.text("""
+                        SELECT paper_id, platform
+                        FROM papers
+                        WHERE tsv @@ to_tsquery(:cfg, unaccent(:q))
+                        ORDER BY ts_rank_cd(tsv, to_tsquery(:cfg, unaccent(:q))) DESC
+                        LIMIT :lim
+                    """)
+                    res = await db.execute(sql_to, {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit})
+                    rows = res.fetchall()
+                    if rows:
+                        return [(row[0], row[1]) for row in rows]
+
+                    # 2️⃣ fallback: pg_trgm similarity
+                    sql_trgm = sa.text("""
+                        SELECT paper_id, platform
+                        FROM papers
+                        WHERE similarity(title, :q) > :sim_thresh
+                        ORDER BY similarity(title, :q) DESC
+                        LIMIT :lim
+                    """)
+                    res = await db.execute(sql_trgm, {"q": query, "sim_thresh": similarity_threshold, "lim": limit})
+                    rows = res.fetchall()
+                    return [(row[0], row[1]) for row in rows]
+
+                except SQLAlchemyError as e:
+                    logger.error(f"DB error in keyword_search: {e}", exc_info=True)
+                    return []
+                except Exception as e:
+                    logger.error("Unexpected error in keyword_search", exc_info=True)
+                    return []
+
+            return []
+
+
+
+
     async def search(self, query: str, limit: int = 8000, allow_ids: set[tuple[str, str]] | None = None) -> list[tuple[str, str]]:
         """
         使用PostgreSQL FTS功能进行关键词搜索。
