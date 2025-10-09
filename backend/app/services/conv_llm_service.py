@@ -400,7 +400,6 @@ class ConvLLMService:
         top_n=self.rerank_topn,
         return_documents=True
         )
-        logger.info(f"responseeeee: {response}")
         if response.status_code == HTTPStatus.OK:
             # Return the sorted indices from the results
             return [result['index'] for result in response.output['results']]

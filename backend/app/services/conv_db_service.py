@@ -2317,75 +2317,99 @@ class ConvDBService:
                 allow_cte = ""
                 in_filter = ""
                 params = {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit}
-                if allow_ids:
 
+
+                if allow_ids:
                     rows = list(allow_ids)
                     num_rows = len(rows)
+                    print(f"Creating allowlist temp table for {num_rows} allowed rows...")
+                    async with db.begin(): 
+                        # Create empty temp table with same structure as `papers`
+                        await db.execute(sa.text("""
+                            CREATE TEMP TABLE allowlist (LIKE papers INCLUDING ALL) ON COMMIT DROP;
+                        """))
 
-                    if num_rows <= 15000:
+                        # Insert in manageable chunks
+                        batch_size = 10000
+                        for i in range(0, len(rows), batch_size):
+                            batch = rows[i:i + batch_size]
+                            batch_params = [{"pid": pid, "plat": plat} for pid, plat in batch]
 
-                        # Build a VALUES table for allowed ids
-                        rows = list(allow_ids)
-                        values = ",".join([f"(:pid{i}, :plat{i})" for i in range(len(rows))])
-                        for i, (pid, plat) in enumerate(rows):
-                            params[f"pid{i}"] = pid
-                            params[f"plat{i}"] = plat
-                        allow_cte = f"WITH allowlist(paper_id, platform) AS (VALUES {values})"
-                        in_filter = "AND (p.paper_id, p.platform) IN (SELECT paper_id, platform FROM allowlist)"
-                        print(f"Executing small allow_ids keyword search with {num_rows} entries using VALUES()")
+                            # Insert using parameterized VALUES (safe, avoids syntax issues)
+                            value_placeholders = ", ".join(
+                                [f"(:pid{i}, :plat{i})" for i in range(len(batch))]
+                            )
+                            params = {}
+                            for j, (pid, plat) in enumerate(batch):
+                                params[f"pid{j}"] = pid
+                                params[f"plat{j}"] = plat
 
-                    elif num_rows <= 100000:
-                        # --- Use ANY(:allow_array) ---
-                        combined_ids = [f"{pid}::{plat}" for pid, plat in rows]
-                        params["allow_array"] = combined_ids
-                        allow_cte = ""
-                        in_filter = "AND (p.paper_id || '::' || p.platform) = ANY(:allow_array)"
-                        print(f"Executing medium allow_ids keyword search with {num_rows} entries using ANY()")
-
-                    else:
-                        async with db.begin():
-                            await db.execute(sa.text("CREATE TEMP TABLE allowlist (paper_id TEXT, platform TEXT) ON COMMIT DROP"))
-
-                            insert_stmt = sa.text("INSERT INTO allowlist (paper_id, platform) VALUES (:pid, :plat)")
-
-                            # Batch insert in manageable chunks (for large allow_ids)
-                            batch_size = 10000
-                            for i in range(0, len(rows), batch_size):
-                                batch = rows[i:i + batch_size]
-                                await db.execute(insert_stmt, [{"pid": pid, "plat": plat} for pid, plat in batch])
-
-
-                            sql_to = sa.text("""
-                                SELECT p.paper_id, p.platform
+                            insert_sql = sa.text(f"""
+                                INSERT INTO allowlist
+                                SELECT p.*
                                 FROM papers p
-                                JOIN allowlist a ON p.paper_id = a.paper_id AND p.platform = a.platform
-                                WHERE p.tsv @@ to_tsquery(:cfg, unaccent(:q))
-                                ORDER BY ts_rank_cd(p.tsv, to_tsquery(:cfg, unaccent(:q))) DESC
-                                LIMIT :lim
+                                JOIN (VALUES {value_placeholders}) AS v(paper_id, platform)
+                                ON p.paper_id = v.paper_id AND p.platform = v.platform;
                             """)
-                            print(f"Executing large allow_ids keyword search by creating temp table with {num_rows} entries")
-                            res = await db.execute(sql_to, params)
-                            rows = res.fetchall()
-                            result_tuples = [(row[0], row[1]) for row in rows]
-                            return result_tuples
+                            await db.execute(insert_sql, params)
+
+
+
+
+                        await db.execute(sa.text("""
+                            UPDATE allowlist
+                            SET tsv = to_tsvector(:cfg, unaccent(title || ' ' || abstract));
+                        """), {"cfg": FTS_CONFIG})
+
+
+
+                        print(f"Inserted {num_rows} rows into allowlist from papers.")
+
+                        sql_to = sa.text("""
+                            SELECT paper_id, platform
+                            FROM allowlist
+                            WHERE tsv @@ to_tsquery(:cfg, unaccent(:q))
+                            ORDER BY ts_rank_cd(tsv, to_tsquery(:cfg, unaccent(:q))) DESC
+                            LIMIT :lim;
+                        """)
+
+                        print("Executing keyword search on allowlist..........")
+                        preview_res = await db.execute(sa.text("SELECT paper_id, tsv FROM allowlist LIMIT 5;"))
+                        preview_rows = preview_res.fetchall()
+                        logger.info(f"=== TEMP TABLE allowlist PREVIEW ===")
+                        for r in preview_rows:
+                            logger.info(dict(r._mapping))  # show as dict for readability
+                        logger.info(f"=== END PREVIEW ===")
+
+
+
+                        res = await db.execute(sql_to, {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit})
+                        print("Executed keyword search on allowlist.", res)
+                        rows = res.fetchall()
+                        print("Executed keyword search on allowlist.", rows)
+
+                        result_tuples = [(row[0], row[1]) for row in rows]
+                        return result_tuples
+
+
 
                 print(f"Executing keyword search with limit={limit}")
                 sql_to = sa.text(f"""
                     {allow_cte}
-                    SELECT p.paper_id, p.platform
-                    FROM papers p
-                    WHERE p.tsv @@ to_tsquery(:cfg, unaccent(:q))
-                    {in_filter}
-                    ORDER BY ts_rank_cd(p.tsv, to_tsquery(:cfg, unaccent(:q))) DESC
+                    SELECT paper_id, platform
+                    FROM papers
+                    WHERE tsv @@ to_tsquery(:cfg, unaccent(:q))
+                    ORDER BY ts_rank_cd(tsv, to_tsquery(:cfg, unaccent(:q))) DESC
                     LIMIT :lim
                 """)
                 res = await db.execute(sql_to, params)
                 rows = res.fetchall()
+
                 result_tuples = [(row[0], row[1]) for row in rows]
                 
                 # Debug: Print keyword search results
-                logger.info(f"=== KEYWORD SEARCH DEBUG ===")
-                logger.info(f"Keyword search returned {len(result_tuples)} results")
+                logger.info(f"=== KEYWORD SEARCH DEBUG===")
+                logger.info(f"Keyword search returned {res} results")
                 logger.info(f"Sample keyword search results: {result_tuples[:5]}")
                 logger.info(f"=== END KEYWORD SEARCH DEBUG ===")
                 
