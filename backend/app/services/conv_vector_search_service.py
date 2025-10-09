@@ -223,7 +223,7 @@ class ConvVectorSearchService:
                         raise AttributeError("Index type does not support IDSelectorBatch")
 
                 except Exception as e:
-                    logger.warning(f"IDSelector filtering failed ({e}); using fallback search")
+                    logger.warning(f"IDSelector filtering failed ({e}); using other method of creating temp index")
 
                     allowed_vecs = np.stack(
                         [self.index.reconstruct(pos) for pos in allowed_positions]

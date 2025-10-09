@@ -805,49 +805,71 @@ class ImprovedConversationalSearchService:
                 # Regular search (non-comparison)
                 logger.info(f"Performing regular search for: '{query}'")
                 
-                # Run vector and keyword search with timeout handling for large datasets
-                vec_task = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=allow_ids))
-                logger.info(f"Vector search task createddd")
-                keyword_task = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=allow_ids))
+                # Check if this is a generic query (like "papers", "show papers", etc.)
+                generic_query_patterns = [
+                    "papers", "show papers", "list papers", "all papers", "get papers",
+                    "papers please", "show me papers", "give me papers", "display papers"
+                ]
+                is_generic_query = any(pattern in query.lower().strip() for pattern in generic_query_patterns)
                 
-                try:
-                    # Add timeout for large datasets to prevent hanging
-                    paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
-                        asyncio.gather(vec_task, keyword_task), 
-                        timeout=180.0 
-                    )
-                except asyncio.TimeoutError:
-                    logger.warning(f"Search timeout for query: '{query}' - this may indicate performance issues with large datasets")
-                    # Try fallback search without allow_ids if timeout occurs
-                    if allow_ids:
-                        logger.info("Attempting fallback search without metadata filters")
-                        try:
-                            vec_task_fallback = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=None))
-                            keyword_task_fallback = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=None))
-                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
-                                asyncio.gather(vec_task_fallback, keyword_task_fallback), 
-                                timeout=15.0
-                            )
-                        except asyncio.TimeoutError:
-                            logger.error("Fallback search also timed out")
-                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
-                        except Exception as e:
-                            logger.error(f"Error in fallback search: {e}")
-                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
+                if is_generic_query and allow_ids:
+                    # For generic queries with filters, return all papers from allow_ids
+                    logger.info(f"Generic query detected with filters - returning all papers from allow_ids")
+                    # Apply reasonable limit for generic queries to prevent performance issues
+                    max_generic_results = 100  # Reasonable limit for generic queries
+                    if len(allow_ids) > max_generic_results:
+                        logger.info(f"Generic query has {len(allow_ids)} papers, limiting to {max_generic_results} for performance")
+                        # Convert to list and take first max_generic_results
+                        combined_local_ids = list(allow_ids)[:max_generic_results]
                     else:
+                        combined_local_ids = list(allow_ids)
+                else:
+
+
+                    # Run vector and keyword search with timeout handling for large datasets
+                    vec_task = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=allow_ids))
+                    logger.info(f"Vector search task createddd")
+                    keyword_task = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=allow_ids))
+                    
+
+                    try:
+                        # Add timeout for large datasets to prevent hanging
+                        paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
+                            asyncio.gather(vec_task, keyword_task), 
+                            timeout=300.0 
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Search timeout for query: '{query}' - this may indicate performance issues with large datasets")
+                        # Try fallback search without allow_ids if timeout occurs
+                        if allow_ids:
+                            logger.info("Attempting fallback search without metadata filters")
+                            try:
+                                vec_task_fallback = asyncio.create_task(conv_vector_search_service.search(query=query, allow_ids=None))
+                                keyword_task_fallback = asyncio.create_task(conv_keyword_search_service.search(query=query, allow_ids=None))
+                                paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.wait_for(
+                                    asyncio.gather(vec_task_fallback, keyword_task_fallback), 
+                                    timeout=15.0
+                                )
+                            except asyncio.TimeoutError:
+                                logger.error("Fallback search also timed out")
+                                paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
+                            except Exception as e:
+                                logger.error(f"Error in fallback search: {e}")
+                                paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
+                        else:
+                            paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
+                    except Exception as e:
+                        logger.error(f"Error in vector/keyword search: {e}", exc_info=True)
                         paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
-                except Exception as e:
-                    logger.error(f"Error in vector/keyword search: {e}", exc_info=True)
-                    paper_id_platform_pairs, keyword_paper_id_platform_pairs = [], []
-                
-                # Combine results
-                combined_local_ids = set(paper_id_platform_pairs).union(set(keyword_paper_id_platform_pairs))
-                combined_local_ids = list(combined_local_ids)
-                
-                logger.info(f"Vector search returned {len(paper_id_platform_pairs)} results")
-                logger.info(f"Keyword search returned {len(keyword_paper_id_platform_pairs)} results")
-                logger.info(f"Combined results: {len(combined_local_ids)} unique papers")
-                
+                    
+                    # Combine results
+                    combined_local_ids = set(paper_id_platform_pairs).union(set(keyword_paper_id_platform_pairs))
+                    combined_local_ids = list(combined_local_ids)
+                    
+                    logger.info(f"Vector search returned {len(paper_id_platform_pairs)} results")
+                    logger.info(f"Keyword search returned {len(keyword_paper_id_platform_pairs)} results")
+                    logger.info(f"Combined results: {len(combined_local_ids)} unique papers")
+                    
                 if not combined_local_ids:
                     # For recent queries, try a broader search approach
                     is_recent_query = any(token.lower().strip() in ("recent", "latest") for token in date_filters)
