@@ -5,9 +5,9 @@ import logging
 import os
 import tempfile
 import time
-
+import shutil
 from typing import List, Dict, Optional
-from app.services.conv_db_service import conv_db_service
+from app.services.db_service import db_service
 from app.services.extract_info import paper_info_extractor
 from app.services.full_paper_analysis_prompt import FULL_PAPER_ANALYSIS_PROMPT
 from google import genai
@@ -119,7 +119,7 @@ async def download_pubmed_papers(papers: List[Dict], output_dir: str) -> List[st
             platform = paper.get("platform", "pubmed")
             
             # Get paper details from database
-            details = await conv_db_service.get_paper_by_id(paper_id, platform)
+            details = await db_service.get_paper_by_id(paper_id, platform)
             if not details:
                 logger.warning(f"No database entry found for PubMed paper {paper_id}")
                 continue
@@ -154,6 +154,7 @@ async def analyze_full_papers(papers: List[Dict], combined_query: str, reasoning
     """
     try:
         if not papers:
+            logger.warning("No papers provided for analysis")
             return {
                 "analysis": "No paper found to analyze",
                 "success": True,
@@ -206,7 +207,7 @@ async def analyze_full_papers(papers: List[Dict], combined_query: str, reasoning
         tmpdir = "files_to_analyze"
         
         # Ensure directory is empty before use
-        import shutil
+
         if os.path.exists(tmpdir):
             shutil.rmtree(tmpdir)
         os.makedirs(tmpdir)
@@ -219,7 +220,7 @@ async def analyze_full_papers(papers: List[Dict], combined_query: str, reasoning
                 try:
                     paper_id = paper.get("paper_id", "")
                     platform = paper.get("platform", "arxiv")
-                    details = await conv_db_service.get_paper_by_id(paper_id, platform)
+                    details = await db_service.get_paper_by_id(paper_id, platform)
                     if details:
                         url = paper_info_extractor.get_pdf_url(paper_id)
                         pdf_urls.append(url)

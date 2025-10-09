@@ -6,6 +6,7 @@ import json
 from app.services.pdf_service import pdf_service
 from app.models.paper import ConvPaperSearchRequest 
 from app.services.conv_db_service import conv_db_service
+from app.services.db_service import db_service
 from app.services.conv_vector_search_service import conv_vector_search_service
 from app.services.conv_keyword_search_service import conv_keyword_search_service
 from app.services.conv_llm_service import conv_llm_service
@@ -609,7 +610,7 @@ class ImprovedConversationalSearchService:
                     
                     # Get paper titles for allowed IDs
                     try:
-                        allowed_papers = await conv_db_service.get_papers_by_ids(list(allow_ids)[:10])  # Limit to first 10 for debugging
+                        allowed_papers = await db_service.get_papers_by_ids(list(allow_ids)[:10])  # Limit to first 10 for debugging
                         # logger.info(f"Sample allowed paper titles:")
                         for i, paper in enumerate(allowed_papers[:5]):
                             logger.info(f"  {i+1}. [{paper.paper_id}] {paper.title}")
@@ -655,8 +656,8 @@ class ImprovedConversationalSearchService:
                 logger.info(f"Found {len(combined_local_ids1)} papers for refined query, {len(combined_local_ids2)} papers for comparison query")
                 
                 # Get papers from database for each query separately
-                papers1 = await conv_db_service.get_papers_by_ids(list(combined_local_ids1))
-                papers2 = await conv_db_service.get_papers_by_ids(list(combined_local_ids2))
+                papers1 = await db_service.get_papers_by_ids(list(combined_local_ids1))
+                papers2 = await db_service.get_papers_by_ids(list(combined_local_ids2))
                 
                 # Skip metadata filtering - already done in database via allow_ids
                 
@@ -900,7 +901,7 @@ class ImprovedConversationalSearchService:
                         }
                 
                 # Get papers from database (already metadata-filtered via allow_ids)
-                papers = await conv_db_service.get_papers_by_ids(combined_local_ids)
+                papers = await db_service.get_papers_by_ids(combined_local_ids)
                 
                 # Skip metadata filtering - already done in database via allow_ids
                 
@@ -1144,7 +1145,7 @@ class ImprovedConversationalSearchService:
             logger.info(f"Starting paper analysis for {paper_id} (platform: {platform})")
             
             # Get paper details from database
-            paper_details = await conv_db_service.get_paper_by_id(paper_id, platform)
+            paper_details = await db_service.get_paper_by_id(paper_id, platform)
             if not paper_details:
                 return {
                     "analysis": "",
