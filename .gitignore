@@ -22,3 +22,4 @@ ipap
 backend/pub_csv
 backend/venv
 backend/scripts/pubmed_csvs
+backend/scripts/arxiv_search_page.html

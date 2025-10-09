@@ -2644,7 +2644,7 @@ class ConvDBService:
                 if ' ' in author_name:
                     # Full name: use regex matching with Postgres word boundaries (\m start, \M end)
                     search_parts = author_name.split()
-                    regex_pattern = r'\m' + r'.*\M'.join(search_parts) + r'\M'
+                    regex_pattern = r'\y' + r'.*\y'.join(search_parts) + r'\y'
                     params[f"{key}_regex"] = regex_pattern
                     author_clauses.append(
                         f"""EXISTS (
