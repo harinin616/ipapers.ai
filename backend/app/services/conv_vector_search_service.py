@@ -38,13 +38,15 @@ class ConvVectorSearchService:
     def load_index(self):
         """Load FAISS index and ID list from disk if they exist"""
         try:
+            logger.info(f"Loading FAISS index from {self.index_path} and IDs from {self.paper_ids_path}")
             if os.path.exists(self.index_path) and os.path.exists(self.paper_ids_path):
+                logger.info("Index and ID files found, loading...")
                 self.index = faiss.read_index(self.index_path)
-               
+                logger.info(f"Loaded FAISS index from {self.index_path}")
                 # Load paper_ids
                 with open(self.paper_ids_path, 'rb') as f:
                     self.paper_ids = pickle.load(f)
-                
+                logger.info(f"Loaded {len(self.paper_ids)} paper IDs from {self.paper_ids_path}")
                 # Load paper_platforms
                 if os.path.exists(self.paper_platforms_path):
                     with open(self.paper_platforms_path, 'rb') as f:
@@ -52,7 +54,7 @@ class ConvVectorSearchService:
                 else:
                     # If platforms file doesn't exist, fill with "arxiv" as default
                     self.paper_platforms = ["arxiv"] * len(self.paper_ids)
-                
+                logger.info(f"Loaded {len(self.paper_platforms)} paper platforms from {self.paper_platforms_path}")
                 # Ensure both lists have the same length
                 if len(self.paper_ids) != len(self.paper_platforms):
                     logger.warning(f"Mismatch between paper_ids ({len(self.paper_ids)}) and platforms ({len(self.paper_platforms)}) count")
@@ -67,6 +69,7 @@ class ConvVectorSearchService:
                 if self.index.ntotal != len(self.paper_ids):
                     logger.warning("Index vector count and ID count mismatch")
             else:
+                logger.info("Index or ID files not found, creating new index")
                 self.create_new_index()
         except Exception as e:
             logger.error(f"Error loading index: {e}. Creating new index.")

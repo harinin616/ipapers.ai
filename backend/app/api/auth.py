@@ -7,7 +7,6 @@ from app.services.chat_service import chat_service
 
 router = APIRouter()
 
-GOOGLE_CLIENT_ID = "500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com"
 
 class TokenPayload(BaseModel):
     credential: str
