@@ -1,1 +1,1 @@
-/home/ec2-user/miniconda3/bin/python fetch_arxiv_papers.py --days 100000 > logs/output.log 2>&1 &
+/home/ec2-user/miniconda3/envs/pmo311/bin/python fetch_arxiv_papers.py --days 5 > logs/output.log 2>&1 &
