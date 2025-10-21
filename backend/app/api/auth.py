@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import requests
 from app.services.db_service import db_service
 import uuid
+import os
 from app.services.chat_service import chat_service
 
 router = APIRouter()
@@ -11,6 +12,7 @@ router = APIRouter()
 class TokenPayload(BaseModel):
     credential: str
 
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 @router.post("/google-login")
 async def google_login(request: Request, payload: TokenPayload):

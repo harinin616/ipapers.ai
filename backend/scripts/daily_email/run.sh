@@ -10,4 +10,4 @@ if [ $DAY_OF_WEEK -eq 6 ] || [ $DAY_OF_WEEK -eq 7 ]; then
 fi
 
 # It's a weekday (Monday-Friday) - run the script
-~/miniconda3/bin/python /home/ec2-user/PMo/backend/scripts/daily_email/send_daily_to_subscribers.py
+~/miniconda3/envs/pmo311/bin/python /home/ec2-user/PMo/backend/scripts/daily_email/send_daily_to_subscribers.py

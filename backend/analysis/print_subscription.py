@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app.models.db_models import DBEmailList
 
 # 1) 用字符串保存你的数据库连接 URL
-DATABASE_URL = 'postgresql://postgres:1@localhost:5432/dlmonitor'
+DATABASE_URL = 'postgresql://postgres:yourpass@localhost:5432/dlmonitor'
 
 def main():
     # 2) 用字符串创建 Engine

@@ -37,9 +37,13 @@ class VectorSearchService:
     
     def load_index(self):
         """Load FAISS index and ID list from disk if they exist"""
+        import gc
+        gc.collect()
+        
         try:
             if os.path.exists(self.index_path) and os.path.exists(self.paper_ids_path):
-                self.index = faiss.read_index(self.index_path)
+                # self.index = faiss.read_index(self.index_path)
+                self.index = faiss.read_index(self.index_path, faiss.IO_FLAG_MMAP | faiss.IO_FLAG_READ_ONLY)
                
                 # Load paper_ids
                 with open(self.paper_ids_path, 'rb') as f:
