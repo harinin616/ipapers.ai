@@ -4,6 +4,7 @@
 frontend/node_modules/
 frontend/dist/
 backend/data/
+backend/data_backup/
 backend/logs/
 backend/arxiv_search_page.html
 backend/scripts/daily_feed/data/

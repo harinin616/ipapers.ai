@@ -10,7 +10,7 @@
 
     <!-- Papers Sections Container -->
     <div class="papers-container">
-      <!-- Recent Papers List -->
+      
       <div class="recent-papers">
         <h2>Recent Papers</h2>
         
@@ -26,7 +26,7 @@
           <PaperCard v-for="paper in papers" :key="paper.paper_id" :paper="paper" />
         </div>
         
-        <!-- Load More button for Recent Papers -->
+        
         <div v-if="papers.length > 0" class="section-load-more">
           <button 
             v-if="hasMorePapers" 

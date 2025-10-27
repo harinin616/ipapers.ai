@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import List, Optional, Union, Tuple
 from sqlalchemy.future import select
-from sqlalchemy import func, text, update, delete, insert, and_, or_
+from sqlalchemy import func, text, update, delete, insert, and_, or_, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
@@ -524,46 +524,62 @@ class DBService:
 
     
     
-    async def get_recent_papers(self, limit: int = 30, keyword: str = None, offset: int = 0) -> List[Paper]:
-        """
-        get recent papers from database
-        """
-    
-        papers = []
-        async for db in get_async_db():
-            # Build base query
 
-            query = (select(DBPaper)
-                .options(selectinload(DBPaper.authors), selectinload(DBPaper.categories))
-                .where(sa.cast(DBPaper.published_date, Date) <= func.current_date())
-                .order_by(DBPaper.published_date.desc())
+    async def get_recent_papers(self, limit: int = 30, keyword: str = None, offset: int = 0) -> List[Paper]:
+        async for db in get_async_db():
+            # 第一步：纯轻量列（可 Index-Only Scan）
+            cols = (
+                DBPaper.paper_id, DBPaper.platform,
+                DBPaper.title, DBPaper.pdf_url, DBPaper.published_date
+            )
+            conditions = [
+                DBPaper.platform != "upload",
+                DBPaper.published_date.isnot(None),
+                DBPaper.published_date <= func.now(),
+            ]
+            if keyword:
+                conditions.append(DBPaper.title.ilike(f"%{keyword}%"))
+
+            base = (
+                select(*cols)
+                .where(*conditions)
+                .order_by(DBPaper.published_date.desc(), DBPaper.paper_id.desc())
                 .limit(limit).offset(offset)
             )
-            
-            # Add keyword filter if provided
-            if keyword:
-                query = query.where(DBPaper.title.ilike(f"%{keyword}%"))
-            
-            result = await db.execute(query)
-            db_papers = result.scalars().all()
-            
-            for db_paper in db_papers:
-                if db_paper.platform == "upload":
-                    logger.info(f"Paper {db_paper.paper_id} is uploaded, skipping")
+            rows = (await db.execute(base)).all()
+            if not rows:
+                return []
+
+            keys = [(r.paper_id, r.platform) for r in rows]
+
+            # 第二步：仅把这 batch 的对象连同作者/分类取回
+            q2 = (
+                select(DBPaper)
+                .options(selectinload(DBPaper.authors), selectinload(DBPaper.categories))
+                .where(tuple_(DBPaper.paper_id, DBPaper.platform).in_(keys))
+            )
+            objs = (await db.execute(q2)).scalars().all()
+            mp = {(o.paper_id, o.platform): o for o in objs}
+
+            # 按第一步顺序组装返回
+            out: List[Paper] = []
+            for r in rows:
+                p = mp.get((r.paper_id, r.platform))
+                if not p:
                     continue
-                papers.append(Paper(
-                    paper_id=db_paper.paper_id,
-                    title=db_paper.title,
-                    authors=[author.name for author in db_paper.authors],
-                    abstract=db_paper.abstract,
-                    categories=[category.name for category in db_paper.categories],
-                    pdf_url=db_paper.pdf_url.replace("http://", "https://"),
-                    published_date=db_paper.published_date,
-                    updated_date=db_paper.updated_date,
-                    platform=paper_info_extractor.extract_platform(db_paper.paper_id)
+                out.append(Paper(
+                    paper_id=p.paper_id,
+                    title=p.title,
+                    authors=[a.name for a in p.authors],
+                    abstract=p.abstract,
+                    categories=[c.name for c in p.categories],
+                    pdf_url=p.pdf_url.replace("http://", "https://"),
+                    published_date=p.published_date,
+                    updated_date=p.updated_date,
+                    platform=p.platform,
                 ))
-        
-        return papers
+            return out
+
     
     
     async def count_papers(self) -> int:

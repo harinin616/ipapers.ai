@@ -224,7 +224,7 @@ export default defineComponent({
         ) {
           window.google.accounts.id.initialize({
             client_id:
-              '500313985236-28j5sqcq0rte1eebccl6cs6k8f3rag3q.apps.googleusercontent.com',
+              '771067338917-gv0hiqa3vdjap5b471jdh4gemo1usa7s.apps.googleusercontent.com',
             callback: (response: any) => {
          
               fetch('https://ipapers.ai/api/auth/google-login', {

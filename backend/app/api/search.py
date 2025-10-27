@@ -27,17 +27,19 @@ async def search_papers(search_request: PaperSearchRequest):
         
         vec_task   = asyncio.create_task(vector_search_service.search(query=search_request.query))
         #arxiv_task = asyncio.create_task(arxivsearch_service.search(query=search_request.query))
-        keyword_task= asyncio.create_task(keyword_search_service.search(query=search_request.query))
+        
+        #keyword_task= asyncio.create_task(keyword_search_service.search(query=search_request.query))
 
 
-        paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.gather(vec_task, keyword_task)
+        #paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.gather(vec_task, keyword_task)
+        paper_id_platform_pairs = await vec_task
         #arxiv_papers, 
     
-        print(keyword_paper_id_platform_pairs)
+        #print(keyword_paper_id_platform_pairs)
 
         # --- 将本地的召回结果ID进行高效融合 ---
         # 使用集合(set)的并集操作，可以自动合并和去重
-        combined_local_ids = set(paper_id_platform_pairs).union(set(keyword_paper_id_platform_pairs))
+        combined_local_ids = set(paper_id_platform_pairs)#.union(set(keyword_paper_id_platform_pairs))
         # 将集合转换为列表
         combined_local_ids = list(combined_local_ids)
 
@@ -45,7 +47,7 @@ async def search_papers(search_request: PaperSearchRequest):
             return PaperSearchResponse(results=[], count=0)
         
         logger.info(f"Found {len(paper_id_platform_pairs)} paper IDs from vector search")
-        logger.info(f"Found {len(keyword_paper_id_platform_pairs)} paper IDs from keyword search")
+        #logger.info(f"Found {len(keyword_paper_id_platform_pairs)} paper IDs from keyword search")
         logger.info(f"Total unique local IDs to fetch: {len(combined_local_ids)}")
         #logger.info(f"Found {len(arxiv_papers)} papers from arXiv search")
 

@@ -75,6 +75,13 @@ class DBPaper(Base):
 
         # 2) 标题 trigram 索引：GIN(title gin_trgm_ops) —— 前缀/模糊/相似匹配
         Index("ix_papers_title_trgm", sa.text("title gin_trgm_ops"), postgresql_using="gin"),
+        Index(
+            "ix_papers_recent_desc_nonupload",
+            sa.text("published_date DESC"),
+            sa.text("paper_id DESC"),  # 作为稳定次序，避免同日并列导致抖动
+            postgresql_where=sa.text("platform <> 'upload' AND published_date IS NOT NULL"),
+            postgresql_using="btree",
+        ),
     )
 
 
