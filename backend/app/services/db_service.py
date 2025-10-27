@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import List, Optional, Union, Tuple
 from sqlalchemy.future import select
-from sqlalchemy import func, text, update, delete, insert, and_, or_, tuple_
+from sqlalchemy import func, text, update, delete, insert, and_, or_, tuple_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
@@ -582,15 +582,24 @@ class DBService:
 
     
     
+
     async def count_papers(self) -> int:
-        """
-        count total papers in database
-        """
         async for db in get_async_db():
-            result = await db.execute(select(func.count()).select_from(DBPaper))
-            count = result.scalar_one()
-            return count
-        return 0
+            v = (await db.execute(text(
+                "SELECT total_count FROM public.paper_counters WHERE id=1"
+            ))).scalar()
+            if v is not None:
+                return int(v)
+            # 兜底：计数表丢了或未初始化时，紧急回退一次
+            v = (await db.execute(text("SELECT COUNT(*) FROM public.papers"))).scalar()
+            # 同步写回（防止并发冲突可忽略失败）
+            await db.execute(text("""
+                INSERT INTO public.paper_counters(id, total_count)
+                VALUES (1, :v)
+                ON CONFLICT (id) DO UPDATE SET total_count = EXCLUDED.total_count
+            """), {"v": int(v)})
+            await db.commit()
+            return int(v)
     
     async def click_paper(self, paper_id: str, platform: str = "arxiv") -> bool:
         """
