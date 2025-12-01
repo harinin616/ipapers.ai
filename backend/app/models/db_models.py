@@ -56,34 +56,57 @@ class DBPaper(Base):
     updated_date = Column(DateTime, nullable=True)
     click_count = Column(Integer, nullable=False, default=0)
     embedding = Column(Vector(768), nullable=True)
+
+    # 已有：全文搜索 tsv
+    tsv = Column(TSVECTOR, nullable=False)
+
+    # ⭐ 新增：供 pg_trgm 使用的搜索字段（title + abstract）
+    search_text = Column(Text, nullable=True)
+
     authors = relationship(
         "DBAuthor", 
-        secondary=paper_authors, 
+        secondary="paper_authors", 
         backref="papers",
-        order_by=paper_authors.c.author_order
+        order_by="paper_authors.c.author_order",
     )
-    tsv = Column(TSVECTOR, nullable=False) 
-    
-    categories = relationship("DBCategory", secondary=paper_categories, backref="papers")
-    # ★ 新增：关联到评论
-    comments   = relationship("DBComment", secondary='paper_comments', back_populates="papers")
+
+    categories = relationship("DBCategory", secondary="paper_categories", backref="papers")
+
+    # ★ 关联到评论
+    comments = relationship("DBComment", secondary="paper_comments", back_populates="papers")
+
     def __repr__(self):
         return f"<Paper {self.paper_id} ({self.platform}): {self.title}>"
+
     __table_args__ = (
         # 1) 全文索引：GIN(tsv)
         Index("ix_papers_tsv", "tsv", postgresql_using="gin"),
 
-        # 2) 标题 trigram 索引：GIN(title gin_trgm_ops) —— 前缀/模糊/相似匹配
-        Index("ix_papers_title_trgm", sa.text("title gin_trgm_ops"), postgresql_using="gin"),
+        # 2) 标题 trigram 索引：GIN(title gin_trgm_ops)
+        Index(
+            "ix_papers_title_trgm",
+            sa.text("title gin_trgm_ops"),
+            postgresql_using="gin",
+        ),
+
+        # 3) ⭐ 新增：search_text trigram 索引
+        Index(
+            "ix_papers_search_text_trgm",
+            sa.text("search_text gin_trgm_ops"),
+            postgresql_using="gin",
+        ),
+
+        # 4) 最近论文排序索引
         Index(
             "ix_papers_recent_desc_nonupload",
             sa.text("published_date DESC"),
-            sa.text("paper_id DESC"),  # 作为稳定次序，避免同日并列导致抖动
-            postgresql_where=sa.text("platform <> 'upload' AND published_date IS NOT NULL"),
+            sa.text("paper_id DESC"),  # 稳定次序
+            postgresql_where=sa.text(
+                "platform <> 'upload' AND published_date IS NOT NULL"
+            ),
             postgresql_using="btree",
         ),
     )
-
 
 class DBAuthor(Base):
     """Paper author database model"""

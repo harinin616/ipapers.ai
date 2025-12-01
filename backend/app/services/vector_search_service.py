@@ -26,7 +26,7 @@ class VectorSearchService:
         self.paper_platforms = []
         
         self.project_root = Path(__file__).parent.parent.parent
-        self.data_dir = self.project_root / "data"
+        self.data_dir = self.project_root / "data_backup"
         self.index_path = str(self.data_dir / "paper_index.faiss")
         self.paper_ids_path = str(self.data_dir / "paper_ids.pkl")
         self.paper_platforms_path = str(self.data_dir / "paper_platforms.pkl")

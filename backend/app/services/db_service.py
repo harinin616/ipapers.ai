@@ -11,6 +11,9 @@ from datetime import datetime, timezone
 from sqlalchemy import distinct
 from sqlalchemy import Date, func
 
+
+
+
 from app.models.paper import Paper
 from app.models.db_models import DBPaper, DBAuthor, DBCategory, DBUser, DBSession, DBMessage, paper_authors,DBUserFile, DBEmailList, DBUserTopic,DBFolder,paper_categories,paper_authors,DBSharedFolder
 from app.models.db_models import DBComment,shared_folder_comments
@@ -2376,61 +2379,213 @@ class DBService:
 
         return False    # 理论上不会走到这里
     
+
+
+    
+   # async def keyword_search(
+    #    self,
+   #     query: str,
+    #    limit: int = 50,
+    #) -> List[Tuple[str, str]]:
+     #   """
+      #  关键词检索（基于 GIN(tsv)）
+   #     - 拆空白并用 AND 连接：'a b' -> 'a & b'
+    #    - 主路径：to_tsquery(:cfg, unaccent(:q))
+     #   - 兜底：websearch_to_tsquery(:cfg, unaccent(:q))
+      #  """
+       # if not query or not query.strip():
+        #    return []
+
+        # AND 形式（to_tsquery 语法）
+#        terms = re.split(r"\s+", query.strip())
+ #       processed_query = " & ".join(t for t in terms if t)
+  #      limit = max(1, min(int(limit), 1000))
+ #       print(f"keyword_search: query='{query}', processed='{processed_query}', limit={limit}")
+
+  #      async for db in get_async_db():  # type: AsyncSession
+   #         try:
+                # 主路径：配置使用 simple，并与 tsv 一样走 unaccent
+    #            sql_to = sa.text("""
+     #               SELECT paper_id, platform
+      #              FROM papers
+       #             WHERE tsv @@ to_tsquery(:cfg, unaccent(:q))
+        #            ORDER BY ts_rank_cd(tsv, to_tsquery(:cfg, unaccent(:q))) DESC
+         #           LIMIT :lim
+    #            """)
+     #           res = await db.execute(sql_to, {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit})
+      #          rows = res.fetchall()
+       #         return [(row[0], row[1]) for row in rows]
+
+  #          except SQLAlchemyError as e:
+   #             logger.warning(f"to_tsquery failed, fallback to websearch_to_tsquery: {e}")
+    #            try:
+ #                   sql_web = sa.text("""
+  #                      SELECT paper_id, platform
+   #                     FROM papers
+    #                    WHERE tsv @@ websearch_to_tsquery(:cfg, unaccent(:q))
+     #                   ORDER BY ts_rank_cd(tsv, websearch_to_tsquery(:cfg, unaccent(:q))) DESC
+      #                  LIMIT :lim
+       #             """)
+#                    res = await db.execute(sql_web, {"cfg": FTS_CONFIG, "q": query, "lim": limit})
+ #                   rows = res.fetchall()
+  #                  return [(row[0], row[1]) for row in rows]
+   #             except SQLAlchemyError as e2:
+    #                logger.error(f"DB error in keyword_search (fallback failed): {e2}")
+     #               return []
+      #      except Exception as e:
+       #         logger.error("Unexpected error in keyword_search", exc_info=True)
+        #        return []
+
+    #    return []
+
+
+
+    # 假设你原来有这个
+    # from .db import get_async_db, AsyncSession
+    # from .config import FTS_CONFIG   # 现在不需要 FTS_CONFIG 了
+
+    #async def keyword_search(
+      #  self,
+     #   query: str,
+    #    limit: int = 50,
+   # ) -> List[Tuple[str, str]]:
+      #  """
+      #  关键词检索（基于 pg_trgm / search_text）
+     #   - 使用 trigram 相似度，支持简单 typo（如 'randan walk' ≈ 'random walk'）
+    #    - 依赖：
+          #  - papers.search_text 列
+        #    - GIN(search_text gin_trgm_ops) 索引
+         #   - CREATE EXTENSION pg_trgm
+       # """
+        #if not query or not query.strip():
+         #   return []
+
+        #q = query.strip()
+        #limit = max(1, min(int(limit), 1000))
+        #print(f"keyword_search(trgm): query='{q}', limit={limit}")
+
+       # async for db in get_async_db():  # type: AsyncSession
+      #      try:
+                # 可选：设置相似度阈值（决定 `%` 操作符的匹配标准）
+           #     await db.execute(sa.text("SET pg_trgm.similarity_threshold = 0.3"))
+
+          #      sql = sa.text("""
+               #     SELECT paper_id, platform
+              #      FROM papers
+             #       WHERE search_text % :q
+            #        ORDER BY similarity(search_text, :q) DESC
+           #         LIMIT :lim
+          #      """)
+         #       res = await db.execute(sql, {"q": q, "lim": limit})
+              #  rows = res.fetchall()
+
+                # 如果你想兜底（避免某些很奇怪的 query 完全空结果），可以加一个 fallback：
+             #   if not rows:
+                    # 再退一步，用 ILIKE 包含匹配
+            #        sql_fallback = sa.text("""
+           #             SELECT paper_id, platform
+          #              FROM papers
+         #               WHERE search_text ILIKE '%' || :q || '%'
+        #                ORDER BY similarity(search_text, :q) DESC
+       #                 LIMIT :lim
+      #              """)
+    #                res2 = await db.execute(sql_fallback, {"q": q, "lim": limit})
+     #               rows = res2.fetchall()
+
+   #             return [(row[0], row[1]) for row in rows]
+
+  #          except SQLAlchemyError as e:
+     #           logger.error(f"DB error in keyword_search(trgm): {e}", exc_info=True)
+    #            return []
+   #         except Exception as e:
+  #              logger.error("Unexpected error in keyword_search(trgm)", exc_info=True)
+ #               return []
+#
+    #    return []
+    
+
     async def keyword_search(
         self,
         query: str,
         limit: int = 50,
     ) -> List[Tuple[str, str]]:
         """
-        关键词检索（基于 GIN(tsv)）
-        - 拆空白并用 AND 连接：'a b' -> 'a & b'
-        - 主路径：to_tsquery(:cfg, unaccent(:q))
-        - 兜底：websearch_to_tsquery(:cfg, unaccent(:q))
+        关键词检索（极简 + 宽泛短路）
+
+        策略：
+        1) 先判断是否“过于宽泛”的单词，是的话直接 return []，不查库。
+        2) 否则：
+        - 短 phrase（<=3 词，长度<=40）：title ILIKE '%phrase%'，按 published_date DESC 排。
+        - 其它：title trigram 相似度查询（pg_trgm），按 similarity 排。
+        不做任何 ILIKE 兜底。
         """
         if not query or not query.strip():
             return []
 
-        # AND 形式（to_tsquery 语法）
-        terms = re.split(r"\s+", query.strip())
-        processed_query = " & ".join(t for t in terms if t)
+        q_raw = query.strip()
+        q = " ".join(q_raw.split())  # 压缩多余空格
         limit = max(1, min(int(limit), 1000))
-        print(f"keyword_search: query='{query}', processed='{processed_query}', limit={limit}")
+        print(f"keyword_search(mixed-fast-no-fallback+drop-broad): query='{q}', limit={limit}")
+
+        terms = [t.lower() for t in q.split(" ") if t]
+        n_terms = len(terms)
+
+        # ====== 0. 过于宽泛的单词：直接丢弃 ======
+        if n_terms == 1:
+            t = terms[0]
+            # 条件：太短（<=10）
+            if len(t) <= 10:
+                # 日志里标一下，方便以后调规则
+                print(f"keyword_search: drop too-broad single-term '{t}', skip DB query")
+                return []  # 直接返回空列表
+
+        # ====== 1. 短 phrase：ILIKE 子串搜索 ======
+        is_short_phrase = (n_terms <= 3 and len(q) <= 40)
 
         async for db in get_async_db():  # type: AsyncSession
             try:
-                # 主路径：配置使用 simple，并与 tsv 一样走 unaccent
-                sql_to = sa.text("""
-                    SELECT paper_id, platform
-                    FROM papers
-                    WHERE tsv @@ to_tsquery(:cfg, unaccent(:q))
-                    ORDER BY ts_rank_cd(tsv, to_tsquery(:cfg, unaccent(:q))) DESC
-                    LIMIT :lim
-                """)
-                res = await db.execute(sql_to, {"cfg": FTS_CONFIG, "q": processed_query, "lim": limit})
-                rows = res.fetchall()
-                return [(row[0], row[1]) for row in rows]
-
-            except SQLAlchemyError as e:
-                logger.warning(f"to_tsquery failed, fallback to websearch_to_tsquery: {e}")
-                try:
-                    sql_web = sa.text("""
+                if is_short_phrase:
+                    # 例：subgraph matching / random walk
+                    pattern = f"%{q}%"
+                    sql_phrase = sa.text("""
                         SELECT paper_id, platform
                         FROM papers
-                        WHERE tsv @@ websearch_to_tsquery(:cfg, unaccent(:q))
-                        ORDER BY ts_rank_cd(tsv, websearch_to_tsquery(:cfg, unaccent(:q))) DESC
+                        WHERE title ILIKE :pattern
+                        ORDER BY published_date DESC, paper_id DESC
                         LIMIT :lim
                     """)
-                    res = await db.execute(sql_web, {"cfg": FTS_CONFIG, "q": query, "lim": limit})
+                    res = await db.execute(sql_phrase, {"pattern": pattern, "lim": limit})
                     rows = res.fetchall()
                     return [(row[0], row[1]) for row in rows]
-                except SQLAlchemyError as e2:
-                    logger.error(f"DB error in keyword_search (fallback failed): {e2}")
-                    return []
+
+                else:
+                    # ====== 2. 更长 query：trigram 相似度 ======
+                    await db.execute(sa.text("SET LOCAL pg_trgm.similarity_threshold = 0.48"))
+
+                    sql_trgm = sa.text("""
+                        SELECT paper_id, platform
+                        FROM papers
+                        WHERE title % :q
+                        ORDER BY similarity(title, :q) DESC
+                        LIMIT :lim
+                    """)
+                    res = await db.execute(sql_trgm, {"q": q, "lim": limit})
+                    rows = res.fetchall()
+                    return [(row[0], row[1]) for row in rows]
+
+            except SQLAlchemyError as e:
+                logger.error(
+                    f"DB error in keyword_search(mixed-fast-no-fallback+drop-broad): {e}",
+                    exc_info=True,
+                )
+                return []
             except Exception as e:
-                logger.error("Unexpected error in keyword_search", exc_info=True)
+                logger.error(
+                    "Unexpected error in keyword_search(mixed-fast-no-fallback+drop-broad)",
+                    exc_info=True,
+                )
                 return []
 
         return []
-
 # Create a global instance
 db_service = DBService() 
