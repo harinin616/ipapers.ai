@@ -1,5 +1,5 @@
-# DLmonitor 666
-The server is now running on http://47.88.7.178:80/
+# iPapers.ai
+The server is now running on [http://47.88.7.178:80/](https://ipapers.ai/)
 ## Project Structure
 
 ```
