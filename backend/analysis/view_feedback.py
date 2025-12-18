@@ -9,7 +9,7 @@ from textwrap import shorten
 from app.models.db_models import DBFeedback  # 确保路径与项目一致
 
 # 1) 数据库连接 URL
-DATABASE_URL = "postgresql://postgres:1@localhost:5432/dlmonitor"
+DATABASE_URL = "postgresql://postgres:yourpass@localhost:5432/dlmonitor"
 
 def main() -> None:
     # 2) 创建 Engine 与 Session
