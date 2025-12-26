@@ -199,6 +199,4 @@ class GrantVectorSearchService:
             logger.error(f"Error in vector search: {e}")
             return []
 
-
-
 grant_vector_search_service = GrantVectorSearchService()

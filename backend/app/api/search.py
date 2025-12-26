@@ -39,7 +39,7 @@ async def search_papers(search_request: PaperSearchRequest):
 
         # --- 将本地的召回结果ID进行高效融合 ---
         # 使用集合(set)的并集操作，可以自动合并和去重
-        combined_local_ids = set(paper_id_platform_pairs).union(set(keyword_paper_id_platform_pairs))
+        combined_local_ids = set(keyword_paper_id_platform_pairs).union(set(paper_id_platform_pairs))
         # 将集合转换为列表
         combined_local_ids = list(combined_local_ids)
 
@@ -72,7 +72,7 @@ async def search_papers(search_request: PaperSearchRequest):
 
         documents=[p.title+p.abstract for p in papers]
         rerank = await llm_service.get_rerank(documents=documents,query=search_request.query)
-
+        #rerank=list(range(len(papers)))
         new_papers=[papers[idx] for idx in rerank]
         logger.info(f"Reranked papers: {[p.pdf_url for p in new_papers]}")
         paper_responses = [

@@ -1,3 +1,7 @@
+export AWS_ACCESS_KEY_ID="AKIAURE7LLRI4GZS55CO"
+export AWS_SECRET_ACCESS_KEY="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"
+export AWS_REGION="us-east-1"
+
 mkdir -p logs
 
 touch logs/output.log

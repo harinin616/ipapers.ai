@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 import random
 
-DEFAULT_URL = "postgresql://postgres:1@localhost:5432/dlmonitor"
+DEFAULT_URL = "postgresql://postgres:yourpass@localhost:5432/dlmonitor"
 
 PAPERS_TABLE = "papers"
 REQUIRED_EXTENSIONS = ["pg_trgm", "unaccent"]          # 如有向量，下面 OPTIONAL_EXT 中也会查

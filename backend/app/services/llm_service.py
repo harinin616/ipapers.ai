@@ -28,6 +28,9 @@ class LLMService:
         self.embedding_api_key = os.getenv("EMBEDDING_API_KEY", "")
         
         self.api_url = os.getenv("EMBEDDING_API_URL", "")
+        self.AWS_ACCESS_KEY_ID=os.getenv("AWS_ACCESS_KEY_ID","")
+        self.AWS_SECRET_ACCESS_KEY=os.getenv("AWS_SECRET_ACCESS_KEY","")
+        self.AWS_REGION=os.getenv("AWS_REGION","")
 
         self.llm_api_key = os.getenv("LLM_API_KEY", "")
 
@@ -388,33 +391,98 @@ class LLMService:
 
             
 
+ #    async def get_rerank(
+ #       self,
+  #      documents:List[str],
+  #      query:str
+  #  ) -> List[int]:
+   #     dashscope.api_key = self.api_key
+    #    response = dashscope.TextReRank.call(
+     #   model="gte-rerank-v2",
+      #  query=query,
+       # documents=documents,
+    #    top_n=self.rerank_topn,
+  #      return_documents=True
+   #     )
+    #    if response.status_code == HTTPStatus.OK:
+     #       # Return the sorted indices from the results
+      #      return [result['index'] for result in response.output['results']]
+       # return []
     async def get_rerank(
         self,
-        documents:List[str],
-        query:str
+        documents: List[str],
+        query: str
     ) -> List[int]:
-        logger.info(f"LLM RERANK: Starting reranking for query: '{query}' with {len(documents)} documents")
-        logger.info("LLM RERANK: Step 1 - Setting up DashScope API...")
-        dashscope.api_key = self.embedding_api_key
-        
-        logger.info("LLM RERANK: Step 2 - Calling DashScope TextReRank API...")
-        response = dashscope.TextReRank.call(
-        model="gte-rerank-v2",
-        query=query,
-        documents=documents,
-        top_n=self.rerank_topn,
-        return_documents=True
-        )
-        logger.info(f"LLM RERANK: Step 2 complete - API response status: {response.status_code}")
-        
-        if response.status_code == HTTPStatus.OK:
-            # Return the sorted indices from the results
-            result_indices = [result['index'] for result in response.output['results']]
-            logger.info(f"LLM RERANK: Successfully reranked, returning {len(result_indices)} indices")
-            return result_indices
-        else:
-            logger.error(f"LLM RERANK: API call failed with status {response.status_code}")
+        """
+        Rerank documents using Amazon Bedrock Rerank API (Cohere Rerank 3.5 by default).
+        Returns reranked document indices.
+        """
+        if not documents or not query:
             return []
+
+        # Bedrock Rerank supports up to 1000 sources; keep behavior stable by truncating.
+        max_sources = 1000
+        docs = documents[:max_sources]
+
+        # numberOfResults must be 1..1000; fall back to full length if env not set properly.
+        topn = self.rerank_topn if isinstance(self.rerank_topn, int) and self.rerank_topn > 0 else len(docs)
+        topn = min(topn, len(docs))
+
+        # Region: prefer AWS_REGION/AWS_DEFAULT_REGION; fall back to us-east-1
+        region = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
+
+        # Model id: use env LLM_RERANK_MODEL if provided, else Cohere Rerank 3.5
+        model_id = self.rerank_model or "cohere.rerank-v3-5:0"
+        model_arn = f"arn:aws:bedrock:{region}::foundation-model/{model_id}"
+
+        # Build sources payload (TEXT)
+        sources = [
+            {
+                "type": "INLINE",
+                "inlineDocumentSource": {
+                    "type": "TEXT",
+                    "textDocument": {"text": d}
+                }
+            }
+            for d in docs
+        ]
+
+
+        def _sync_rerank_call() -> List[int]:
+            import boto3
+            from botocore.exceptions import BotoCoreError, ClientError
+
+            client = boto3.client("bedrock-agent-runtime", region_name=region)
+
+            try:
+                resp = client.rerank(
+                    queries=[{"type": "TEXT", "textQuery": {"text": query}}],
+                    sources=sources,
+                    rerankingConfiguration={
+                        "type": "BEDROCK_RERANKING_MODEL",
+                        "bedrockRerankingConfiguration": {
+                            "numberOfResults": topn,
+                            "modelConfiguration": {"modelArn": model_arn},
+                        },
+                    },
+                )
+
+                results = resp.get("results", []) or []
+                # Results are typically already sorted, but sort defensively.
+                results.sort(key=lambda x: x.get("relevanceScore", 0.0), reverse=True)
+                return [int(r["index"]) for r in results if "index" in r]
+
+            except (ClientError, BotoCoreError) as e:
+                logger.error(f"Bedrock rerank call failed: {e}")
+                return []
+            except Exception as e:
+                logger.error(f"Unknown error occurred when calling Bedrock rerank: {e.__class__.__name__} - {e}")
+                return []
+
+        # boto3 is sync; run in a worker thread to keep async interface unchanged
+        return await asyncio.to_thread(_sync_rerank_call)
+
+
 
     # ========== Conversational Search Methods ==========
     
