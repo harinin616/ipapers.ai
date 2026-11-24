@@ -17,6 +17,44 @@ logger = logging.getLogger("upload")
 UPLOAD_DIR = "./data/cached_pdfs/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "25")) * 1024 * 1024
+_CHUNK = 1024 * 1024
+
+
+async def save_validated_pdf(file: UploadFile, dest_path: str) -> int:
+    """
+    Stream the upload to dest_path enforcing a size cap and checking the real content starts with %PDF-
+    (filename extension and browser MIME type are not trusted). Removes the partial file and raises
+    HTTPException (415 / 413 / 400) on failure. Returns bytes written.
+    """
+    written = 0
+    try:
+        head = await file.read(5)
+        if head != b"%PDF-":
+            raise HTTPException(status_code=415, detail="File is not a valid PDF")
+        with open(dest_path, "wb") as out:
+            out.write(head)
+            written = len(head)
+            while True:
+                chunk = await file.read(_CHUNK)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > MAX_UPLOAD_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)",
+                    )
+                out.write(chunk)
+    except BaseException:
+        if os.path.exists(dest_path):
+            os.remove(dest_path)
+        raise
+    if written == len(b"%PDF-"):
+        os.remove(dest_path)
+        raise HTTPException(status_code=400, detail="PDF file is empty")
+    return written
+
 async def extract_paper_metadata(pdf_path: str) -> dict:
     """
     从PDF中提取论文元数据(title, abstract, authors, year)
@@ -61,16 +99,16 @@ async def extract_paper_metadata(pdf_path: str) -> dict:
             frontmatter = full_text[:8000].strip()
         
         # 调试输出：显示提取的前置内容
-        print("\n" + "="*80)
-        print("🔍 PDF FRONTMATTER EXTRACTION DEBUG")
-        print("="*80)
-        print(f"Total PDF text length: {len(full_text)} chars")
-        print(f"Introduction position: {intro_position}")
-        print(f"Frontmatter length: {len(frontmatter)} chars")
-        print(f"\n📄 Extracted Frontmatter (first 2000 chars):")
-        print("-" * 80)
-        print(frontmatter[:2000])
-        print("-" * 80)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
         
         # 使用LLM提取元数据
         prompt = f"""Extract the following information from this academic paper's front matter. Return ONLY a valid JSON object with these fields:
@@ -86,7 +124,7 @@ Paper front matter:
 
 Return ONLY the JSON object, no other text:"""
 
-        print(f"\n📤 Sending to LLM for extraction...")
+        pass  # debug print removed (it logged document content)
         
         response = await llm_service.get_conversation_completion_non_streaming(
             messages=[{"role": "user", "content": prompt}]
@@ -97,10 +135,10 @@ Return ONLY the JSON object, no other text:"""
             logger.error(f"LLM returned empty response for PDF metadata extraction")
             raise Exception("LLM service returned empty response. The service may be unavailable.")
         
-        print(f"\n📥 LLM Response:")
-        print("-" * 80)
-        print(response)
-        print("-" * 80)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
         
         # 解析LLM返回的JSON
         try:
@@ -119,21 +157,21 @@ Return ONLY the JSON object, no other text:"""
             metadata.setdefault('authors', [])
             metadata.setdefault('year', '')
             
-            print(f"\n✅ Parsed JSON successfully:")
-            print(json.dumps(metadata, indent=2, ensure_ascii=False))
-            print("="*80 + "\n")
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
             
             return metadata
         except json.JSONDecodeError as je:
             logger.error(f"JSON decode error: {je}\nResponse: {response}")
-            print(f"\n❌ JSON Parse Error: {je}")
-            print("="*80 + "\n")
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
             return {'title': '', 'abstract': '', 'authors': [], 'year': ''}
             
     except Exception as e:
         logger.error(f"Error extracting metadata from PDF: {e}", exc_info=True)
-        print(f"\n❌ Exception during extraction: {e}")
-        print("="*80 + "\n")
+        pass  # debug print removed (it logged document content)
+        pass  # debug print removed (it logged document content)
         return {'title': '', 'abstract': '', 'authors': [], 'year': ''}
 
 @router.post("/")
@@ -144,10 +182,10 @@ async def upload_pdf(
     published: str = Form("1900-01-01"),
     abstract: str = Form("")
 ):
-    logger.info(f"Received file upload request: {file.filename}")
+    logger.info("Received file upload request")
     try:
         # === 1. 保存文件 ===
-        ext = os.path.splitext(file.filename)[-1].lower()
+        ext = os.path.splitext(file.filename or "")[-1].lower()
         if ext != ".pdf":
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
@@ -155,26 +193,25 @@ async def upload_pdf(
         filename = f"{paper_id}.pdf"
         save_path = os.path.join(UPLOAD_DIR, filename)
 
-        with open(save_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        logger.info(f"Saved PDF: {save_path}")
+        await save_validated_pdf(file, save_path)
+        logger.info(f"Saved PDF: {filename}")
 
         # === 2. 提取PDF元数据 ===
         try:
             extracted_metadata = await extract_paper_metadata(save_path)
             
             # 调试输出：打印提取到的信息
-            print("\n" + "="*80)
-            print("📄 PDF METADATA EXTRACTION DEBUG INFO")
-            print("="*80)
-            print(f"Paper ID: {paper_id}")
-            print(f"Filename: {file.filename}")
-            print(f"\n📝 Extracted Metadata:")
-            print(f"  Title:    {extracted_metadata.get('title', 'N/A')}")
-            print(f"  Authors:  {', '.join(extracted_metadata.get('authors', [])) if extracted_metadata.get('authors') else 'N/A'}")
-            print(f"  Year:     {extracted_metadata.get('year', 'N/A')}")
-            print(f"  Abstract: {extracted_metadata.get('abstract', 'N/A')[:200]}..." if len(extracted_metadata.get('abstract', '')) > 200 else f"  Abstract: {extracted_metadata.get('abstract', 'N/A')}")
-            print("="*80 + "\n")
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
+            pass  # debug print removed (it logged document content)
             
             # 检查是否成功提取到关键信息（至少需要 title 或 abstract）
             if not extracted_metadata.get('title') and not extracted_metadata.get('abstract'):
@@ -196,7 +233,7 @@ async def upload_pdf(
                 os.remove(save_path)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to process PDF: {str(e)}. Please try again."
+                detail="Failed to process PDF. Please try again."
             )
         
         # 优先使用提取的元数据，如果提取失败则使用用户输入或默认值
@@ -241,6 +278,8 @@ async def upload_pdf(
 
         return {"paper_id": paper_id, "platform": "upload"}
 
+    except HTTPException:
+        raise  # keep intended status codes (400/413/415/...) instead of masking them as 500
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Upload failed")

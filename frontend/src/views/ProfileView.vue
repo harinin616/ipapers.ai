@@ -76,6 +76,7 @@ export default {
     function logout () {
       localStorage.removeItem('user')
       localStorage.removeItem('X-User-ID')
+      localStorage.removeItem('access_token')
       window.location.href = '/'
     }
 

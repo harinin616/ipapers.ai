@@ -6,6 +6,7 @@ import logging
 
 
 from fastapi.responses import HTMLResponse
+from app.security import AuthMiddleware
 from app.api import paper, search, chat, user, auth, review,share, metrics,contact,topics,folders,forum,comments,upload,recommendations,improved_conversational_search,improved_grant_search,ideas, search_summary
 from fastapi.staticfiles import StaticFiles
 # Configure logging
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Create API sub-application
 api_app = FastAPI()
+api_app.add_middleware(AuthMiddleware)
 
 # Main application
 app = FastAPI()
@@ -26,7 +28,10 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=[o.strip() for o in os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,https://ipapers.ai",
+    ).split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

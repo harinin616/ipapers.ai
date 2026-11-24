@@ -5,6 +5,7 @@ from app.services.db_service import db_service
 import uuid
 import os
 from app.services.chat_service import chat_service
+from app.security import create_access_token
 
 router = APIRouter()
 
@@ -18,7 +19,8 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 async def google_login(request: Request, payload: TokenPayload):
     resp = requests.get(
         "https://oauth2.googleapis.com/tokeninfo",
-        params={"id_token": payload.credential}
+        params={"id_token": payload.credential},
+        timeout=10,
     )
 
     if resp.status_code != 200:
@@ -50,5 +52,6 @@ async def google_login(request: Request, payload: TokenPayload):
         "email": user_email,
         "name": user_name,
         "picture": picture,
-        "user_id": user_id
+        "user_id": user_id,
+        "access_token": create_access_token(str(user_id)),
     }

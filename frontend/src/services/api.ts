@@ -128,10 +128,24 @@ class ApiService implements IApiService {
         const userId = localStorage.getItem('X-User-ID');
         if (userId) {
           config.headers['X-User-ID'] = userId;
+          { const t = localStorage.getItem('access_token'); if (t) config.headers['Authorization'] = `Bearer ${t}`; }
         }
         return config;
       },
       (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Expired/invalid token: drop the stale session once and reload so a fresh guest session is created.
+    this.api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error?.response?.status === 401 && localStorage.getItem('access_token') && !sessionStorage.getItem('auth-reset')) {
+          sessionStorage.setItem('auth-reset', '1');
+          ['access_token', 'X-User-ID', 'user'].forEach((k) => localStorage.removeItem(k));
+          window.location.reload();
+        }
         return Promise.reject(error);
       }
     );
@@ -243,8 +257,12 @@ async get_shared_folders(): Promise<any[]> {
    */
   async getUserId(): Promise<string> {
     try {
-      const response = await this.api.post('/api/user/get_id');
-      return response.data;
+      // Server issues a guest identity plus a signed token; the token is what authenticates later calls.
+      const response = await this.api.post('/api/user/guest');
+      const { user_id, access_token } = response.data;
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('X-User-ID', user_id);
+      return user_id;
     } catch (error) {
       console.error('Failed to get user ID:', error);
       throw error;
@@ -309,6 +327,7 @@ async get_shared_folders(): Promise<any[]> {
       };
       if (userId) {
         headers['X-User-ID'] = userId;
+        { const t = localStorage.getItem('access_token'); if (t) headers['Authorization'] = `Bearer ${t}`; }
       }
 
       const response = await fetch(`/api/chat/stream_chat`, {
@@ -332,6 +351,7 @@ async get_shared_folders(): Promise<any[]> {
       };
       if (userId) {
         headers['X-User-ID'] = userId;
+        { const t = localStorage.getItem('access_token'); if (t) headers['Authorization'] = `Bearer ${t}`; }
       }
 
       const selectedFiles = fileSelectionStore.getSelectedFiles();
@@ -442,6 +462,7 @@ async get_shared_folders(): Promise<any[]> {
     };
     if (userId) {
       headers['X-User-ID'] = userId;
+      { const t = localStorage.getItem('access_token'); if (t) headers['Authorization'] = `Bearer ${t}`; }
     }
     const response = await fetch('/api/chat/update_file_selection', {
       method: 'POST',
@@ -522,6 +543,7 @@ async get_shared_folders(): Promise<any[]> {
       };
       if (userId) {
         headers['X-User-ID'] = userId;
+        { const t = localStorage.getItem('access_token'); if (t) headers['Authorization'] = `Bearer ${t}`; }
       }
 
       const response = await fetch(`/api/review/stream_rws`, {

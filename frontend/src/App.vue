@@ -155,6 +155,11 @@ export default defineComponent({
     
     const getOrCreateUserId = async (): Promise<void> => {
       if (!userId.value) {
+        // An id without a server-signed token can't be trusted (older sessions): start a fresh session.
+        if (!localStorage.getItem('access_token')) {
+          localStorage.removeItem('X-User-ID');
+          localStorage.removeItem('user');
+        }
         let fetchedUserId = localStorage.getItem('X-User-ID');
         if (!fetchedUserId) {
           try {
@@ -227,7 +232,7 @@ export default defineComponent({
               '771067338917-gv0hiqa3vdjap5b471jdh4gemo1usa7s.apps.googleusercontent.com',
             callback: (response: any) => {
          
-              fetch('https://ipapers.ai/api/auth/google-login', {
+              fetch('/api/auth/google-login', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -236,7 +241,6 @@ export default defineComponent({
               })
                 .then((r) => r.json())
                 .then((userInfo) => {
-                  console.log('Login successful, user info:', userInfo)
   
                   user.value = {
                     email: userInfo.email,
@@ -251,6 +255,7 @@ export default defineComponent({
                   )
                   userId.value = userInfo.user_id
                   localStorage.setItem('X-User-ID', userInfo.user_id)
+                  if (userInfo.access_token) localStorage.setItem('access_token', userInfo.access_token)
                   
                   // Refresh page after successful login
                   window.location.reload()
@@ -353,6 +358,7 @@ export default defineComponent({
       user.value = null
       localStorage.removeItem('user')
       localStorage.removeItem('X-User-ID')
+      localStorage.removeItem('access_token')
       userId.value = null
       await getOrCreateUserId()
  

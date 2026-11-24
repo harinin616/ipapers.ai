@@ -6,7 +6,25 @@ from pydantic import BaseModel
 from app.services.db_service import db_service   # 你之前的单例
 from app.services.chat_service import chat_service  # 你的 chat_service 单例
 from app.services.llm_service import llm_service  # 你的 LLM 服务单例
+import logging
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_RANK = {"viewer": 1, "editor": 2, "owner": 3}
+
+
+async def require_folder_role(request: Request, folder_id: int, need: str = "viewer") -> str:
+    """Server-side authorization: 401 if no verified user, 404 if no access (hides existence), 403 if role too low."""
+    user_id = request.headers.get("X-User-ID")  # set by AuthMiddleware from the verified token only
+    if not user_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required")
+    role = await db_service.get_folder_role(folder_id, user_id)
+    if role is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Folder not found")
+    if _RANK[role] < _RANK[need]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Requires {need} role")
+    return role
+
 
 # ────────────── Pydantic Output Schema ──────────────
 class FileOut(BaseModel):
@@ -74,10 +92,12 @@ class AttachPayload(BaseModel):
 
 @router.post("/{folder_id}/files", status_code=204)
 async def attach_paper_to_folder(
+    request: Request,
     folder_id: int,
     payload: AttachPayload
 ):
     """Attach a paper to the given folder."""
+    await require_folder_role(request, folder_id, "editor")
     ok = await db_service.add_file_to_folder(
         folder_id=folder_id,
         paper_id=payload.paper_id,
@@ -98,6 +118,7 @@ async def remove_paper_from_folder(
     paper_id: str = Path(..., description="Paper ID"),
     platform: str = Query("arxiv", description="Paper platform"),
 ):
+    await require_folder_role(request, folder_id, "editor")
     # 从请求头获取当前用户
     user_id = request.headers.get("X-User-ID")
     if not user_id:
@@ -196,8 +217,10 @@ async def delete_folder(request: Request, folder_id: int):
 
 @router.get("/{folder_id}/files")
 async def get_files_by_folderId(
+    request: Request,
     folder_id: int,
 ):
+    await require_folder_role(request, folder_id, "viewer")
     files = await db_service.get_files_by_folder_id(folder_id)
     if not files:
         return []
@@ -206,8 +229,10 @@ async def get_files_by_folderId(
 
 @router.get("/{folder_id}/summary")
 async def get_folder_summary(
+    request: Request,
     folder_id: int,
 ):
+    await require_folder_role(request, folder_id, "viewer")
     summary = await db_service.get_folder_summary(folder_id)
 
     return {"summary": summary} 
@@ -215,8 +240,10 @@ async def get_folder_summary(
 
 @router.post("/{folder_id}/summary/regenerate")
 async def regenerate_folder_summary(
+    request: Request,
     folder_id: int,
 ):
+    await require_folder_role(request, folder_id, "editor")
     try:
         tmp=await db_service.get_files_by_folder_id(folder_id)
         message="please summarize the following files together in one paragraph. When mentioning specific papers, use citations in the format [1], [2], etc., where the number corresponds to the order of the papers below:\n"+ "".join(
@@ -231,6 +258,7 @@ async def regenerate_folder_summary(
         )
         await db_service.add_folder_summary(folder_id, summary)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Folder summary failed for folder {folder_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate summary")
     # 返回生成的摘要
     return {"summary": summary}

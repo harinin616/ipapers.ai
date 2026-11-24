@@ -37,6 +37,20 @@ class DBService:
     def __init__(self):
         pass
     
+    async def get_user_email(self, user_id) -> Optional[str]:
+        """Return the stored email for a user id (uuid), or None."""
+        try:
+            uid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
+        except (ValueError, TypeError):
+            return None
+        async for db in get_async_db():
+            try:
+                res = await db.execute(select(DBUser.email).where(DBUser.id == uid))
+                return res.scalar_one_or_none()
+            except SQLAlchemyError as e:
+                logger.error(f"DB error getting user email: {e}")
+                return None
+
     async def get_user_id_by_email(self, email: str) -> Optional[int]:
         """
         Get user ID by email address
@@ -1655,6 +1669,38 @@ class DBService:
                 await db.rollback()
                 raise
         return False
+    async def get_folder_role(self, folder_id: int, user_id) -> Optional[str]:
+        """
+        Resolve a user's role on a folder: 'owner' | 'editor' | 'viewer' | None (no access).
+        owner  = folders.user_id; editor/viewer = listed in the folder's shared_folders row;
+        any signed-in user is a viewer if the shared folder is public.
+        """
+        try:
+            uid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
+        except (ValueError, TypeError, AttributeError):
+            return None
+        async for db in get_async_db():
+            try:
+                folder = await db.get(DBFolder, folder_id)
+                if folder is None:
+                    return None
+                if folder.user_id == uid:
+                    return "owner"
+                res = await db.execute(select(DBSharedFolder).where(DBSharedFolder.folder_id == folder_id))
+                shared = res.scalar_one_or_none()
+                if shared is None:
+                    return None
+                if shared.owner_id == uid:
+                    return "owner"
+                if uid in (shared.allowed_editor_ids or []):
+                    return "editor"
+                if shared.is_public or uid in (shared.allowed_user_ids or []):
+                    return "viewer"
+                return None
+            except SQLAlchemyError as e:
+                logger.error(f"DB error resolving folder role: {e}")
+                return None
+
     async def get_folder(self, folder_id: int) -> DBFolder | None:
         async for db in get_async_db():
             return await db.get(DBFolder, folder_id)
