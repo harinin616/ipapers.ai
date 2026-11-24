@@ -1,74 +1,52 @@
 <template>
   <div class="paper-detail">
-    <div v-if="isLoading" class="loading">
-      Loading paper details...
+    <div v-if="isLoading" class="state card" aria-busy="true">
+      <div class="skeleton" style="height:30px;width:80%"></div>
+      <div class="skeleton" style="height:14px;width:50%;margin-top:16px"></div>
+      <div class="skeleton" style="height:14px;width:100%;margin-top:28px"></div>
+      <div class="skeleton" style="height:14px;width:94%;margin-top:8px"></div>
     </div>
-    
-    <div v-else-if="error" class="error">
+
+    <div v-else-if="error" class="state card error" role="alert">
+      <h3>We couldn't load this paper</h3>
       <p>{{ error }}</p>
-      <button @click="goBack" class="back-link">Back</button>
+      <button @click="goBack" class="btn">Go back</button>
     </div>
-    
+
     <div v-else-if="paper" :class="['paper-container', { 'split-layout': showPdf }]">
-      <div class="paper-content">
-        <div class="paper-header">
+      <article class="paper-content">
+        <button @click="goBack" class="btn btn-ghost btn-sm back-link">← Back</button>
+
+        <header class="paper-header">
+          <div class="meta-top">
+            <span v-if="paper.platform" class="chip chip-accent">{{ paper.platform.toUpperCase() }}</span>
+            <time class="date" :datetime="paper.published_date">{{ formattedDate }}</time>
+          </div>
           <h1 class="paper-title">{{ paper.title }}</h1>
-          
-          <div class="paper-meta">
-            <div class="authors">
-              <strong>Authors:</strong> {{ paper.authors.join(', ') }}
-            </div>
-            
-            <div class="date">
-              <strong>Published:</strong> {{ formattedDate }}
-            </div>
+          <p class="authors">{{ paper.authors.join(', ') }}</p>
+          <div v-if="paper.categories && paper.categories.length" class="paper-categories">
+            <span v-for="category in paper.categories" :key="category" class="chip">{{ category }}</span>
           </div>
-          
-          <div class="paper-categories">
-            <strong>Categories:</strong>
-            <span 
-              v-for="category in paper.categories" 
-              :key="category" 
-              class="category-tag"
-            >
-              {{ category }}
-            </span>
-          </div>
-        </div>
-        
+        </header>
+
         <div class="paper-actions">
-          <button @click="togglePdfViewer" class="action-button primary">
-            {{ showPdf ? 'Hide' : 'preview' }}
-          </button>
-          <a :href="paper.pdf_url" target="_blank" class="action-button">
-            Open PDF
-          </a>
-          <!-- 添加platform到ChatButton -->
-          <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
-          <button @click="goBack" class="action-button">
-            Back
-          </button>
+          <button @click="togglePdfViewer" class="btn btn-primary">{{ showPdf ? 'Hide PDF' : 'Preview PDF' }}</button>
+          <a :href="paper.pdf_url" target="_blank" rel="noopener" class="btn">Open PDF ↗</a>
+          <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" size="md" />
         </div>
-        
-        <div class="paper-abstract">
+
+        <section class="paper-abstract">
           <h2>Abstract</h2>
           <p>{{ paper.abstract }}</p>
-        </div>
-      </div>
-      
-      <!-- PDF Viewer -->
-      <div v-if="showPdf && paper.pdf_url" class="pdf-section">
-        <button @click="closePdf" class="close-pdf-btn" title="Close PDF">
-          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" fill="currentColor"/>
-          </svg>
+        </section>
+      </article>
+
+      <aside v-if="showPdf && paper.pdf_url" class="pdf-section" aria-label="PDF preview">
+        <button @click="closePdf" class="close-pdf-btn" title="Close PDF" aria-label="Close PDF">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
-        <embed 
-          :src="paper.pdf_url" 
-          class="pdf-iframe" 
-          type="application/pdf" 
-        />
-      </div>
+        <embed :src="paper.pdf_url" class="pdf-iframe" type="application/pdf" />
+      </aside>
     </div>
   </div>
 </template>
@@ -201,219 +179,34 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.paper-detail {
-  max-width: 1200px;
-  margin: 0 auto;
-}
+.paper-detail { max-width: 860px; margin: 0 auto; padding: var(--sp-5); width: 100%; box-sizing: border-box; }
+.state { padding: var(--sp-6); }
+.state.error { text-align: center; }
+.state.error h3 { margin-top: 0; }
+.state.error p { color: var(--text-2); }
 
-.loading, .error {
-  text-align: center;
-  padding: 2rem;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
+.paper-content { padding: var(--sp-2) 0; }
+.back-link { margin-bottom: var(--sp-4); margin-left: calc(var(--sp-3) * -1); }
+.meta-top { display: flex; align-items: center; gap: var(--sp-3); }
+.date { font-size: var(--fs-sm); color: var(--text-3); }
+.paper-title { margin: var(--sp-3) 0 var(--sp-2); font-family: var(--font-serif); font-weight: 600; font-size: clamp(1.6rem, 3.4vw, 2.2rem); line-height: 1.2; letter-spacing: -.015em; }
+.authors { margin: 0 0 var(--sp-3); color: var(--text-2); font-size: var(--fs-md); }
+.paper-categories { display: flex; flex-wrap: wrap; gap: 6px; }
+.paper-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-5) 0; padding: var(--sp-4) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.paper-abstract h2 { margin: 0 0 var(--sp-3); font-size: var(--fs-lg); text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-family: var(--font-sans); font-weight: 600; }
+.paper-abstract p { margin: 0; font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.75; color: var(--text); }
 
-.error {
-  color: #d32f2f;
-}
-
-.back-link {
-  display: inline-block;
-  margin-top: 1rem;
-  color: #3f51b5;
-  text-decoration: none;
-}
-
-.paper-container {
-  background-color: white;
-  border-radius: 8px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Split layout */
-.split-layout {
-  display: flex;
-  gap: 2rem;
-  padding: 0;
-  max-height: 90vh;
-  overflow: hidden;
-  justify-content: center;
-}
-
-.split-layout .paper-content {
-  flex: 0 0 35%;
-  min-width: 350px;
-  padding: 1.8rem;
-  overflow-y: auto;
-  max-height: 90vh;
-}
-
-.split-layout .pdf-section {
-  flex: 1;
-  margin: 0;
-  height: 90vh;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.paper-header {
-  margin-bottom: 2rem;
-}
-
-.paper-title {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.6rem;
-  line-height: 1.4;
-  color: #333;
-  word-wrap: break-word;
-}
-
-.paper-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  color: #555;
-}
-
-.paper-meta > div {
-  margin-bottom: 0.5rem;
-}
-
-.paper-categories {
-  margin-bottom: 1.5rem;
-}
-
-.category-tag {
-  display: inline-block;
-  background-color: #e3f2fd;
-  color: #1976d2;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.paper-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.action-button {
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  text-decoration: none;
-  font-size: 1rem;
-  transition: all 0.2s;
-  display: inline-block;
-  border: none;
-  cursor: pointer;
-}
-
-.action-button.primary {
-  background-color: #3f51b5;
-  color: white;
-}
-
-.action-button.primary:hover {
-  background-color: #303f9f;
-}
-
-.action-button:not(.primary) {
-  background-color: #f0f0f0;
-  color: #333;
-}
-
-.action-button:not(.primary):hover {
-  background-color: #e0e0e0;
-}
-
-.pdf-section {
-  margin-bottom: 2rem;
-  width: 100%;
-  height: 80vh;
-  position: relative;
-}
-
-.pdf-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-}
-
-.paper-abstract h2 {
-  margin-top: 0;
-  font-size: 1.3rem;
-  color: #333;
-  margin-bottom: 0.8rem;
-}
-
-.paper-abstract p {
-  line-height: 1.6;
-  margin-top: 0;
-  white-space: pre-line;
-}
-
-@media (max-width: 768px) {
-  .split-layout {
-    flex-direction: column;
-    max-height: none;
-    padding: 0;
-  }
-  
-  .split-layout .paper-content,
-  .split-layout .pdf-section {
-    flex: none;
-    width: 100%;
-    min-width: 0;
-    max-height: none;
-    height: auto;
-  }
-  
-  .split-layout .pdf-section {
-    height: 70vh;
-    margin-top: 1rem;
-  }
-}
-
-.icon-svg {
-  width: 20px;
-  height: 20px;
-}
-
-.close-pdf-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-  background-color: rgba(255, 255, 255, 0.7);
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s;
-}
-
-.close-pdf-btn:hover {
-  background-color: rgba(255, 255, 255, 0.9);
-  transform: scale(1.1);
-}
-
-.close-pdf-btn .icon-svg {
-  width: 24px;
-  height: 24px;
-  color: #333;
+/* split layout (text + PDF) */
+.paper-detail:has(.split-layout) { max-width: none; }
+.split-layout { display: flex; gap: var(--sp-5); align-items: flex-start; }
+.split-layout .paper-content { flex: 0 0 38%; min-width: 340px; max-height: calc(100vh - var(--header-h) - 48px); overflow-y: auto; padding-right: var(--sp-3); }
+.split-layout .pdf-section { position: relative; flex: 1; height: calc(100vh - var(--header-h) - 48px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.pdf-iframe { width: 100%; height: 100%; border: 0; }
+.close-pdf-btn { position: absolute; top: 10px; right: 10px; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; box-shadow: var(--shadow-1); }
+.close-pdf-btn:hover { background: var(--surface-2); }
+@media (max-width: 900px) {
+  .split-layout { flex-direction: column; }
+  .split-layout .paper-content { flex: none; min-width: 0; max-height: none; padding-right: 0; }
+  .split-layout .pdf-section { width: 100%; height: 70vh; }
 }
 </style> 

@@ -128,189 +128,21 @@ export default {
 </script>
 
 <style scoped>
-.summary-progress {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.progress-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-}
-
-.progress-icon {
-  font-size: 2rem;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-.progress-text h4 {
-  margin: 0 0 0.25rem 0;
-  color: #333;
-  font-size: 1.1rem;
-}
-
-.progress-text p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.progress-bar-container {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.progress-bar {
-  flex: 1;
-  height: 8px;
-  background: #f0f0f0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3f51b5, #5c6bc0);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.progress-percentage {
-  font-size: 0.85rem;
-  color: #666;
-  min-width: 40px;
-  text-align: right;
-}
-
-.progress-steps {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  opacity: 0.5;
-  transition: opacity 0.3s ease;
-}
-
-.step.active {
-  opacity: 1;
-}
-
-.step.completed {
-  opacity: 0.7;
-}
-
-.step-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #f0f0f0;
-  color: #666;
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.step.active .step-number {
-  background: #3f51b5;
-  color: white;
-}
-
-.step.completed .step-number {
-  background: #4caf50;
-  color: white;
-}
-
-.step-text {
-  font-size: 0.8rem;
-  color: #666;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.summary-error {
-  background: #fff5f5;
-  border: 1px solid #feb2b2;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.error-icon {
-  font-size: 1.5rem;
-}
-
-.error-content {
-  flex: 1;
-}
-
-.error-content h4 {
-  margin: 0 0 0.5rem 0;
-  color: #c53030;
-  font-size: 1rem;
-}
-
-.error-content p {
-  margin: 0 0 1rem 0;
-  color: #742a2a;
-  font-size: 0.9rem;
-}
-
-.retry-btn {
-  background: #3f51b5;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: background-color 0.2s;
-}
-
-.retry-btn:hover {
-  background: #303f9f;
-}
-
-@media (max-width: 768px) {
-  .progress-steps {
-    gap: 0.5rem;
-  }
-  
-  .step-text {
-    font-size: 0.75rem;
-  }
-  
-  .progress-header {
-    gap: 0.75rem;
-  }
-  
-  .summary-progress {
-    padding: 1rem;
-  }
-}
+.summary-progress, .summary-error { margin-bottom: var(--sp-4); padding: var(--sp-4) var(--sp-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+.summary-error { border-left: 3px solid var(--danger); display: flex; gap: var(--sp-3); }
+.progress-header { display: flex; align-items: center; gap: var(--sp-3); }
+.progress-icon, .error-icon { font-size: 1.4rem; }
+.progress-text h4, .error-content h4 { margin: 0; font-size: var(--fs-md); }
+.progress-text p, .error-content p { margin: 2px 0 0; font-size: var(--fs-sm); color: var(--text-2); }
+.progress-bar-container { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-4) 0 var(--sp-3); }
+.progress-bar { flex: 1; height: 6px; background: var(--surface-2); border-radius: var(--r-pill); overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: var(--r-pill); transition: width .4s var(--ease); }
+.progress-percentage { min-width: 40px; text-align: right; font-size: var(--fs-xs); color: var(--text-3); }
+.progress-steps { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.step { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--text-3); }
+.step-number { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); font-weight: 600; }
+.step.active { color: var(--text); }
+.step.active .step-number { background: var(--accent); color: var(--accent-ink); }
+.step.completed .step-number { background: var(--success); color: #fff; }
+.retry-btn { margin-top: var(--sp-2); height: 32px; padding: 0 var(--sp-3); font: 500 var(--fs-xs)/1 var(--font-sans); color: var(--accent-ink); background: var(--accent); border: none; border-radius: var(--r-sm); cursor: pointer; }
 </style>

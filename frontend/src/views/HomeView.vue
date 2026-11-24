@@ -1,44 +1,48 @@
 <template>
   <div class="home">
-    <div class="hero-section">
-      <SearchBox
-        v-model="searchQuery"
-        :is-loading="false"
-        @search="handleSearch"
-      />
-    </div>
+    <section class="hero-section">
+      <p class="eyebrow">Research, made readable</p>
+      <h1 class="hero-title">Find, read and organize<br class="br-lg" /> the papers that matter.</h1>
+      <p class="hero-sub">Search across arXiv, bioRxiv and medRxiv, chat with any paper, and keep your reading in one place.</p>
+      <SearchBox v-model="searchQuery" :is-loading="false" @search="handleSearch" />
+      <div class="examples" aria-label="Example searches">
+        <span class="examples-label">Try</span>
+        <button v-for="q in examples" :key="q" type="button" class="chip example-chip" @click="runExample(q)">{{ q }}</button>
+      </div>
+    </section>
 
-    <!-- Papers Sections Container -->
-    <div class="papers-container">
-      
-      <div class="recent-papers">
-        <h2>Recent Papers</h2>
-        
-        <div v-if="isLoading" class="loading">
-          Loading papers...
-        </div>
-        
-        <div v-else-if="papers.length === 0" class="no-papers">
-          <p>No papers found</p>
-        </div>
-        
-        <div v-else class="papers-list">
-          <PaperCard v-for="paper in papers" :key="paper.paper_id" :paper="paper" />
-        </div>
-        
-        
-        <div v-if="papers.length > 0" class="section-load-more">
-          <button 
-            v-if="hasMorePapers" 
-            @click="loadMoreRecent" 
-            :disabled="isLoadingMoreRecent"
-            class="secondary-button"
-          >
-            {{ isLoadingMoreRecent ? 'Loading...' : 'Load More Recent' }}
-          </button>
+    <section class="papers-container" aria-labelledby="recent-heading">
+      <div class="section-head">
+        <h2 id="recent-heading">Recent papers</h2>
+        <span v-if="paperCount" class="count-note">{{ Number(paperCount).toLocaleString() }} in the library</span>
+      </div>
+
+      <div v-if="isLoading" class="papers-list" aria-busy="true" aria-live="polite">
+        <div v-for="n in 4" :key="n" class="card skeleton-card">
+          <div class="skeleton" style="height:14px;width:90px"></div>
+          <div class="skeleton" style="height:22px;width:80%;margin-top:14px"></div>
+          <div class="skeleton" style="height:14px;width:45%;margin-top:12px"></div>
+          <div class="skeleton" style="height:14px;width:100%;margin-top:18px"></div>
+          <div class="skeleton" style="height:14px;width:92%;margin-top:8px"></div>
         </div>
       </div>
-    </div>
+
+      <div v-else-if="papers.length === 0" class="empty card">
+        <div class="empty-icon" aria-hidden="true">📄</div>
+        <h3>No papers yet</h3>
+        <p>The library is empty right now. New papers appear here after the next ingestion run.</p>
+      </div>
+
+      <div v-else class="papers-list">
+        <PaperCard v-for="paper in papers" :key="paper.paper_id" :paper="paper" />
+      </div>
+
+      <div v-if="papers.length > 0 && hasMorePapers" class="section-load-more">
+        <button @click="loadMoreRecent" :disabled="isLoadingMoreRecent" class="btn">
+          {{ isLoadingMoreRecent ? 'Loading…' : 'Load more' }}
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -111,6 +115,9 @@ export default defineComponent({
       finally { isLoadingMoreRecent.value = false; }
     };
 
+    const examples = ['large language models', 'protein folding', 'diffusion models', 'quantum error correction'];
+    const runExample = (q) => { searchQuery.value = q; handleSearch(q, true); };
+
     onMounted(() => {
       loadPapers();
     });
@@ -120,7 +127,7 @@ export default defineComponent({
       papers, paperCount, isLoading, 
       isLoadingMoreRecent, loadMoreRecent,
       offset, limit, hasMorePapers,
-      searchQuery, handleSearch
+      searchQuery, handleSearch, examples, runExample
 
     };
   }
@@ -128,148 +135,30 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.home {
-  max-width: 1000px;
-  margin: 0 auto;
-}
+.home { max-width: var(--content-w); margin: 0 auto; padding: 0 var(--sp-5); width: 100%; box-sizing: border-box; }
 
-.hero-section {
-  text-align: center;
-  padding: 2rem 0;
-  margin-bottom: 2rem;
-}
+.hero-section { text-align: center; padding: var(--sp-8) 0 var(--sp-6); }
+.eyebrow { margin: 0 0 var(--sp-3); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.hero-title { margin: 0; font-family: var(--font-serif); font-weight: 600; font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.12; letter-spacing: -.02em; }
+.hero-sub { max-width: 560px; margin: var(--sp-4) auto var(--sp-6); font-size: var(--fs-lg); color: var(--text-2); }
+.examples { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-5); }
+.examples-label { font-size: var(--fs-xs); color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+.example-chip { cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.example-chip:hover { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
-.search-container {
-  background-color: white;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
+.papers-container { padding-bottom: var(--sp-6); }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--border); }
+.section-head h2 { margin: 0; font-size: var(--fs-xl); }
+.count-note { font-size: var(--fs-sm); color: var(--text-3); }
 
-.search-form {
-  display: flex;
-}
+.skeleton-card { padding: var(--sp-5); margin-bottom: var(--sp-3); }
+.empty { text-align: center; padding: var(--sp-7) var(--sp-5); }
+.empty-icon { font-size: 2rem; }
+.empty h3 { margin: var(--sp-2) 0 var(--sp-1); }
+.empty p { margin: 0 auto; max-width: 420px; color: var(--text-2); font-size: var(--fs-sm); }
+.section-load-more { display: flex; justify-content: center; margin-top: var(--sp-5); }
 
-.search-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px 0 0 4px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #3f51b5;
-}
-
-.search-button {
-  padding: 0.75rem 1.5rem;
-  background-color: #3f51b5;
-  color: white;
-  border: none;
-  border-radius: 0 4px 4px 0;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
-}
-
-.search-button:hover {
-  background-color: #303f9f;
-}
-
-.search-button:disabled {
-  background-color: #c5cae9;
-  cursor: not-allowed;
-}
-
-
-.primary-button, .secondary-button {
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.primary-button {
-  background-color: #3f51b5;
-  color: white;
-  border: none;
-}
-
-.primary-button:hover {
-  background-color: #303f9f;
-}
-
-.primary-button:disabled {
-  background-color: #c5cae9;
-  cursor: not-allowed;
-}
-
-.secondary-button {
-  background-color: transparent;
-  color: #3f51b5;
-  border: 1px solid #3f51b5;
-}
-
-.secondary-button:hover {
-  background-color: rgba(63, 81, 181, 0.1);
-}
-
-.secondary-button:disabled {
-  color: #9fa8da;
-  border-color: #9fa8da;
-  cursor: not-allowed;
-}
-
-.papers-container {
-  margin-bottom: 3rem;
-}
-
-.recent-papers {
-  margin-bottom: 2rem;
-  padding: 0 0.5rem;
-  box-sizing: border-box;
-  max-width: 100%;
-}
-
-.recent-papers h2 {
-  margin-bottom: 1.5rem;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.75rem;
-  font-size: 1.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.papers-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  overflow: hidden;
-}
-
-.loading, .no-papers {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.section-load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 1.5rem;
-}
+@media (min-width: 900px) { .br-lg { display: inline; } }
+@media (max-width: 899px) { .br-lg { display: none; } }
+@media (max-width: 600px) { .hero-section { padding: var(--sp-6) 0 var(--sp-5); } .home { padding: 0 var(--sp-4); } }
 </style> 

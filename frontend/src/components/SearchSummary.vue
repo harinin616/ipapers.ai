@@ -116,139 +116,17 @@ export default {
 </script>
 
 <style scoped>
-.search-summary {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.summary-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #eee;
-  background: #f8f9fa;
-}
-
-.summary-header h3 {
-  margin: 0;
-  color: #333;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.toggle-btn {
-  background: #3f51b5;
-  color: white;
-  border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: background-color 0.2s;
-}
-
-.toggle-btn:hover {
-  background: #303f9f;
-}
-
-.summary-content {
-  position: relative;
-  padding: 1.5rem;
-}
-
-.summary-preview {
-  position: relative;
-  max-height: 4rem;
-  overflow: hidden;
-}
-
-.summary-preview p {
-  margin: 0;
-  color: #666;
-  line-height: 1.5;
-  font-size: 0.95rem;
-}
-
-.fade-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2rem;
-  background: linear-gradient(to bottom, transparent, white);
-  pointer-events: none;
-}
-
-.summary-full {
-  color: #333;
-  line-height: 1.6;
-}
-
-.summary-section {
-  margin-bottom: 1rem;
-}
-
-.section-heading {
-  color: #333;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  padding-bottom: 0.3rem;
-  border-bottom: 1px solid #eee;
-}
-
-.section-paragraph {
-  margin: 0 0 0.8rem 0;
-  color: #555;
-  line-height: 1.6;
-}
-
-.section-paragraph a {
-  color: #3f51b5;
-  text-decoration: none;
-}
-
-.section-paragraph a:hover {
-  text-decoration: underline;
-}
-
-.summary-footer {
-  padding: 0.8rem 1.5rem;
-  background: #f8f9fa;
-  border-top: 1px solid #eee;
-}
-
-.summary-meta {
-  color: #666;
-  font-size: 0.85rem;
-  font-style: italic;
-}
-
-.expanded {
-  max-height: none !important;
-}
-
-@media (max-width: 768px) {
-  .summary-header {
-    flex-direction: column;
-    gap: 0.8rem;
-    align-items: flex-start;
-  }
-  
-  .summary-controls {
-    align-self: flex-end;
-  }
-  
-  .summary-content {
-    padding: 1rem;
-  }
-  
-  .summary-footer {
-    padding: 0.8rem 1rem;
-  }
-}
+.search-summary { margin-bottom: var(--sp-4); padding: var(--sp-4) var(--sp-5); background: var(--accent-soft); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--r-lg); }
+.summary-header { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.summary-header h3 { margin: 0; font-size: var(--fs-md); }
+.toggle-btn { height: 28px; padding: 0 var(--sp-3); font: 500 var(--fs-xs)/1 var(--font-sans); color: var(--accent); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); cursor: pointer; }
+.toggle-btn:hover { background: var(--surface-2); }
+.summary-content { position: relative; margin-top: var(--sp-3); color: var(--text); font-size: var(--fs-sm); line-height: 1.7; }
+.summary-preview { position: relative; max-height: 5.4em; overflow: hidden; }
+.summary-preview p { margin: 0; }
+.fade-overlay { position: absolute; inset: auto 0 0 0; height: 2.4em; background: linear-gradient(to bottom, transparent, var(--accent-soft)); pointer-events: none; }
+.section-heading { margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-sm); color: var(--text); }
+.section-paragraph { margin: 0 0 var(--sp-2); }
+.summary-footer { margin-top: var(--sp-2); }
+.summary-meta { color: var(--text-3); }
 </style>

@@ -1,11 +1,11 @@
 <template>
   <!-- 主按钮：打开弹窗 -->
   <button
-    class="action-button chat-button"
+    :class="['btn', { 'btn-sm': size !== 'md' }]"
     title="Add to file list"
     @click="showModal = true"
   >
-    Add&nbsp;to&nbsp;File&nbsp;List
+    + Add to library
   </button>
 
   <!-- 弹窗组件，Teleport 到 body -->
@@ -26,6 +26,7 @@ import AddToFoldersModal from '../views/AddPaperView.vue'
 const props = defineProps<{ 
   paperId: string;
   platform?: string;
+  size?: 'sm' | 'md';
 }>()
 
 /* -------- state -------- */
@@ -47,13 +48,5 @@ const handleAdded = () => {
 </script>
 
 <style scoped>
-.action-button{
-  padding:.5rem 1rem;border:none;border-radius:4px;
-  font-size:.9rem;cursor:pointer;transition:background .2s;
-  background:#f0f0f0;color:#333;
-}
-.action-button:hover{background:#e0e0e0}
-
-.chat-button{background:#3f51b5;color:#fff;}
-.chat-button:hover{background:#303f9f}
+/* uses the shared .btn styles from styles/tokens.css */
 </style>

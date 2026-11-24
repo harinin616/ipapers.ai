@@ -1,52 +1,32 @@
 <template>
-  <div :class="['paper-card', { expanded }]">
+  <article :class="['paper-card', { expanded }]">
+    <div class="paper-top">
+      <span v-if="paper.platform" class="chip chip-accent">{{ paper.platform.toUpperCase() }}</span>
+      <time class="paper-date" :datetime="paper.published_date">{{ formattedDate }}</time>
+    </div>
+
     <h3 class="paper-title">
-      <a :href="paperUrl" target="_blank" rel="noopener">
-        {{ paper.title }}
-      </a>
+      <a :href="paperUrl" target="_blank" rel="noopener">{{ paper.title }}</a>
     </h3>
-    
-    <div class="paper-meta">
-      <span class="paper-authors">{{ authorText }}</span>
-      <span class="paper-date">{{ formattedDate }}</span>
+
+    <p class="paper-authors">{{ authorText }}</p>
+
+    <div v-if="paper.categories && paper.categories.length" class="paper-categories">
+      <span v-for="category in paper.categories.slice(0, 4)" :key="category" class="chip">{{ category }}</span>
+      <span v-if="paper.categories.length > 4" class="chip">+{{ paper.categories.length - 4 }}</span>
     </div>
-    
-    <div class="paper-platform" v-if="paper.platform">
-      <span class="platform-tag">{{ paper.platform.toUpperCase() }}</span>
-    </div>
-    
-    <div class="paper-categories">
-      <span 
-        v-for="category in paper.categories" 
-        :key="category" 
-        class="category-tag"
-      >
-        {{ category }}
-      </span>
-    </div>
-    
-    <div class="abstract-wrapper">
-      <p :class="['paper-abstract', { expanded }]">{{ expanded ? paper.abstract : truncatedAbstract }}</p>
-      <div class="toggle-btn" @click.stop="toggleExpand">
-        <svg v-if="!expanded" class="arrow-icon" viewBox="0 0 24 24">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-        <svg v-else class="arrow-icon" viewBox="0 0 24 24">
-          <polyline points="6 15 12 9 18 15" />
-        </svg>
-      </div>
-    </div>
-    
+
+    <p :class="['paper-abstract', { expanded }]">{{ expanded ? paper.abstract : truncatedAbstract }}</p>
+    <button v-if="paper.abstract && paper.abstract.length > 250" type="button" class="toggle-btn" :aria-expanded="expanded" @click.stop="toggleExpand">
+      {{ expanded ? 'Show less' : 'Show more' }}
+    </button>
+
     <div class="paper-actions">
-      <a :href="paper.pdf_url" target="_blank" rel="noopener" class="action-button" @click="handlePdfClick">
-        PDF
-      </a>
-      <button @click="goToPaperDetail" class="action-button">
-        Details
-      </button>
+      <button @click="goToPaperDetail" class="btn btn-primary btn-sm">Details</button>
+      <a :href="paper.pdf_url" target="_blank" rel="noopener" class="btn btn-sm" @click="handlePdfClick">PDF</a>
       <ChatButton :paper-id="paper.paper_id" :platform="paper.platform" />
     </div>
-  </div>
+  </article>
 </template>
 
 <script lang="ts">
@@ -177,187 +157,30 @@ export default defineComponent({
 
 <style scoped>
 .paper-card {
-  background-color: white;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 0.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  height: calc(100% - 0.5rem); /* Subtract bottom margin */
-  overflow: hidden; /* Prevent content overflow */
-  width: 100%; /* Ensure width doesn't exceed container */
-  max-width: 100%; /* Ensure max width doesn't exceed container */
-  box-sizing: border-box; /* Ensure padding doesn't increase element total width */
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  width: 100%; box-sizing: border-box;
+  padding: var(--sp-5); margin-bottom: var(--sp-3);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  transition: box-shadow .2s var(--ease), border-color .2s var(--ease), transform .2s var(--ease);
 }
-
-.paper-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
+.paper-card:hover { box-shadow: var(--shadow-2); border-color: var(--border-strong); }
+.paper-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.paper-date { font-size: var(--fs-xs); color: var(--text-3); }
 .paper-title {
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-  font-size: 1.25rem;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 2.8em; /* Approximately two lines height */
-  width: 100%; /* Ensure width doesn't exceed container */
+  margin: var(--sp-1) 0 0; font-family: var(--font-serif); font-weight: 600;
+  font-size: var(--fs-xl); line-height: 1.3; letter-spacing: -.005em;
 }
-
-.paper-title a {
-  color: #3f51b5;
-  text-decoration: none;
-  display: inline-block;
-  max-width: 100%; /* Ensure links don't exceed container */
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.paper-title a:hover {
-  text-decoration: underline;
-}
-
-.paper-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
-  color: #666;
-}
-
-.paper-authors {
-  font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70%;
-}
-
-.paper-platform {
-  margin-bottom: 0.75rem;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.platform-tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 0.3rem 0.8rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.paper-categories {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  min-height: 1.8rem; /* Ensure categories area has minimum height */
-}
-
-.category-tag {
-  background-color: #e3f2fd;
-  color: #1976d2;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-}
-
-.abstract-wrapper {
-  position: relative;
-  margin-bottom: 1rem;
-}
-
-.paper-abstract {
-  color: #333;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  flex-grow: 1;
-  height: 3.6em;
-  position: relative;
-}
-
-.paper-abstract::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2em;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff);
-}
-
-.paper-abstract.expanded {
-  display: block;
-  -webkit-line-clamp: unset;
-  height: auto;
-  overflow: visible;
-}
-
-.paper-abstract.expanded::after {
-  display: none;
-}
-
+.paper-title a { color: var(--text); text-decoration: none; }
+.paper-title a:hover { color: var(--accent); }
+.paper-authors { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
+.paper-categories { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-1); }
+.paper-abstract { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); line-height: 1.65; color: var(--text-2); }
 .toggle-btn {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 2px; /* slight offset */
-  display: flex;
-  justify-content: center;
-  cursor: pointer;
+  align-self: flex-start; padding: 0; background: none; border: none; cursor: pointer;
+  font: 500 var(--fs-xs)/1 var(--font-sans); color: var(--accent);
 }
-
-.arrow-icon {
-  width: 24px;
-  height: 24px;
-  stroke: #3f51b5;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-}
-
-.paper-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: auto; /* Push action buttons to the bottom */
-}
-
-.action-button {
-  padding: 0.5rem 1rem;
-  background-color: #f0f0f0;
-  color: #333;
-  border-radius: 4px;
-  border: none;
-  text-decoration: none;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.action-button:hover {
-  background-color: #e0e0e0;
-}
-
-.chat-button {
-  background-color: #3f51b5;
-  color: white;
-}
-
-.chat-button:hover {
-  background-color: #303f9f;
-}
+.toggle-btn:hover { text-decoration: underline; }
+.paper-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+@media (max-width: 520px) { .paper-card { padding: var(--sp-4); } .paper-title { font-size: var(--fs-lg); } }
 </style>

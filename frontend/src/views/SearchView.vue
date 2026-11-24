@@ -1,61 +1,68 @@
 <template>
   <div class="search">
-    <div class="hero-section">
-      <h1>Search Papers</h1>
-      
+    <section class="hero-section">
       <SearchBox
         v-model="searchQuery"
         :is-loading="isLoading"
         @search="handleSearchBoxSearch"
       />
-    </div>
-    
-    <!-- Search Results Section -->
-    <div class="papers-container">
-      <div class="recent-papers">
-        <div class="sort-options-container">
-          <h2>Search Results</h2>
-          <div v-if="results.length > 0" class="sort-options">
-            <label for="sort-by">Sort by:</label>
-            <select id="sort-by" v-model="sortBy">
-              <option value="relevance">Relevance</option>
-              <option value="date_desc">Time</option>
-            </select>
-          </div>
-        </div>
-        
-        <div v-if="isLoading" class="loading">
-          <p>Searching papers...</p>
-        </div>
-        
-        <div v-else-if="results.length === 0" class="no-results">
-          <p>No results found for "{{ searchQuery }}"</p>
-        </div>
-        
-        <div v-else-if="results.length > 0" class="papers-list">
-          <!-- AI Summary Section -->
-          <SummaryProgress 
-            v-if="searchStore.getIsSummaryLoading()" 
-            :is-loading="searchStore.getIsSummaryLoading()"
-            :paper-count="results.length"
-            :error="searchStore.getSummaryError()"
-            @retry="retrySummaryGeneration"
-          />
-          
-          <SearchSummary 
-            v-else-if="summary" 
-            :summary="summary" 
-            :paper-count="results.length"
-          />
-          
-          <!-- Paper Cards -->
-          <PaperCard v-for="paper in sortedResults" :key="paper.paper_id" :paper="paper" />
-        </div>
-        <div v-else class="search-instructions">
-          <p>Enter a search query to find relevant papers.</p>
+    </section>
+
+    <section class="papers-container" aria-live="polite">
+      <div class="sort-options-container">
+        <h2>
+          <template v-if="isLoading">Searching…</template>
+          <template v-else-if="results.length > 0">{{ results.length }} result{{ results.length === 1 ? '' : 's' }}<span v-if="searchQuery" class="for-query"> for “{{ searchQuery }}”</span></template>
+          <template v-else>Search results</template>
+        </h2>
+        <div v-if="results.length > 0" class="sort-options">
+          <label for="sort-by">Sort by</label>
+          <select id="sort-by" v-model="sortBy" class="select">
+            <option value="relevance">Relevance</option>
+            <option value="date_desc">Newest</option>
+          </select>
         </div>
       </div>
-    </div>
+
+      <div v-if="isLoading" class="papers-list" aria-busy="true">
+        <div v-for="n in 3" :key="n" class="card skeleton-card">
+          <div class="skeleton" style="height:22px;width:75%"></div>
+          <div class="skeleton" style="height:14px;width:40%;margin-top:12px"></div>
+          <div class="skeleton" style="height:14px;width:100%;margin-top:18px"></div>
+          <div class="skeleton" style="height:14px;width:90%;margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div v-else-if="results.length === 0" class="empty card">
+        <div class="empty-icon" aria-hidden="true">🔎</div>
+        <template v-if="searchQuery">
+          <h3>No papers match “{{ searchQuery }}”</h3>
+          <p>Try fewer or different keywords, check the spelling, or search for a broader topic.</p>
+        </template>
+        <template v-else>
+          <h3>Search the library</h3>
+          <p>Enter a topic, method or title above to find relevant papers.</p>
+        </template>
+      </div>
+
+      <div v-else class="papers-list">
+        <SummaryProgress
+          v-if="searchStore.getIsSummaryLoading()"
+          :is-loading="searchStore.getIsSummaryLoading()"
+          :paper-count="results.length"
+          :error="searchStore.getSummaryError()"
+          @retry="retrySummaryGeneration"
+        />
+
+        <SearchSummary
+          v-else-if="summary"
+          :summary="summary"
+          :paper-count="results.length"
+        />
+
+        <PaperCard v-for="paper in sortedResults" :key="paper.paper_id" :paper="paper" />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -254,99 +261,18 @@ export default {
 </script>
 
 <style scoped>
-.search {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.hero-section {
-  text-align: center;
-  padding: 2rem 0;
-  margin-bottom: 2rem;
-}
-
-.hero-section h1 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: #3f51b5;
-  text-align: center;
-  font-size: 2rem;
-}
-
-.papers-container {
-  margin-bottom: 3rem;
-}
-
-.recent-papers {
-  margin-bottom: 2rem;
-  padding: 0 0.5rem;
-  box-sizing: border-box;
-  max-width: 100%;
-}
-
-.recent-papers h2 {
-  margin-bottom: 1.5rem;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.75rem;
-  font-size: 1.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sort-options-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-
-
-.sort-options label {
-  margin-right: 0.5rem;
-  color: #555;
-  font-size: 0.9rem;
-}
-
-.sort-options select {
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: 0.9rem;
-}
-
-.papers-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  overflow: hidden;
-}
-
-.loading, .no-results, .search-instructions {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin: 1rem 0;
-}
-
-@media (max-width: 768px) {
-  .papers-list {
-    grid-template-columns: 1fr;
-  }
-  
-  .sort-options-container {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .sort-options {
-    align-self: flex-end;
-  }
-}
+.search { max-width: var(--content-w); margin: 0 auto; padding: 0 var(--sp-5); width: 100%; box-sizing: border-box; }
+.hero-section { padding: var(--sp-6) 0 var(--sp-5); }
+.papers-container { padding-bottom: var(--sp-6); }
+.sort-options-container { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-4); padding-bottom: var(--sp-3); border-bottom: 1px solid var(--border); }
+.sort-options-container h2 { margin: 0; font-size: var(--fs-xl); }
+.for-query { font-weight: 400; color: var(--text-2); }
+.sort-options { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text-3); }
+.select { height: 34px; padding: 0 var(--sp-3); font: 500 var(--fs-sm)/1 var(--font-sans); color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-md); cursor: pointer; }
+.skeleton-card { padding: var(--sp-5); margin-bottom: var(--sp-3); }
+.empty { text-align: center; padding: var(--sp-7) var(--sp-5); }
+.empty-icon { font-size: 2rem; }
+.empty h3 { margin: var(--sp-2) 0 var(--sp-1); }
+.empty p { margin: 0 auto; max-width: 440px; color: var(--text-2); font-size: var(--fs-sm); }
+@media (max-width: 600px) { .search { padding: 0 var(--sp-4); } }
 </style> 

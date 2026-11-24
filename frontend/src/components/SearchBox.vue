@@ -1,32 +1,24 @@
 <template>
   <div class="search-container">
-    <div class="search-form">
-      <input 
-        v-model="localSearchQuery" 
-        class="search-input" 
-        :placeholder="dynamicPlaceholder" 
-        @keyup.enter="handleSearch(true)"
+    <form class="search-form" role="search" @submit.prevent="handleSearch(true)">
+      <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input
+        v-model="localSearchQuery"
+        class="search-input"
+        type="search"
+        :placeholder="dynamicPlaceholder"
         aria-label="Search papers"
+        autocomplete="off"
       />
-      <!-- Normal search button (hidden but code preserved) -->
-      <button 
-        @click="handleSearch(false)" 
-        class="search-button search-button-hidden" 
-        :disabled="isLoading || !localSearchQuery.trim()"
-        style="display: none;"
-      >
-        <span v-if="isLoading && !searchWithSummary">Searching...</span>
-        <span v-else>🔍 Search</span>
-      </button>
-      <button 
-        @click="handleSearch(true)" 
-        class="search-button search-button-ai" 
+      <button
+        type="submit"
+        class="search-button search-button-ai"
         :disabled="isLoading || !localSearchQuery.trim()"
       >
-        <span v-if="isLoading && searchWithSummary">Searching...</span>
+        <span v-if="isLoading && searchWithSummary">Searching…</span>
         <span v-else>Search</span>
       </button>
-    </div>
+    </form>
   </div>
 </template>
 
@@ -97,75 +89,32 @@ export default {
 </script>
 
 <style scoped>
-.search-container {
-  background-color: white;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
+.search-container { max-width: 680px; margin: 0 auto; }
 .search-form {
-  display: flex;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 6px 6px 6px var(--sp-4);
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill); box-shadow: var(--shadow-2);
+  transition: border-color .15s, box-shadow .15s;
 }
-
+.search-form:focus-within { border-color: var(--accent); box-shadow: var(--shadow-2), var(--ring); }
+.search-icon { color: var(--text-3); flex: none; }
 .search-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px 0 0 4px;
-  outline: none;
+  flex: 1; min-width: 0; height: 40px; padding: 0 var(--sp-2);
+  font: var(--fs-md)/1 var(--font-sans); color: var(--text);
+  background: transparent; border: none; outline: none; box-shadow: none;
+  -webkit-appearance: none; appearance: none;
 }
-
-.search-input:focus {
-  border-color: #3f51b5;
-}
-
+.search-input::placeholder { color: var(--text-3); }
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .search-button {
-  padding: 0.75rem 1rem;
-  background-color: #3f51b5;
-  color: white;
-  border: none;
-  border-radius: 0;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-  white-space: nowrap;
-  min-width: 100px;
+  flex: none; height: 40px; padding: 0 var(--sp-5);
+  font: 600 var(--fs-sm)/1 var(--font-sans); color: var(--accent-ink);
+  background: var(--accent); border: none; border-radius: var(--r-pill);
+  cursor: pointer; white-space: nowrap; transition: background .15s, transform .05s;
 }
-
-.search-button:first-of-type {
-  border-radius: 0;
-}
-
-.search-button:last-of-type {
-  border-radius: 0 4px 4px 0;
-}
-
-.search-button:hover {
-  background-color: #303f9f;
-}
-
-.search-button:disabled {
-  background-color: #c5cae9;
-  cursor: not-allowed;
-}
-
-.search-button-ai {
-  background-color: #3b82f6;
-  border-left: 1px solid #fff;
-  border-radius: 0 4px 4px 0;
-}
-
-.search-button-ai:hover {
-  background-color: #2563eb;
-}
-
-.search-button-ai:disabled {
-  background-color: #bfdbfe;
-}
+.search-button:hover { background: var(--brand-600); color: #fff; }
+.search-button:active { transform: translateY(1px); }
+.search-button:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 520px) { .search-button { padding: 0 var(--sp-4); } }
 </style>
