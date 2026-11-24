@@ -150,3 +150,22 @@ a { color: var(--link); }
 @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+
+/* Page titles use the serif for a consistent editorial feel (hero/cards set their own sizes). */
+h1 { font-family: var(--font-serif); font-weight: 600; }
+.inline-block { display: inline-block; }
+
+/* Midnight: true-black, higher-contrast variant of dark (OLED friendly). Chosen explicitly via the header toggle. */
+:root[data-theme="midnight"] {
+  --brand-600: #6f6fe8;
+  --bg: #000000;  --surface: #09090b;  --surface-2: #121216;
+  --border: #1f1f25;  --border-strong: #31313a;
+  --text: #f4f4f2;  --text-2: #bdbdb7;  --text-3: #8d8d87;
+  --link: #b4b4ff;  --accent: #8b8bff;  --accent-ink: #0a0a14;  --accent-soft: #14143a;
+  --danger: #ff8478;  --success: #6fe0a6;  --warning-bg: #2b2410;
+  --shadow-1: 0 0 0 1px rgba(255,255,255,.03);
+  --shadow-2: 0 4px 18px rgba(0,0,0,.7);
+  --shadow-3: 0 14px 40px rgba(0,0,0,.85);
+  --ring: 0 0 0 3px rgba(139,139,255,.5);
+  color-scheme: dark;
+}

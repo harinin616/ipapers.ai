@@ -23,9 +23,13 @@
         <div class="nav-right-section">
           <SiteMetric />
 
-          <button class="icon-btn" type="button" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">
-            <svg v-if="isDark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-            <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <button class="icon-btn" type="button" :title="themeLabel" :aria-label="themeLabel" @click="toggleTheme">
+            <!-- light: sun -->
+            <svg v-if="theme === 'light'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <!-- dark: moon -->
+            <svg v-else-if="theme === 'dark'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            <!-- midnight: moon with stars -->
+            <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M20 13.4A8 8 0 1 1 10.6 4a6.2 6.2 0 0 0 9.4 9.4z" fill="currentColor" fill-opacity=".25"/><path d="M17 3v3M15.5 4.5h3" stroke-linecap="round"/></svg>
           </button>
 
           <div ref="googleBtn" class="g_id_signin" v-show="!user"></div>
@@ -129,15 +133,25 @@ export default defineComponent({
     const appHeaderRef = ref<HTMLElement | null>(null);
     const headerHeight = ref(0);
     const navOpen = ref(false);
-    const isDark = ref(false);
-    const applyTheme = (mode: 'light' | 'dark') => {
+    type Theme = 'light' | 'dark' | 'midnight';
+    const theme = ref<Theme>('light');
+    const THEME_ORDER: Theme[] = ['light', 'dark', 'midnight'];
+    const themeLabel = computed(() => {
+      const next = THEME_ORDER[(THEME_ORDER.indexOf(theme.value) + 1) % THEME_ORDER.length];
+      return `Theme: ${theme.value}. Switch to ${next}`;
+    });
+    const applyTheme = (mode: Theme) => {
       document.documentElement.setAttribute('data-theme', mode);
-      isDark.value = mode === 'dark';
+      theme.value = mode;
       try { localStorage.setItem('theme', mode); } catch (e) { /* storage unavailable */ }
     };
-    const toggleTheme = () => applyTheme(isDark.value ? 'light' : 'dark');
-    isDark.value = document.documentElement.getAttribute('data-theme') === 'dark' ||
-      (!document.documentElement.getAttribute('data-theme') && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+    const toggleTheme = () => applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(theme.value) + 1) % THEME_ORDER.length]);
+    {
+      const saved = document.documentElement.getAttribute('data-theme');
+      theme.value = saved === 'light' || saved === 'dark' || saved === 'midnight'
+        ? saved
+        : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
     const showUserMenu = ref(false);
     function toggleUserMenu() {
       showUserMenu.value = !showUserMenu.value;
@@ -390,7 +404,8 @@ export default defineComponent({
       showUserMenu,
       toggleUserMenu,
       navOpen,
-      isDark,
+      theme,
+      themeLabel,
       toggleTheme,
       user,
       logout,
