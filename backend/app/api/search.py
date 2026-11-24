@@ -16,6 +16,24 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+def fallback_order(papers, ordered_pairs, limit):
+    """
+    Deterministic ordering used when the LLM reranker is unavailable or returns nothing.
+    Papers follow the retrieval order (keyword hits first, then vector hits); anything not in
+    `ordered_pairs` goes last in its original order. Returns at most `limit` papers.
+    """
+    rank = {}
+    for i, pair in enumerate(ordered_pairs):
+        rank.setdefault((pair[0], pair[1]), i)
+    big = len(rank) + len(papers)
+    indexed = sorted(
+        enumerate(papers),
+        key=lambda ip: (rank.get((ip[1].paper_id, ip[1].platform), big), ip[0]),
+    )
+    ordered = [p for _, p in indexed]
+    return ordered[:limit] if limit and limit > 0 else ordered
+
+
 @router.post("/", response_model=PaperSearchResponse)
 async def search_papers(search_request: PaperSearchRequest):
     """
@@ -31,17 +49,21 @@ async def search_papers(search_request: PaperSearchRequest):
         keyword_task= asyncio.create_task(keyword_search_service.search(query=search_request.query))
 
 
-        paper_id_platform_pairs, keyword_paper_id_platform_pairs = await asyncio.gather(vec_task, keyword_task)
+        vec_res, kw_res = await asyncio.gather(vec_task, keyword_task, return_exceptions=True)
+        if isinstance(vec_res, Exception):
+            logger.warning(f"Vector search failed, continuing with keyword results only: {vec_res}")
+            vec_res = []
+        if isinstance(kw_res, Exception):
+            logger.warning(f"Keyword search failed, continuing with vector results only: {kw_res}")
+            kw_res = []
+        paper_id_platform_pairs, keyword_paper_id_platform_pairs = vec_res, kw_res
         #paper_id_platform_pairs = await vec_task
         #arxiv_papers, 
     
-        print(keyword_paper_id_platform_pairs)
 
         # --- 将本地的召回结果ID进行高效融合 ---
         # 使用集合(set)的并集操作，可以自动合并和去重
-        combined_local_ids = set(keyword_paper_id_platform_pairs).union(set(paper_id_platform_pairs))
-        # 将集合转换为列表
-        combined_local_ids = list(combined_local_ids)
+        combined_local_ids = list(dict.fromkeys([*keyword_paper_id_platform_pairs, *paper_id_platform_pairs]))
 
         if not combined_local_ids:# and not arxiv_papers:
             return PaperSearchResponse(results=[], count=0)
@@ -71,9 +93,19 @@ async def search_papers(search_request: PaperSearchRequest):
         
 
         documents=[p.title+p.abstract for p in papers]
-        rerank = await llm_service.get_rerank(documents=documents,query=search_request.query)
-        #rerank=list(range(len(papers)))
-        new_papers=[papers[idx] for idx in rerank]
+        try:
+            rerank = await llm_service.get_rerank(documents=documents, query=search_request.query)
+        except Exception as e:
+            logger.warning(f"Rerank raised {e.__class__.__name__}: {e}")
+            rerank = []
+        rerank = [i for i in (rerank or []) if isinstance(i, int) and 0 <= i < len(papers)]
+        if rerank:
+            new_papers = [papers[idx] for idx in rerank]
+        else:
+            # Reranker unavailable or empty: fall back to retrieval order so users still get results.
+            logger.warning("Reranker returned no ordering; falling back to retrieval order")
+            topn = getattr(llm_service, "rerank_topn", None)
+            new_papers = fallback_order(papers, combined_local_ids, topn if isinstance(topn, int) and topn > 0 else 50)
         logger.info(f"Reranked papers: {[p.pdf_url for p in new_papers]}")
         paper_responses = [
             Paper(
