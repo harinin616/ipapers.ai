@@ -426,8 +426,8 @@ onBeforeUnmount(()=>{
   width:100%; height:100%;
   min-width:0; min-height:0;
   position:relative; overflow:hidden;
-  border:1px solid #e5e7eb; border-radius:12px;
-  background:#fff; box-shadow:0 6px 18px rgba(15,23,42,.05);
+  border:1px solid var(--border); border-radius:12px;
+  background:var(--surface); box-shadow:0 6px 18px rgba(15,23,42,.05);
 }
 .graph3d canvas{ display:block; width:100% !important; height:100% !important; }
 </style>

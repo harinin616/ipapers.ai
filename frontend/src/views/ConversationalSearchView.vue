@@ -290,7 +290,7 @@ export default {
 .hero-section h1 {
   margin-top: 0;
   margin-bottom: 1.5rem;
-  color: #3f51b5;
+  color: var(--accent);
   text-align: center;
   font-size: 2rem;
 }
@@ -308,8 +308,8 @@ export default {
 
 .recent-papers h2 {
   margin-bottom: 1.5rem;
-  color: #333;
-  border-bottom: 1px solid #eee;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.75rem;
   font-size: 1.5rem;
   overflow: hidden;
@@ -326,14 +326,14 @@ export default {
 
 .sort-options label {
   margin-right: 0.5rem;
-  color: #555;
+  color: var(--text-2);
   font-size: 0.9rem;
 }
 
 .sort-options select {
   padding: 0.3rem 0.5rem;
   border-radius: 4px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   font-size: 0.9rem;
 }
 
@@ -347,10 +347,10 @@ export default {
 .loading, .no-results, .search-instructions {
   text-align: center;
   padding: 2rem;
-  color: #666;
-  background-color: white;
+  color: var(--text-2);
+  background-color: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   margin: 1rem 0;
 }
 
@@ -363,7 +363,7 @@ export default {
 }
 
 .example-queries h3 {
-  color: #333;
+  color: var(--text);
   margin-bottom: 0.5rem;
 }
 
@@ -373,12 +373,12 @@ export default {
 }
 
 .example-queries li {
-  background-color: #f5f5f5;
+  background-color: var(--surface-2);
   padding: 0.5rem;
   margin: 0.25rem 0;
   border-radius: 4px;
   font-style: italic;
-  color: #666;
+  color: var(--text-2);
 }
 
 @media (max-width: 768px) {

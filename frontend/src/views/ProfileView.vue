@@ -98,14 +98,14 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 2rem 1rem;
-  background: #f8f9fa;
+  background: var(--surface-2);
 }
 
 /* 卡片本体 */
 .profile-card {
   max-width: 480px;
   width: 100%;
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   padding: 2rem 1.75rem 2.5rem;
@@ -126,11 +126,11 @@ export default {
   border-radius: 50%;
   object-fit: cover;
   border: 4px solid #fff;
-  background: #ddd;
+  background: var(--border);
   box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
-.basic-info .name   { font-size: 1.5rem; font-weight: 600; color: #333 }
-.basic-info .email  { margin-top: .25rem; color: #555; font-size: .9rem; }
+.basic-info .name   { font-size: 1.5rem; font-weight: 600; color: var(--text) }
+.basic-info .email  { margin-top: .25rem; color: var(--text-2); font-size: .9rem; }
 
 /* 统计网格 */
 .stats {
@@ -138,10 +138,10 @@ export default {
   grid-template-columns: repeat(2,1fr);
   text-align: center;
   gap: .5rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border);
   padding-top: 1.5rem;
 }
-.stat .value  { font-size: 1.6rem; font-weight: 600; color: #333 }
+.stat .value  { font-size: 1.6rem; font-weight: 600; color: var(--text) }
 .stat .label  {
   margin-top: .15rem;
   font-size: .72rem;
@@ -160,10 +160,10 @@ export default {
 .btn {
   min-width: 120px;
   padding: .55rem 0;
-  background: #3f51b5;
+  background: var(--accent);
   color: #fff;
   font-weight: 500;
-  border: 1px solid #3f51b5;
+  border: 1px solid var(--accent);
   border-radius: 9999px;
   cursor: pointer;
   transition: .2s;
@@ -171,10 +171,10 @@ export default {
 .btn:hover     { background: #32409b }
 .btn.outline   {
   background: transparent;
-  color: #3f51b5;
+  color: var(--accent);
 }
 .btn.outline:hover {
-  background: #3f51b5;
+  background: var(--accent);
   color: #fff;
 }
 </style>

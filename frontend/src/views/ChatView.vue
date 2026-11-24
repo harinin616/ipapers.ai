@@ -467,7 +467,7 @@ watch(
   position: relative;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+  background-color: var(--surface-2);
   overflow: hidden;
 }
 
@@ -485,9 +485,9 @@ watch(
 .loading{
   text-align: center;
   padding: 2rem;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   margin-bottom: 2rem;
 }
 
@@ -497,7 +497,7 @@ watch(
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 0;
   box-shadow: none;
 }
@@ -532,7 +532,7 @@ watch(
 .header-main h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #333;
+  color: var(--text);
 }
 
 .header-actions {
@@ -545,7 +545,7 @@ watch(
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #f5f7fa;
+  background-color: var(--surface-2);
   border-radius: 8px;
 }
 
@@ -571,15 +571,15 @@ watch(
 
 .chat-message.user-message {
   align-self: flex-end;
-  background-color: #e3f2fd;
+  background-color: var(--accent-soft);
   color: #0d47a1;
   border-bottom-right-radius: 2px;
 }
 
 .chat-message.assistant-message {
   align-self: flex-start;
-  background-color: #fff;
-  color: #333;
+  background-color: var(--surface);
+  color: var(--text);
   border-bottom-left-radius: 2px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
@@ -603,8 +603,8 @@ watch(
   display: flex;
   align-items: center;
   padding: 0.75rem;
-  border-top: 1px solid #eee;
-  background-color: white;
+  border-top: 1px solid var(--border);
+  background-color: var(--surface);
   border-radius: 0 0 8px 8px;
   gap: 0.5rem;
 }
@@ -614,16 +614,16 @@ watch(
   display: flex;
   flex-direction: column;
   position: relative;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 24px;
-  background-color: #fff;
+  background-color: var(--surface);
   transition: all 0.2s;
   overflow: hidden;
   padding: 0.5rem 1rem 0;
 }
 
 .chat-input-wrapper:focus-within {
-  border-color: #3f51b5;
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
 }
 
@@ -643,7 +643,7 @@ watch(
 }
 
 .chat-send-button {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
   border: none;
   border-radius: 50%;
@@ -659,7 +659,7 @@ watch(
 }
 
 .chat-send-button:hover:not(:disabled) {
-  background-color: #303f9f;
+  background-color: var(--brand-600);
   transform: translateY(-1px);
 }
 
@@ -672,7 +672,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
+  color: var(--text-2);
   font-style: italic;
   padding: 0.5rem;
 }
@@ -684,7 +684,7 @@ watch(
   justify-content: center;
   height: 100%;
   gap: 1rem;
-  color: #666;
+  color: var(--text-2);
   font-size: 0.95rem;
 }
 
@@ -692,7 +692,7 @@ watch(
   width: 20px;
   height: 20px;
   border: 2px solid #f3f3f3;
-  border-top: 2px solid #3f51b5;
+  border-top: 2px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   flex-shrink: 0;
@@ -704,7 +704,7 @@ watch(
 }
 
 .chat-input:disabled {
-  background-color: #f8f9fa;
+  background-color: var(--surface-2);
   color: #6c757d;
   cursor: not-allowed;
 }
@@ -740,7 +740,7 @@ button:disabled {
   white-space: pre-line; /* 保留文本中的换行 */
   margin: 0;
   font-size: 1rem;
-  color: #555;
+  color: var(--text-2);
 }
 
 @keyframes processing-bar {

@@ -222,8 +222,8 @@ const handleDeleteSession = (sessionId) => {
   width: 240px;
   min-width: 200px;
   max-width: 260px;
-  background-color: #ffffff;
-  border-right: 1px solid #e0e0e0;
+  background-color: var(--surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -249,7 +249,7 @@ const handleDeleteSession = (sessionId) => {
   flex-direction: column;
   padding: 12px;
   gap: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar.collapsed .sidebar-top {
@@ -272,7 +272,7 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .hamburger-toggle:hover {
-  background-color: #f0f0f0;
+  background-color: var(--surface-2);
 }
 
 .hamburger-toggle .icon-svg {
@@ -282,7 +282,7 @@ const handleDeleteSession = (sessionId) => {
 
 .new-chat-button {
   background-color: transparent;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 12px 16px;
   cursor: pointer;
@@ -297,7 +297,7 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .new-chat-button:hover {
-  background-color: #f8f9fa;
+  background-color: var(--surface-2);
   border-color: #d0d0d0;
 }
 
@@ -320,7 +320,7 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .new-chat-button-collapsed:hover {
-  background-color: #f0f0f0;
+  background-color: var(--surface-2);
 }
 
 .new-chat-button-collapsed .icon-svg {
@@ -343,7 +343,7 @@ const handleDeleteSession = (sessionId) => {
   cursor: pointer;
   font-size: 0.95rem;
   color: #444;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--surface-2);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -359,7 +359,7 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .session-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--surface-2);
 }
 
 .session-item.active {
@@ -372,7 +372,7 @@ const handleDeleteSession = (sessionId) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: var(--text-2);
 }
 
 .session-icon .icon-svg {
@@ -400,11 +400,11 @@ const handleDeleteSession = (sessionId) => {
 
 .session-title-input {
   width: 100%;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 0.95rem;
-  background-color: white;
+  background-color: var(--surface);
   outline: none;
 }
 
@@ -432,7 +432,7 @@ const handleDeleteSession = (sessionId) => {
 .delete-btn {
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--text-2);
   cursor: pointer;
   padding: 4px;
   line-height: 1;
@@ -466,7 +466,7 @@ const handleDeleteSession = (sessionId) => {
 }
 
 .delete-btn:hover {
-  color: #d32f2f;
+  color: var(--danger);
   background-color: #ffecec;
 }
 

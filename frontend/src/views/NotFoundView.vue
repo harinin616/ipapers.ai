@@ -28,35 +28,35 @@ export default defineComponent({
 .not-found-container {
   text-align: center;
   padding: 3rem;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   max-width: 500px;
 }
 
 h1 {
   font-size: 6rem;
   margin: 0;
-  color: #3f51b5;
+  color: var(--accent);
   line-height: 1;
 }
 
 h2 {
   font-size: 1.8rem;
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--text);
 }
 
 p {
   font-size: 1.1rem;
-  color: #666;
+  color: var(--text-2);
   margin-bottom: 2rem;
 }
 
 .home-link {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
   text-decoration: none;
   border-radius: 4px;
@@ -65,6 +65,6 @@ p {
 }
 
 .home-link:hover {
-  background-color: #303f9f;
+  background-color: var(--brand-600);
 }
 </style>

@@ -1961,16 +1961,16 @@ function formatDate(timestamp) {
   position: relative;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+  background-color: var(--surface-2);
   overflow: hidden;
 }
 
 .loading {
   text-align: center;
   padding: 2rem;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   margin-bottom: 2rem;
 }
 
@@ -2001,9 +2001,9 @@ function formatDate(timestamp) {
 /* Left Panel Styles */
 .left-panel {
   flex: 0 0 50%;
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2016,8 +2016,8 @@ function formatDate(timestamp) {
 
 .panel-header {
   padding: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-bottom: 1px solid var(--border);
+  background: var(--accent);
   color: white;
 }
 
@@ -2039,13 +2039,13 @@ function formatDate(timestamp) {
 
 .upload-button {
   flex: 1;
-  border: 2px dashed #ddd;
+  border: 2px dashed var(--border);
   border-radius: 8px;
   padding: 1rem 0.75rem;
   text-align: center;
   transition: all 0.3s ease;
   cursor: pointer;
-  background: #fafafa;
+  background: var(--surface-2);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2053,12 +2053,12 @@ function formatDate(timestamp) {
 }
 
 .upload-button:hover {
-  border-color: #3f51b5;
+  border-color: var(--accent);
   background-color: #f3f4ff;
 }
 
 .upload-button.drag-over {
-  border-color: #3f51b5;
+  border-color: var(--accent);
   background-color: #f3f4ff;
 }
 
@@ -2068,7 +2068,7 @@ function formatDate(timestamp) {
 
 .upload-own-files:hover {
   border-color: #1976d2;
-  background-color: #e3f2fd;
+  background-color: var(--accent-soft);
 }
 
 .add-from-list {
@@ -2076,7 +2076,7 @@ function formatDate(timestamp) {
 }
 
 .add-from-list:hover {
-  border-color: #388e3c;
+  border-color: var(--success);
   background-color: #e8f5e8;
 }
 
@@ -2088,7 +2088,7 @@ function formatDate(timestamp) {
 .upload-text {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
 }
 
 
@@ -2110,7 +2110,7 @@ function formatDate(timestamp) {
 
 .graph-header h4 {
   margin: 0;
-  color: #333;
+  color: var(--text);
   font-size: 1.1rem;
 }
 
@@ -2134,7 +2134,7 @@ function formatDate(timestamp) {
 }
 
 .cancel-edge-btn {
-  background: #f44336;
+  background: var(--danger);
   color: white;
   border: none;
   padding: 0.4rem 0.8rem;
@@ -2199,7 +2199,7 @@ function formatDate(timestamp) {
 }
 
 .cancel-target-btn {
-  background: #f44336;
+  background: var(--danger);
   color: white;
   border: none;
   padding: 0.4rem 0.8rem;
@@ -2237,9 +2237,9 @@ function formatDate(timestamp) {
 
 .graph-container {
   flex: 1;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -2251,7 +2251,7 @@ function formatDate(timestamp) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--text-3);
 }
 
 .placeholder-icon {
@@ -2266,9 +2266,9 @@ function formatDate(timestamp) {
 }
 
 .relation-graph {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  background: linear-gradient(135deg, var(--surface-2) 0%, #ffffff 100%);
   border-radius: 12px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
 }
 
@@ -2492,7 +2492,7 @@ function formatDate(timestamp) {
   padding: 0.5rem;
   border-radius: 4px;
   margin-bottom: 0.5rem;
-  background: #f5f5f5;
+  background: var(--surface-2);
 }
 
 .paper-number {
@@ -2517,7 +2517,7 @@ function formatDate(timestamp) {
 }
 
 .remove-btn {
-  background: #f44336;
+  background: var(--danger);
   color: white;
   border: none;
   border-radius: 50%;
@@ -2530,9 +2530,9 @@ function formatDate(timestamp) {
 /* Right Panel Styles */
 .right-panel {
   flex: 0 0 50%;
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2561,7 +2561,7 @@ function formatDate(timestamp) {
 
 .result-header h4 {
   margin: 0;
-  color: #333;
+  color: var(--text);
   font-size: 1.1rem;
 }
 
@@ -2579,10 +2579,10 @@ function formatDate(timestamp) {
   flex: 1;
   padding: 0 0.75rem 0.75rem 0.75rem;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   margin: 0 0.75rem;
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--surface-2);
 }
 
 .result-placeholder {
@@ -2590,7 +2590,7 @@ function formatDate(timestamp) {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-3);
   font-style: italic;
 }
 
@@ -2601,14 +2601,14 @@ function formatDate(timestamp) {
   justify-content: center;
   height: 100%;
   gap: 1rem;
-  color: #666;
+  color: var(--text-2);
 }
 
 .spinner {
   width: 24px;
   height: 24px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #3f51b5;
+  border-top: 3px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -2621,7 +2621,7 @@ function formatDate(timestamp) {
 .generated-text {
   padding: 1rem;
   line-height: 1.6;
-  background: white;
+  background: var(--surface);
   border-radius: 6px;
   margin: 1rem 0;
 }
@@ -2648,15 +2648,15 @@ function formatDate(timestamp) {
 
 .rws-message.user-message {
   align-self: flex-end;
-  background-color: #e3f2fd;
+  background-color: var(--accent-soft);
   color: #0d47a1;
   border-bottom-right-radius: 2px;
 }
 
 .rws-message.assistant-message {
   align-self: flex-start;
-  background-color: #fff;
-  color: #333;
+  background-color: var(--surface);
+  color: var(--text);
   border-bottom-left-radius: 2px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
@@ -2686,15 +2686,15 @@ function formatDate(timestamp) {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #3f51b5;
+  background-color: var(--accent);
   animation: pulse 1.5s infinite;
   margin-left: 0.5rem;
 }
 
 .input-section {
   padding: 0.75rem;
-  border-top: 1px solid #e0e0e0;
-  background: #f9f9f9;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 .input-container {
@@ -2706,7 +2706,7 @@ function formatDate(timestamp) {
 .guidance-input {
   flex: 1;
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-family: inherit;
   font-size: 0.9rem;
@@ -2716,14 +2716,14 @@ function formatDate(timestamp) {
 
 .guidance-input:focus {
   outline: none;
-  border-color: #3f51b5;
+  border-color: var(--accent);
 }
 
 
 
 .generate-btn {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--accent);
   color: white;
   border: none;
   padding: 0.75rem;
@@ -2740,7 +2740,7 @@ function formatDate(timestamp) {
 }
 
 .generate-btn:disabled {
-  background: #ccc;
+  background: var(--border);
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -2769,8 +2769,8 @@ function formatDate(timestamp) {
 
 .upload-progress-section {
   padding: 1rem;
-  border-top: 1px solid #e0e0e0;
-  background: #f9f9f9;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 .upload-item {
@@ -2778,7 +2778,7 @@ function formatDate(timestamp) {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: white;
+  background: var(--surface);
   border-radius: 6px;
   margin-bottom: 0.5rem;
 }
@@ -2793,13 +2793,13 @@ function formatDate(timestamp) {
 
 .file-size {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-2);
 }
 
 .progress-bar {
   flex: 1;
   height: 10px;
-  background: #f0f0f0;
+  background: var(--surface-2);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -2815,16 +2815,16 @@ function formatDate(timestamp) {
 }
 
 .progress-fill.error {
-  background: #f44336;
+  background: var(--danger);
 }
 
 .upload-status {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-2);
 }
 
 .error-text {
-  color: #f44336;
+  color: var(--danger);
 }
 
 .success-text {
@@ -2832,17 +2832,17 @@ function formatDate(timestamp) {
 }
 
 .progress-text {
-  color: #666;
+  color: var(--text-2);
 }
 
 .supported-formats {
   font-size: 0.8rem;
-  color: #888;
+  color: var(--text-3);
   margin-top: 0.5rem;
   padding: 0.3rem 0.6rem;
   background: #f0f8ff;
   border-radius: 4px;
-  border: 1px solid #e3f2fd;
+  border: 1px solid var(--accent-soft);
 }
 
 /* Dialog Styles */
@@ -2860,7 +2860,7 @@ function formatDate(timestamp) {
 }
 
 .dialog-content {
-  background: white;
+  background: var(--surface);
   border-radius: 8px;
   padding: 1.5rem;
   min-width: 400px;
@@ -2870,7 +2870,7 @@ function formatDate(timestamp) {
 
 .dialog-content h3 {
   margin: 0 0 1rem 0;
-  color: #333;
+  color: var(--text);
 }
 
 .dialog-field {
@@ -2881,15 +2881,15 @@ function formatDate(timestamp) {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
 }
 
 .dialog-field span {
   display: block;
   padding: 0.5rem;
-  background: #f5f5f5;
+  background: var(--surface-2);
   border-radius: 4px;
-  color: #666;
+  color: var(--text-2);
   font-size: 0.9rem;
 }
 
@@ -2897,7 +2897,7 @@ function formatDate(timestamp) {
 .dialog-field textarea {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-family: inherit;
   font-size: 0.9rem;
@@ -2907,7 +2907,7 @@ function formatDate(timestamp) {
 .dialog-field select:focus,
 .dialog-field textarea:focus {
   outline: none;
-  border-color: #3f51b5;
+  border-color: var(--accent);
 }
 
 .dialog-actions {
@@ -2918,7 +2918,7 @@ function formatDate(timestamp) {
 }
 
 .dialog-actions .cancel-btn {
-  background: #666;
+  background: var(--text-2);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -2936,7 +2936,7 @@ function formatDate(timestamp) {
 }
 
 .dialog-actions .cancel-btn:hover {
-  background: #555;
+  background: var(--text-2);
 }
 
 .dialog-actions .save-btn:hover {
@@ -2958,32 +2958,32 @@ function formatDate(timestamp) {
   justify-content: center;
   padding: 2rem;
   gap: 1rem;
-  color: #666;
+  color: var(--text-2);
 }
 
 .no-files {
   text-align: center;
   padding: 2rem;
-  color: #666;
+  color: var(--text-2);
 }
 
 .no-files .hint {
   font-size: 0.9rem;
-  color: #888;
+  color: var(--text-3);
   margin-top: 0.5rem;
 }
 
 .file-list {
   max-height: 400px;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 6px;
 }
 
 .file-list-header {
   padding: 1rem;
-  background: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
   font-weight: 600;
 }
 
@@ -3000,16 +3000,16 @@ function formatDate(timestamp) {
 }
 
 .file-item {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--surface-2);
   transition: background-color 0.2s ease;
 }
 
 .file-item:hover {
-  background-color: #f8f9fa;
+  background-color: var(--surface-2);
 }
 
 .file-item.already-added {
-  background-color: #f0f0f0;
+  background-color: var(--surface-2);
   opacity: 0.6;
 }
 
@@ -3037,7 +3037,7 @@ function formatDate(timestamp) {
 
 .file-name {
   font-weight: 500;
-  color: #333;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3049,11 +3049,11 @@ function formatDate(timestamp) {
   align-items: center;
   gap: 1rem;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text-2);
 }
 
 .file-date {
-  color: #888;
+  color: var(--text-3);
 }
 
 .already-added-label {
@@ -3063,13 +3063,13 @@ function formatDate(timestamp) {
 }
 
 .dialog-actions .save-btn:disabled {
-  background: #ccc;
+  background: var(--border);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 .dialog-actions .save-btn:disabled:hover {
-  background: #ccc;
+  background: var(--border);
   transform: none;
   box-shadow: none;
 }

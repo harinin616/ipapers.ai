@@ -384,7 +384,7 @@ function confirmDelete(){
   border-bottom:1px solid #e3e7ef;
 }
 .shared-sidebar__header h3{
-  margin:0;font-size:.95rem;font-weight:600;color:#374151;
+  margin:0;font-size:.95rem;font-weight:600;color:var(--text);
 }
 
 .shared-sidebar__list{
@@ -421,11 +421,11 @@ function confirmDelete(){
   max-width: calc(100% - 0.5rem); /* 确保不超出 */
   box-sizing: border-box;
 }
-.shared-sidebar__item:hover{background:#eef2ff}
-.shared-sidebar__item.is-open{background:#e0e7ff;color:#1e3a8a}
+.shared-sidebar__item:hover{background:var(--accent-soft)}
+.shared-sidebar__item.is-open{background:var(--accent-soft);color:#1e3a8a}
 .shared-sidebar__item.is-open::before{
   content:"";position:absolute;left:-.25rem;top:0;bottom:0;width:4px;
-  border-radius:0 4px 4px 0;background:#6366f1;
+  border-radius:0 4px 4px 0;background:var(--accent);
 }
 
 /* ——— 文件夹名 / 计数保留原样 ——— */
@@ -441,7 +441,7 @@ function confirmDelete(){
 .shared-sidebar__count{
   flex-shrink:0;min-width:1.5em;padding:0 .5em;text-align:center;
   font-size:.8rem;line-height:1.35;border-radius:999px;
-  background:#dbeafe;color:#1e3a8a;font-variant-numeric:tabular-nums;
+  background:var(--accent-soft);color:#1e3a8a;font-variant-numeric:tabular-nums;
 }
 
 /* ——— 展开箭头 ——— */
@@ -471,14 +471,14 @@ function confirmDelete(){
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #374151;
+  color: var(--text);
   transition: background .15s;
   box-sizing: border-box; /* 包含padding在宽度内 */
 }
 .paper-row:hover{background:#f0f4ff}
 
 /* 空 / 加载占位 */
-.paper-empty{font-size:.8rem;color:#9ca3af;padding:.25rem 0}
+.paper-empty{font-size:.8rem;color:var(--text-3);padding:.25rem 0}
 
 /* 删除按钮沿用原设计 */
 .remove-btn{
@@ -490,14 +490,14 @@ function confirmDelete(){
 
 /* 滚动条细化 */
 .shared-sidebar__list::-webkit-scrollbar{width:6px}
-.shared-sidebar__list::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
-.shared-sidebar__list:hover::-webkit-scrollbar-thumb{background:#94a3b8}
+.shared-sidebar__list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.shared-sidebar__list:hover::-webkit-scrollbar-thumb{background:var(--text-3)}
 
 
 
 .setting-btn{
   background:none;border:none;font-size:1rem;
-  color:#6b7280;cursor:pointer;padding:0 .3rem;
+  color:var(--text-2);cursor:pointer;padding:0 .3rem;
   transition:color .15s;
 }
 .setting-btn:hover{ color:#1e3a8a }
@@ -505,7 +505,7 @@ function confirmDelete(){
 .setting-pop{
   position:fixed; z-index:1000;
   min-width:220px; max-width:280px;
-  background:#fff; border:1px solid #d1d5db; border-radius:8px;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
   box-shadow:0 4px 14px rgba(0,0,0,.1);
   padding:1rem;
   font-size:.87rem;
@@ -515,24 +515,24 @@ function confirmDelete(){
 .radio input{margin-right:.4rem}
 .users-input textarea{
   width:100%;min-height:60px;font-size:.85rem;
-  padding:.35rem .5rem;border:1px solid #d1d5db;border-radius:4px;
+  padding:.35rem .5rem;border:1px solid var(--border);border-radius:4px;
   box-sizing:border-box;resize:vertical;margin:.4rem 0 .6rem;
 }
 .btn-row{display:flex;justify-content:space-between;margin-top:.5rem}
 .primary{
-  background:#3b82f6;border:none;color:#fff;padding:.35rem .8rem;
+  background:var(--accent);border:none;color:#fff;padding:.35rem .8rem;
   border-radius:4px;font-size:.85rem;cursor:pointer
 }
-.primary:hover{background:#2563eb}
+.primary:hover{background:var(--brand-600)}
 .danger{
-  background:#fff;border:1px solid #ef4444;color:#ef4444;
+  background:var(--surface);border:1px solid var(--danger);color:var(--danger);
   padding:.35rem .8rem;border-radius:4px;font-size:.85rem;cursor:pointer
 }
 .danger:hover{background:#fef2f2}
 .row-no{
   display:inline-block;
   min-width:1.4em;          /* 对齐 */
-  color:#6b7280;            /* 灰色编号 */
+  color:var(--text-2);            /* 灰色编号 */
   font-variant-numeric:tabular-nums;
   margin-right:.25em;
 }
@@ -542,34 +542,34 @@ function confirmDelete(){
 
 /* 高亮效果（颜色与文件夹 is-open 保持一致） */
 .paper-row.is-selected{
-  background:#e0e7ff;
+  background:var(--accent-soft);
   color:#1e3a8a;
   font-weight:500;
 }
 .paper-row.is-selected::before{
   content:"";
   position:absolute;left:-.35rem;top:0;bottom:0;width:3px;
-  background:#6366f1;border-radius:0 3px 3px 0;
+  background:var(--accent);border-radius:0 3px 3px 0;
 }
 .users-list{
   margin:.5rem 0 0; padding:0; list-style:none;
 }
 .users-list li{
-  font-size:.85rem; color:#374151;
+  font-size:.85rem; color:var(--text);
   padding:.12rem 0;
 }
 .add-user-row{
   display:flex; gap:.4rem; align-items:center; margin-bottom:.4rem;
 }
 .email-input{
-  flex:1; padding:.3rem .5rem; border:1px solid #d1d5db; border-radius:4px;
+  flex:1; padding:.3rem .5rem; border:1px solid var(--border); border-radius:4px;
   font-size:.85rem;
 }
 .primary.small{ padding:.3rem .7rem; font-size:.8rem; }
 .delete-user{
-  background:none; border:none; color:#ef4444; cursor:pointer; margin-left:.5rem;
+  background:none; border:none; color:var(--danger); cursor:pointer; margin-left:.5rem;
 }
-.delete-user:hover{ color:#b91c1c; }
+.delete-user:hover{ color:var(--danger); }
 .shared-sidebar {
   width: 280px;
   transition: width 0.3s ease;
@@ -609,7 +609,7 @@ function confirmDelete(){
   transition: background 0.2s;
   margin-right: 4px;
 }
-.collapse-btn:hover { background: #f0f0f0; }
+.collapse-btn:hover { background: var(--surface-2); }
 
 /* 收缩时隐藏标题文本 */
 .shared-sidebar.collapsed .shared-sidebar__header h3 {
@@ -653,14 +653,14 @@ function confirmDelete(){
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #9ca3af;       /* 灰色小点，按需改色 */
+  background: var(--text-3);       /* 灰色小点，按需改色 */
   display: block;
 }
 
 /* Hover / 选中时把圆点和背景同步高亮（可选） */
 .shared-sidebar.collapsed .shared-sidebar__item:hover::after,
 .shared-sidebar.clas .shared-sidebar__item.is-open::after {
-  background: #6366f1;       /* 与选中高亮色保持一致 */
+  background: var(--accent);       /* 与选中高亮色保持一致 */
 }
 
 /* 已有的隐藏规则继续生效 —— 名称 / 计数 / 箭头 / 设置钮都隐藏 */
@@ -679,9 +679,9 @@ function confirmDelete(){
   letter-spacing:.3px;
 }
 
-.folder-tag.owner  { background:#2563eb; color:#fff; }   /* 亮蓝 */
+.folder-tag.owner  { background:var(--brand-600); color:#fff; }   /* 亮蓝 */
 .folder-tag.public { background:#10b981; color:#fff; }   /* 绿 */
-.folder-tag.shared { background:#e2e8f0; color:#374151;} /* 灰 */
+.folder-tag.shared { background:var(--border); color:var(--text);} /* 灰 */
 
 .shared-sidebar__item.is-open .folder-tag { filter:brightness(0.9); }
 .shared-sidebar__item:hover  .folder-tag { filter:brightness(0.95); }
@@ -702,7 +702,7 @@ function confirmDelete(){
   margin: 0;
   font-size: .95rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text);
 }
 /* 1. 调整每一行的布局：左右分布，垂直居中 */
 .users-list .user-item {
@@ -720,7 +720,7 @@ function confirmDelete(){
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--text);
 }
 
 /* 3. 角色选择器美化 */
@@ -728,17 +728,17 @@ function confirmDelete(){
   margin: 0 0.5rem;        /* 左右间距 */
   padding: 0.2rem 0.4rem;
   font-size: 0.83rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background-color: #fff;
+  background-color: var(--surface);
 }
 
 /* 给不同角色一个轻微底色区分（可选） */
 .role-select option[value="viewer"] {
-  background-color: #f9fafb;
+  background-color: var(--surface-2);
 }
 .role-select option[value="editor"] {
-  background-color: #eef2ff;
+  background-color: var(--accent-soft);
 }
 
 /* 4. 删除按钮对齐和 hover 效果 */
@@ -746,7 +746,7 @@ function confirmDelete(){
   background: none;
   border: none;
   font-size: 1rem;
-  color: #ef4444;
+  color: var(--danger);
   cursor: pointer;
 }
 .delete-user:hover {

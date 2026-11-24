@@ -63,7 +63,7 @@ const submit = async () => {
 }
 
 .modal-card {
-  background: #fff;
+  background: var(--surface);
   padding: 1.6rem 2rem;
   border-radius: 8px;
   max-width: 360px;
@@ -78,7 +78,7 @@ const submit = async () => {
   font-size: 1.25rem;
   font-weight: 600;
   text-align: center;
-  color: #333;
+  color: var(--text);
 }
 
 .folder-list {
@@ -111,14 +111,14 @@ const submit = async () => {
   cursor: pointer;
 }
 .folder-row:hover {
-  background-color: #f5f5f5;
+  background-color: var(--surface-2);
 }
 
 .folder-row input[type="checkbox"] {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  accent-color: #3f51b5;
+  accent-color: var(--accent);
 }
 
 .folder-name {
@@ -131,7 +131,7 @@ const submit = async () => {
 }
 
 .folder-count {
-  color: #888;
+  color: var(--text-3);
   font-size: 0.85rem;
 }
 
@@ -155,8 +155,8 @@ const submit = async () => {
 
 /* 次级按钮 */
 .btn-secondary {
-  background-color: #e0e0e0;
-  color: #333;
+  background-color: var(--border);
+  color: var(--text);
 }
 .btn-secondary:hover {
   background-color: #d5d5d5;
@@ -164,11 +164,11 @@ const submit = async () => {
 
 /* 主要按钮 */
 .btn-primary {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
 }
 .btn-primary:hover {
-  background-color: #303f9f;
+  background-color: var(--brand-600);
 }
 
 /* 禁用态 */

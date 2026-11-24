@@ -497,7 +497,7 @@ const RingProgress = defineComponent({
 </script>
 
 <style scoped>
-.ideation-app { position: relative; min-height: 100vh; color: #0f172a; }
+.ideation-app { position: relative; min-height: 100vh; color: var(--text); }
 .bg-gradient { position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, #c7d2fe 0%, #f5f3ff 50%, #ffe4e6 100%); }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 20px; grid-template-columns: 1fr; }
@@ -507,7 +507,7 @@ const RingProgress = defineComponent({
 .card-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid rgba(0,0,0,0.06); }
 .header-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #111; color: #fff; font-size: 18px; }
 .header-text h2, .header-text h3 { margin: 0; font-size: 18px; font-weight: 800; }
-.header-text p { margin: 2px 0 0; font-size: 12px; color: #475569; }
+.header-text p { margin: 2px 0 0; font-size: 12px; color: var(--text-2); }
 .card-body { padding: 16px; }
 
 .btn { border: 1px solid #111; background: #111; color: #fff; padding: 10px 14px; border-radius: 14px; font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s, background .15s; }
@@ -517,26 +517,26 @@ const RingProgress = defineComponent({
 .btn.small { padding: 6px 10px; border-radius: 10px; font-size: 12px; }
 
 .search-row { margin-bottom: 12px; }
-.search-box { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8); padding: 8px; border-radius: 16px; }
+.search-box { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.1); background: var(--surface); padding: 8px; border-radius: 16px; }
 .search-icon { margin-left: 6px; }
 .search-input { flex: 1; background: transparent; border: 0; outline: none; font-size: 15px; }
-.hint { margin: 6px 4px; font-size: 12px; color: #64748b; }
+.hint { margin: 6px 4px; font-size: 12px; color: var(--text-2); }
 
 .grid-3 { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 640px) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
 .mini-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgba(0,0,0,0.05); background: rgba(255,255,255,0.7); border-radius: 14px; padding: 12px; }
-.mini-label { font-size: 12px; color: #475569; }
+.mini-label { font-size: 12px; color: var(--text-2); }
 .mini-value { font-size: 16px; font-weight: 700; }
-.mini-note { font-size: 11px; color: #64748b; }
+.mini-note { font-size: 11px; color: var(--text-2); }
 .range { width: 150px; }
 .kpis { align-items: center; }
 .kpi-list { display: flex; align-items: center; gap: 16px; }
-.kpi-note { font-size: 11px; color: #64748b; text-align: right; }
+.kpi-note { font-size: 11px; color: var(--text-2); text-align: right; }
 
 .ring { display: flex; align-items: center; gap: 10px; }
 .ring-outer { width: 48px; height: 48px; border-radius: 999px; display: grid; place-items: center; }
-.ring-inner { width: 36px; height: 36px; border-radius: 999px; background: rgba(255,255,255,0.9); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
-.ring-label { font-size: 12px; color: #475569; }
+.ring-inner { width: 36px; height: 36px; border-radius: 999px; background: var(--surface); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+.ring-label { font-size: 12px; color: var(--text-2); }
 
 .ideas-grid { margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 768px) { .ideas-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -545,7 +545,7 @@ const RingProgress = defineComponent({
 .idea-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 12px 16px; }
 .idea-title { font-weight: 800; }
 .idea-tags { display: flex; align-items: center; gap: 6px; }
-.tag { border: 1px solid rgba(0,0,0,0.12); padding: 4px 8px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,0.8); }
+.tag { border: 1px solid rgba(0,0,0,0.12); padding: 4px 8px; border-radius: 999px; font-size: 12px; background: var(--surface); }
 .idea-body { padding: 12px 16px; }
 .summary { font-size: 14px; color: #334155; margin-bottom: 10px; }
 .metrics { display: flex; align-items: center; gap: 16px; }
@@ -554,15 +554,15 @@ const RingProgress = defineComponent({
 .actions { margin-top: 12px; display: flex; gap: 8px; }
 
 /* Inline plan panel */
-.plan-panel { margin-top: 12px; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.8); border-radius: 12px; padding: 12px; }
+.plan-panel { margin-top: 12px; border: 1px solid rgba(0,0,0,0.08); background: var(--surface); border-radius: 12px; padding: 12px; }
 .plan-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .plan-title { font-weight: 800; font-size: 14px; }
 .plan-spacer { flex: 1; }
-.plan-loading { font-size: 13px; color: #475569; padding: 6px 0; }
+.plan-loading { font-size: 13px; color: var(--text-2); padding: 6px 0; }
 
 /* Accordion */
 .accordion { display: grid; gap: 8px; }
-.acc-item { border: 1px solid rgba(0,0,0,0.06); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.9); }
+.acc-item { border: 1px solid rgba(0,0,0,0.06); border-radius: 10px; overflow: hidden; background: var(--surface); }
 .acc-header { width: 100%; text-align: left; background: transparent; border: 0; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 700; }
 .acc-body { padding: 10px 12px; border-top: 1px solid rgba(0,0,0,0.06); }
 .acc-title { font-size: 13px; }
@@ -570,22 +570,22 @@ const RingProgress = defineComponent({
 .steps { margin: 6px 0 0 18px; }
 
 /* Markdown fallback */
-.md-block { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(248,250,252,.7); border-radius: 8px; padding: 10px; font-size: 12px; color: #0f172a; }
+.md-block { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: rgba(248,250,252,.7); border-radius: 8px; padding: 10px; font-size: 12px; color: var(--text); }
 .md { white-space: pre-wrap; }
 
 .persona-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.persona-chip { border: 1px solid rgba(0,0,0,0.12); background: #fff; padding: 8px 12px; border-radius: 999px; font-size: 13px; cursor: pointer; transition: background .15s, color .15s, border .15s; }
+.persona-chip { border: 1px solid rgba(0,0,0,0.12); background: var(--surface); padding: 8px 12px; border-radius: 999px; font-size: 13px; cursor: pointer; transition: background .15s, color .15s, border .15s; }
 .persona-chip.active { background: #111; color: #fff; border-color: #111; }
 
 .chart { height: 160px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.7); }
 .chart-svg { width: 100%; height: 100%; display: block; }
 .trend-kpis { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .trend-card { border: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.7); border-radius: 12px; padding: 10px; }
-.trend-label { font-size: 12px; color: #475569; }
+.trend-label { font-size: 12px; color: var(--text-2); }
 .trend-value { font-size: 18px; font-weight: 800; }
 
 .quick-list { margin-left: 16px; color: #334155; }
-.footer { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 16px; color: #64748b; font-size: 12px; }
+.footer { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 16px; color: var(--text-2); font-size: 12px; }
 
 /* Streaming UI */
 .stream-panel { margin-top: 10px; border: 1px dashed rgba(0,0,0,0.15); border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.6); }

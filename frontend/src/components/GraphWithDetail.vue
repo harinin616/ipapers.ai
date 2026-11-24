@@ -111,7 +111,7 @@ watch(
   flex: 0 0 40%;          /* 下 60% */
   /* 不在这里滚动 */
   overflow: hidden;
-  background: #f9fafb;
+  background: var(--surface-2);
   padding: 1rem;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
   display: flex;
@@ -124,7 +124,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: var(--text-3);
 }
 
 /* 让这个容器撑满 detail-area，并自己滚动 */
@@ -143,9 +143,9 @@ watch(
 
 
 .paper-detail {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-1);
   padding: 1.5rem;
   max-width: 800px;
   width: 100%;
@@ -160,7 +160,7 @@ watch(
   line-height: 1.2;
 }
 .paper-title a {
-  color: #2563eb;
+  color: var(--brand-600);
   text-decoration: none;
 }
 .paper-title a:hover {
@@ -171,20 +171,20 @@ watch(
 .paper-date {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-2);
 }
 
 /* 作者 */
 .paper-authors {
   margin: 0 0 1rem;
   font-size: 1rem;
-  color: #374151;
+  color: var(--text);
 }
 
 /* 摘要 */
 .paper-abstract {
   line-height: 1.6;
-  color: #4b5563;
+  color: var(--text-2);
   white-space: pre-wrap;
 }
 </style>

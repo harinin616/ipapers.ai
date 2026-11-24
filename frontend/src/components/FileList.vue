@@ -851,9 +851,9 @@ const cancelEditFolder = () => {
 .files-sidebar {
   width: 340px;
   height: 100%;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 12px;
-  border-left: 2px solid #e0e0e0;
+  border-left: 2px solid var(--border);
   box-shadow: -3px 0 10px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   display: flex;
@@ -883,7 +883,7 @@ const cancelEditFolder = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: white;
+  background-color: var(--surface);
   overflow: hidden;
 }
 
@@ -892,14 +892,14 @@ const cancelEditFolder = () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border-bottom: 1px solid #eee;
-  background-color: #f9f9f9;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--surface-2);
 }
 
 .panel-header h3 {
   margin: 0;
   font-size: 1.2rem;
-  color: #333;
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -909,7 +909,7 @@ const cancelEditFolder = () => {
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
-  color: #666;
+  color: var(--text-2);
 }
 
 .close-btn:hover {
@@ -932,19 +932,19 @@ const cancelEditFolder = () => {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
   width: 100%;
   box-sizing: border-box;
 }
 
 .pdf-file-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--surface-2);
   transform: translateY(-2px);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
 }
 
 .pdf-file-item.active {
-  background-color: #e3f2fd;
+  background-color: var(--accent-soft);
   border-color: #bbdefb;
 }
 
@@ -1034,7 +1034,7 @@ const cancelEditFolder = () => {
   height: 100%;
   position: relative;
   overflow: hidden;
-  background-color: #f5f5f5;
+  background-color: var(--surface-2);
   display: flex;
   flex-direction: column;
   border-radius: 6px;
@@ -1045,8 +1045,8 @@ const cancelEditFolder = () => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--surface-2);
+  border-bottom: 1px solid var(--border);
   z-index: 2;
 }
 
@@ -1060,7 +1060,7 @@ const cancelEditFolder = () => {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1087,7 +1087,7 @@ const cancelEditFolder = () => {
 .pdf-control-btn .icon-svg, .close-pdf-btn .icon-svg {
   width: 18px;
   height: 18px;
-  color: #555;
+  color: var(--text-2);
 }
 
 .pdf-loading {
@@ -1096,7 +1096,7 @@ const cancelEditFolder = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: var(--surface);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1109,7 +1109,7 @@ const cancelEditFolder = () => {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #3f51b5;
+  border-top: 4px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -1120,7 +1120,7 @@ const cancelEditFolder = () => {
   border: none;
   flex: 1;
   transition: opacity 0.3s ease;
-  background-color: white;
+  background-color: var(--surface);
 }
 
 .icon-svg {
@@ -1175,12 +1175,12 @@ const cancelEditFolder = () => {
   display: flex; align-items:center; justify-content:center;
 }
 .confirm-box {
-  background: #fff; padding: 1.5rem; border-radius:8px; width:300px;
+  background: var(--surface); padding: 1.5rem; border-radius:8px; width:300px;
   text-align: center;
 }
 .confirm-box button { margin: 0 .5rem; }
 .share-btn {
-  background: none; border: none; color: #3f51b5; cursor: pointer;
+  background: none; border: none; color: var(--accent); cursor: pointer;
   padding: 5px 10px; border-radius:4px; transition: background 0.2s;
 }
 .share-btn:hover { background: rgba(63,81,181,0.1); }
@@ -1200,20 +1200,20 @@ const cancelEditFolder = () => {
   padding: 6px 10px;
   border-radius: 6px;
   font-weight: 600;
-  color: #374151;            /* slate-700 */
+  color: var(--text);            /* slate-700 */
   transition: background 0.2s, color 0.2s;
   user-select: none;
 }
 
 .folder-header:hover {
-  background: #f3f4f6;       /* slate-100 */
-  color: #111827;            /* slate-900 */
+  background: var(--surface-2);       /* slate-100 */
+  color: var(--text);            /* slate-900 */
 }
 
 /* 展开状态 */
 .folder-header.open {
-  background: #e0e7ff;       /* indigo-100 */
-  color: #3730a3;            /* indigo-800 */
+  background: var(--accent-soft);       /* indigo-100 */
+  color: var(--brand-600);            /* indigo-800 */
 }
 
 /* —— 1.1 折叠箭头 —— */
@@ -1233,15 +1233,15 @@ const cancelEditFolder = () => {
   margin-left: auto;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #e5e7eb;       /* slate-200 */
-  color: #374151;
+  background: var(--border);       /* slate-200 */
+  color: var(--text);
   padding: 2px 6px;
   border-radius: 9999px;
 }
 
 .folder-header.open .count {
   background: #c7d2fe;       /* indigo-200 */
-  color: #3730a3;
+  color: var(--brand-600);
 }
 
 /* —— 2. 折叠动画 —— */
@@ -1259,21 +1259,21 @@ const cancelEditFolder = () => {
 /* —— 3. 文件夹外层分隔 —— */
 .folder-block + .folder-block {
   margin-top: 0.5rem;
-  border-top: 1px solid #f3f4f6; /* slate-100 */
+  border-top: 1px solid var(--surface-2); /* slate-100 */
   padding-top: 0.5rem;
 }
 
 .folder-header{
-  background: #f9fafb;  
+  background: var(--surface-2);  
   display:flex;align-items:center;gap:6px;
   padding:6px 10px;border-radius:6px;
   cursor:pointer;transition:background .2s;
 }
-.folder-header:hover{background:#f5f5f5}
+.folder-header:hover{background:var(--surface-2)}
 .folder-header.open {background:#e8f0fe}
 
 .folder-input{
-  flex:1;min-width:0;border:1px solid #ccc;
+  flex:1;min-width:0;border:1px solid var(--border);
   border-radius:4px;padding:2px 6px;font-size:.92rem;
 }
 .folder-input:focus{
@@ -1285,7 +1285,7 @@ const cancelEditFolder = () => {
 .f-btn{
   background:none;border:none;padding:2px 4px;
   cursor:pointer;font-size:.8rem;line-height:1;
-  border-radius:4px;color:#666;
+  border-radius:4px;color:var(--text-2);
   transition:background .15s,color .15s;
 }
 .f-btn.edit:hover   {color:#1a73e8;background:#e8f0fe}
@@ -1310,7 +1310,7 @@ const cancelEditFolder = () => {
   border: none;
   padding: 2px 4px;
   cursor: pointer;
-  color: #666;                /* 默认灰色 */
+  color: var(--text-2);                /* 默认灰色 */
   font-size: 0.9rem;
   transition: background 0.2s, color 0.2s;
 }
@@ -1346,7 +1346,7 @@ const cancelEditFolder = () => {
 .share-box {
   width: 92%;
   max-width: 420px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   padding: 2rem 1.75rem 1.5rem;
   box-shadow: 0 6px 24px rgba(0,0,0,.18);
@@ -1355,8 +1355,8 @@ const cancelEditFolder = () => {
 }
 
 /* 标题 / 文案 */
-.share-box h3   { margin: 0 0 .75rem; font-size: 1.2rem; font-weight: 600; color:#222 }
-.share-box p    { margin: 0 0 1.5rem; color:#555; line-height: 1.5; }
+.share-box h3   { margin: 0 0 .75rem; font-size: 1.2rem; font-weight: 600; color:var(--text) }
+.share-box p    { margin: 0 0 1.5rem; color:var(--text-2); line-height: 1.5; }
 
 /* ───────── 按钮区 ───────── */
 .share-actions {
@@ -1378,17 +1378,17 @@ const cancelEditFolder = () => {
 
 /* 主按钮 —— confirm */
 .share-btn.confirm   {
-  background:#3f51b5;
-  border:1px solid #3f51b5;
+  background:var(--accent);
+  border:1px solid var(--accent);
   color:#fff;
 }
 .share-btn.confirm:hover { background:#32409b; transform:translateY(-1px); }
 
 /* 次按钮 —— cancel */
 .share-btn.cancel    {
-  background:#fff;
+  background:var(--surface);
   border:1px solid #bbb;
-  color:#555;
+  color:var(--text-2);
 }
 .share-btn.cancel:hover { background:#f2f2f2; }
 
@@ -1399,9 +1399,9 @@ const cancelEditFolder = () => {
 }
 
 .btn-row { display: flex; gap: .6rem; justify-content: center; }
-.btn.primary     { background:#3b82f6; color:#fff; }
-.btn.primary:hover { background:#2563eb; }
-.btn.outline     { border:1px solid #d1d5db; color:#374151; }
+.btn.primary     { background:var(--accent); color:#fff; }
+.btn.primary:hover { background:var(--brand-600); }
+.btn.outline     { border:1px solid var(--border); color:var(--text); }
 
 /* 按钮容器 */
 .panel-actions {
@@ -1427,11 +1427,11 @@ const cancelEditFolder = () => {
 /* 具体色系 */
 .btn.new-folder { background: #4caf50; }       /* 绿色 */
 .btn.upload    { background: #ff9800; }        /* 橙色 */
-.btn.chat      { background: #3f51b5; }        /* 蓝紫色 */
+.btn.chat      { background: var(--accent); }        /* 蓝紫色 */
 
 .btn.new-folder:hover { background: #43a047; }
 .btn.upload:hover    { background: #fb8c00; }
-.btn.chat:hover      { background: #303f9f; }
+.btn.chat:hover      { background: var(--brand-600); }
 
 /* 隐藏原生 file input */
 .btn.upload input[type="file"] {
@@ -1464,11 +1464,11 @@ const cancelEditFolder = () => {
 /* 颜色仍然按原来的 3 个类区分 */
 .btn.new-folder { background: #4caf50; }
 .btn.upload     { background: #ff9800; }
-.btn.chat       { background: #3f51b5; }
+.btn.chat       { background: var(--accent); }
 
 .btn.new-folder:hover { background:#43a047; }
 .btn.upload:hover     { background:#fb8c00; }
-.btn.chat:hover       { background:#303f9f; }
+.btn.chat:hover       { background:var(--brand-600); }
 .upload-dialog{
   padding:1.2rem 1.5rem;
   border:none;border-radius:8px;
@@ -1479,7 +1479,7 @@ const cancelEditFolder = () => {
 .upload-dialog h3{margin-top:0;font-size:1.1rem}
 
 .field{display:flex;flex-direction:column;margin-bottom:.8rem}
-.field label{font-size:.8rem;color:#555;margin-bottom:.25rem}
+.field label{font-size:.8rem;color:var(--text-2);margin-bottom:.25rem}
 .field .req{color:#e11d48;font-weight:bold}
 
 .field input[type="file"]{padding:.25rem 0}
@@ -1489,9 +1489,9 @@ const cancelEditFolder = () => {
   padding:.35rem .9rem;border:none;border-radius:4px;
   font-size:.85rem;cursor:pointer
 }
-.actions button[type=submit]{background:#2563eb;color:#fff}
+.actions button[type=submit]{background:var(--brand-600);color:#fff}
 .actions button[type=submit]:disabled{opacity:.6;cursor:not-allowed}
-.actions button[type=button]{background:#e5e7eb;color:#333}
+.actions button[type=button]{background:var(--border);color:var(--text)}
 /* === 修复 Upload 弹窗被吃掉 === */
 
 /* ① 不要再让 .files-sidebar 当 fixed-containing-block */
@@ -1547,7 +1547,7 @@ const cancelEditFolder = () => {
   right: 0;
   bottom: 0;
   background: rgba(63, 81, 181, 0.1);
-  border: 3px dashed #3f51b5;
+  border: 3px dashed var(--accent);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -1564,7 +1564,7 @@ const cancelEditFolder = () => {
 
 .drag-prompt {
   text-align: center;
-  color: #3f51b5;
+  color: var(--accent);
 }
 
 .upload-icon {
@@ -1585,7 +1585,7 @@ const cancelEditFolder = () => {
   position: absolute;
   top: 70px;
   right: 10px;
-  background: white;
+  background: var(--surface);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   padding: 0.75rem;
@@ -1602,7 +1602,7 @@ const cancelEditFolder = () => {
 }
 
 .upload-item + .upload-item {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
 }
 
 .upload-filename {
@@ -1611,7 +1611,7 @@ const cancelEditFolder = () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-right: 0.5rem;
-  color: #374151;
+  color: var(--text);
 }
 
 .upload-status {
@@ -1624,11 +1624,11 @@ const cancelEditFolder = () => {
 }
 
 .upload-item .upload-status:contains('Failed') {
-  color: #ef4444;
+  color: var(--danger);
 }
 
 .upload-item .upload-status:contains('Uploading') {
-  color: #3f51b5;
+  color: var(--accent);
 }
 
 </style> 

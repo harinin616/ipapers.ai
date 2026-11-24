@@ -81,7 +81,7 @@ const onSubmit = async () => {
   width: 90%;
   margin: 2rem auto;
   padding: 2rem 1.5rem;
-  background-color: #fff;
+  background-color: var(--surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   border-radius: 8px;
   display: flex;
@@ -93,7 +93,7 @@ const onSubmit = async () => {
   font-size: 1.6rem;
   font-weight: 600;
   text-align: center;
-  color: #3f51b5;
+  color: var(--text);
 }
 
 .form-group {
@@ -104,19 +104,19 @@ const onSubmit = async () => {
 .contact-note {
   margin-bottom: 1rem;
   font-size: 0.95rem;
-  color: #555;
+  color: var(--text-2);
 }
 .form-group label {
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: #333;
+  color: var(--text);
 }
 
 .form-group textarea,
 .form-group input {
   width: 90%;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1rem;
   transition: border-color 0.2s;
@@ -125,7 +125,7 @@ const onSubmit = async () => {
 .form-group textarea:focus,
 .form-group input:focus {
   outline: none;
-  border-color: #3f51b5;
+  border-color: var(--accent);
 }
 
 .form-actions {
@@ -138,9 +138,9 @@ const onSubmit = async () => {
 .btn-submit,
 .btn-cancel {
   display: inline-block;
-  border: 1px solid #3f51b5;
+  border: 1px solid var(--accent);
   background: transparent;
-  color: #3f51b5;
+  color: var(--accent);
   padding: 0.5rem 1rem;
   border-radius: 9999px;
   font-size: 0.95rem;
@@ -152,12 +152,12 @@ const onSubmit = async () => {
 
 .btn-submit:hover,
 .btn-cancel:hover {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: #fff;
 }
 
 .btn-submit {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: #fff;
 }
 

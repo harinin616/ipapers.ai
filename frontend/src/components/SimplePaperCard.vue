@@ -34,11 +34,11 @@ const paperUrl = computed(() => {
 
 <style scoped>
 .simple-paper-card {
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 0.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   transition: box-shadow 0.3s ease;
   display: flex;
   align-items: flex-start;
@@ -60,7 +60,7 @@ const paperUrl = computed(() => {
 }
 
 .paper-title a {
-  color: #3f51b5;
+  color: var(--accent);
   text-decoration: none;
   display: block;
   white-space: normal;

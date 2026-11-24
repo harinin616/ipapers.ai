@@ -101,10 +101,10 @@ export default {
 .pdf-viewer-container {
   width: 100%;
   height: 80vh;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--surface-2);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -128,7 +128,7 @@ export default {
 }
 
 .pdf-fallback a {
-  color: #3f51b5;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -146,7 +146,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface);
   z-index: 10;
 }
 
@@ -154,7 +154,7 @@ export default {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #3f51b5;
+  border-top: 4px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 10px;
@@ -177,13 +177,13 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  background-color: #f0f0f0;
-  color: #333;
+  background-color: var(--surface-2);
+  color: var(--text);
   text-decoration: none;
 }
 
 .action-button.primary {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
 }
 

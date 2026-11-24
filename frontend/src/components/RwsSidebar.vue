@@ -228,8 +228,8 @@ defineExpose({
   width: 240px;
   min-width: 200px;
   max-width: 260px;
-  background-color: #ffffff;
-  border-right: 1px solid #e0e0e0;
+  background-color: var(--surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -255,7 +255,7 @@ defineExpose({
   flex-direction: column;
   padding: 12px;
   gap: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebar.collapsed .sidebar-top {
@@ -278,7 +278,7 @@ defineExpose({
 }
 
 .hamburger-toggle:hover {
-  background-color: #f0f0f0;
+  background-color: var(--surface-2);
 }
 
 .hamburger-toggle .icon-svg {
@@ -288,7 +288,7 @@ defineExpose({
 
 .new-session-button {
   background-color: transparent;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 24px;
   padding: 12px 16px;
   cursor: pointer;
@@ -303,7 +303,7 @@ defineExpose({
 }
 
 .new-session-button:hover {
-  background-color: #f8f9fa;
+  background-color: var(--surface-2);
   border-color: #d0d0d0;
 }
 
@@ -326,7 +326,7 @@ defineExpose({
 }
 
 .new-session-button-collapsed:hover {
-  background-color: #f0f0f0;
+  background-color: var(--surface-2);
 }
 
 .new-session-button-collapsed .icon-svg {
@@ -349,7 +349,7 @@ defineExpose({
   cursor: pointer;
   font-size: 0.95rem;
   color: #444;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--surface-2);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -365,7 +365,7 @@ defineExpose({
 }
 
 .session-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--surface-2);
 }
 
 .session-item.active {
@@ -378,7 +378,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: var(--text-2);
 }
 
 .session-icon .icon-svg {
@@ -405,10 +405,10 @@ defineExpose({
 .session-title-input {
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.9rem;
-  background: white;
+  background: var(--surface);
   outline: none;
 }
 
@@ -442,11 +442,11 @@ defineExpose({
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  color: #666;
+  color: var(--text-2);
 }
 
 .edit-btn:hover {
-  background-color: #e3f2fd;
+  background-color: var(--accent-soft);
   color: #1a73e8;
 }
 
@@ -462,7 +462,7 @@ defineExpose({
 
 .delete-btn:hover {
   background-color: #ffebee;
-  color: #f44336;
+  color: var(--danger);
 }
 
 .edit-btn .icon-svg,
@@ -477,7 +477,7 @@ defineExpose({
 }
 
 .edit-btn:hover {
-  background: #e9ecef;
+  background: var(--border);
   color: #495057;
 }
 
@@ -494,7 +494,7 @@ defineExpose({
 }
 
 .cancel-btn:hover {
-  background: #e9ecef;
+  background: var(--border);
 }
 
 .delete-btn {

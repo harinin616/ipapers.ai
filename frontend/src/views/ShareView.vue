@@ -1296,7 +1296,7 @@ watch(detailPaper, async (p) => {
 .left-sidebar {
   width: 260px;
   flex-shrink: 0;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1335,8 +1335,8 @@ watch(detailPaper, async (p) => {
 /* 摘要区域：紧跟图下方 */
 .summary-area {
   padding: 1rem;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
 }
 
 .summary-header {
@@ -1347,15 +1347,15 @@ watch(detailPaper, async (p) => {
 
 .regen-btn {
   padding: .3rem .8rem;
-  border: 1px solid #3b82f6;
-  background: #3b82f6;
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: #fff;
   border-radius: 4px;
   cursor: pointer;
   transition: background .2s;
 }
 
-.regen-btn:hover:not(:disabled) { background: #2563eb; }
+.regen-btn:hover:not(:disabled) { background: var(--brand-600); }
 .regen-btn:disabled { opacity: .6; cursor: not-allowed; }
 
 .summary-content {
@@ -1365,7 +1365,7 @@ watch(detailPaper, async (p) => {
 }
 
 .loading, .no-content {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 0.9rem;
   padding: 2rem;
   text-align: center;
@@ -1430,26 +1430,26 @@ watch(detailPaper, async (p) => {
 }
 
 .recommendations-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--surface-2);
   border-radius: 3px;
 }
 
 .recommendations-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 3px;
 }
 
 .recommendations-content::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-3);
 }
 
 /* 评论区域：单列 */
 .comment-area {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--border);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  background: #f9fafb;
+  background: var(--surface-2);
   overflow: hidden;
   min-height: 0;
   position: relative;
@@ -1486,13 +1486,13 @@ watch(detailPaper, async (p) => {
   content: '';
   width: 4px;
   height: 40px;
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 2px;
   transition: background-color 0.2s;
 }
 
 .comment-resize-handle:hover::before {
-  background: #3b82f6;
+  background: var(--accent);
 }
 
 /* 折叠状态下的拖拽手柄样式 */
@@ -1503,7 +1503,7 @@ watch(detailPaper, async (p) => {
 }
 
 .comment-area.collapsed .comment-resize-handle::before {
-  background: #3b82f6;
+  background: var(--accent);
   width: 2px;
   height: 60px;
 }
@@ -1524,7 +1524,7 @@ watch(detailPaper, async (p) => {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text);
 }
 
 
@@ -1548,7 +1548,7 @@ watch(detailPaper, async (p) => {
   min-height: 80px;
   padding: 0.75rem 1rem;
   box-sizing: border-box;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 8px;
   resize: vertical;
   transition: border .2s, box-shadow .2s;
@@ -1556,7 +1556,7 @@ watch(detailPaper, async (p) => {
 
 .comment-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
 }
 
@@ -1564,7 +1564,7 @@ watch(detailPaper, async (p) => {
   align-self: flex-end;
   margin-top: 0.5rem;
   padding: 0.4rem 0.8rem;
-  background: #2563eb;
+  background: var(--brand-600);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -1580,7 +1580,7 @@ watch(detailPaper, async (p) => {
 }
 
 .comment-list li {
-  background: #fff;
+  background: var(--surface);
   padding: 0.6rem 0.8rem;
   margin-bottom: 0.5rem;
   border-radius: 6px;
@@ -1596,12 +1596,12 @@ watch(detailPaper, async (p) => {
   margin-left: 0.4rem;
   background: none;
   border: none;
-  color: #ef4444;
+  color: var(--danger);
   cursor: pointer;
 }
 
 .delete-btn:hover {
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 .empty-placeholder {
@@ -1609,7 +1609,7 @@ watch(detailPaper, async (p) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: var(--text-3);
 }
 
 
@@ -1623,7 +1623,7 @@ watch(detailPaper, async (p) => {
   flex: 0 0 v-bind(sidebarContainerWidth);
   display: flex;
   position: relative;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border);
   transition: flex 0.3s ease;
   max-width: v-bind(sidebarContainerWidth); /* 强制最大宽度 */
   min-width: v-bind(sidebarContainerWidth); /* 强制最小宽度 */
@@ -1663,13 +1663,13 @@ watch(detailPaper, async (p) => {
   content: '';
   width: 4px;
   height: 40px;
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 2px;
   transition: background-color 0.2s;
 }
 
 .sidebar-resize-handle:hover::before {
-  background: #3b82f6;
+  background: var(--accent);
 }
 
 /* 右侧整体面板 */
@@ -1706,8 +1706,8 @@ watch(detailPaper, async (p) => {
 /* 底部区域：可拖拽调整高度 */
 .bottom-area {
   flex: 0 0 auto; /* 改为auto，使用动态高度 */
-  border-top: 1px solid #e5e7eb;
-  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1738,20 +1738,20 @@ watch(detailPaper, async (p) => {
   content: '';
   width: 40px;
   height: 4px;
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 2px;
   transition: background-color 0.2s;
 }
 
 .resize-handle-horizontal:hover::before {
-  background: #3b82f6;
+  background: var(--accent);
 }
 
 /* 标签页导航 */
 .tab-nav {
   display: flex;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .tab-btn {
@@ -1761,20 +1761,20 @@ watch(detailPaper, async (p) => {
   background: transparent;
   cursor: pointer;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-2);
   transition: all 0.2s;
   border-bottom: 2px solid transparent;
 }
 
 .tab-btn:hover {
-  background: #f9fafb;
-  color: #374151;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .tab-btn.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
-  background: #fff;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--surface);
 }
 
 /* 标签页内容 */
@@ -1799,8 +1799,8 @@ watch(detailPaper, async (p) => {
 
 .section-header {
   padding: 1rem;
-  background: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
 }
@@ -1846,12 +1846,12 @@ watch(detailPaper, async (p) => {
   border-radius: 12px;
   font-size: 0.92rem;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  background: #fff;
+  background: var(--surface);
 }
 .compact-header {
   padding: .8rem 1.5rem .7rem 1.5rem !important;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
   border-radius: 12px 12px 0 0;
   display: flex;
   align-items: center;
@@ -1859,7 +1859,7 @@ watch(detailPaper, async (p) => {
 .modal-title-link {
   font-size: 1.08rem;
   font-weight: 600;
-  color: #2563eb;
+  color: var(--brand-600);
   text-decoration: underline;
   flex: 1;
   margin-right: .5rem;
@@ -1874,7 +1874,7 @@ watch(detailPaper, async (p) => {
 .compact-body {
   padding: 1rem 1.5rem 1.2rem 1.5rem !important;
   font-size: 0.93rem;
-  color: #374151;
+  color: var(--text);
   display: flex;
   flex-direction: column;
   gap: .25em;
@@ -1890,7 +1890,7 @@ watch(detailPaper, async (p) => {
   word-break: break-word;
 }
 .expand-link {
-  color: #2563eb;
+  color: var(--brand-600);
   cursor: pointer;
   margin-left: .5em;
   font-size: .93em;
@@ -1908,7 +1908,7 @@ watch(detailPaper, async (p) => {
   z-index: 2000;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   animation: floatIn .22s;
   min-height: 260px;
   display: flex;
@@ -1936,7 +1936,7 @@ watch(detailPaper, async (p) => {
 .paper-comments {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
 }
 .pc-title {
   margin: 0 0 .5rem 0;
@@ -1955,23 +1955,23 @@ watch(detailPaper, async (p) => {
   overflow-y: auto;
 }
 .pc-item {
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: .5rem .6rem;
 }
 .pc-meta {
   font-size: .78rem;
-  color: #6b7280;
+  color: var(--text-2);
   display: flex;
   align-items: center;
   gap: .35rem;
   margin-bottom: .15rem;
 }
-.pc-author { font-weight: 600; color: #374151; }
-.pc-dot { color: #9ca3af; }
-.pc-content { font-size: .9rem; color: #374151; white-space: pre-wrap; word-break: break-word; }
-.pc-empty { color: #9ca3af; text-align: center; }
+.pc-author { font-weight: 600; color: var(--text); }
+.pc-dot { color: var(--text-3); }
+.pc-content { font-size: .9rem; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.pc-empty { color: var(--text-3); text-align: center; }
 
 .paper-comment-input {
   display: flex;
@@ -1983,7 +1983,7 @@ watch(detailPaper, async (p) => {
   flex: 1;
   min-height: 54px;
   padding: .45rem .6rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: .9rem;
   resize: vertical;
@@ -1991,7 +1991,7 @@ watch(detailPaper, async (p) => {
 .pc-submit {
   flex: 0 0 auto;
   padding: .45rem .9rem;
-  background: #2563eb;
+  background: var(--brand-600);
   color: #fff;
   border: none;
   border-radius: 6px;

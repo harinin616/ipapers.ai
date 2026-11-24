@@ -58,11 +58,11 @@ function formatDate(dateStr: string): string {
 </script>
 <style scoped>
 .panel {
-  flex: 1; display: flex; flex-direction: column; background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  flex: 1; display: flex; flex-direction: column; background: var(--surface); border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 header {
-  padding: .75rem 1rem; border-bottom: 1px solid #eee;
+  padding: .75rem 1rem; border-bottom: 1px solid var(--border);
   display: flex; justify-content: space-between; align-items: center;
 }
 
@@ -88,11 +88,11 @@ header {
 }
 
 .date {
-  font-size: .75rem; color: #999; margin-top: 2px;
+  font-size: .75rem; color: var(--text-3); margin-top: 2px;
 }
 
 .file a {
-  color: #3f51b5; font-size: .85rem; text-decoration: none;
+  color: var(--accent); font-size: .85rem; text-decoration: none;
 }
 
 .file a:hover {
@@ -100,11 +100,11 @@ header {
 }
 
 .empty {
-  padding: 2rem; text-align: center; color: #888; font-size: .95rem;
+  padding: 2rem; text-align: center; color: var(--text-3); font-size: .95rem;
 }
 
 button {
-  background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;
+  background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-2);
 }
 button:hover {
   color: #000;

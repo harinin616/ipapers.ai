@@ -199,7 +199,7 @@ onMounted(() => {
 <style scoped>
 .subscription-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, var(--surface-2) 0%, #c3cfe2 100%);
   padding: 2rem 1rem;
   display: flex;
   align-items: center;
@@ -209,7 +209,7 @@ onMounted(() => {
 .subscription-container {
   max-width: 800px;
   width: 100%;
-  background: white;
+  background: var(--surface);
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -218,8 +218,8 @@ onMounted(() => {
 .header-section {
   padding: 3rem 2rem 2rem;
   text-align: center;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
 }
 
 .icon-section {
@@ -233,13 +233,13 @@ onMounted(() => {
 .mail-icon, .calendar-icon, .plus-icon {
   width: 48px;
   height: 48px;
-  color: #3f51b5;
+  color: var(--accent);
 }
 
 .subscription-container h1 {
   font-size: 2.2rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--text);
   margin-bottom: 1.5rem;
   line-height: 1.3;
 }
@@ -258,9 +258,9 @@ onMounted(() => {
 }
 
 .link {
-  color: #3f51b5;
+  color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid #3f51b5;
+  border-bottom: 1px solid var(--accent);
   transition: all 0.2s ease;
 }
 
@@ -283,7 +283,7 @@ onMounted(() => {
   display: block;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text);
   margin-bottom: 0.75rem;
 }
 
@@ -310,20 +310,20 @@ onMounted(() => {
   width: 100%;
   padding: 1rem 1rem 1rem 3rem;
   font-size: 1.1rem;
-  border: 2px solid #dee2e6;
+  border: 2px solid var(--border);
   border-radius: 8px;
   transition: all 0.3s ease;
-  background: white;
+  background: var(--surface);
 }
 
 .email-input:focus {
   outline: none;
-  border-color: #3f51b5;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.1);
 }
 
 .email-input:disabled {
-  background: #f8f9fa;
+  background: var(--surface-2);
   color: #6c757d;
   cursor: not-allowed;
 }
@@ -352,7 +352,7 @@ onMounted(() => {
 }
 
 .subscribe-btn {
-  background: #3f51b5;
+  background: var(--accent);
   color: white;
 }
 
@@ -415,13 +415,13 @@ onMounted(() => {
 
 .back-section {
   padding: 1.5rem 2rem;
-  background: #f8f9fa;
-  border-top: 1px solid #e9ecef;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
   text-align: center;
 }
 
 .back-link {
-  color: #3f51b5;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.2s ease;

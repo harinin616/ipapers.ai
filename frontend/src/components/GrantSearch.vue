@@ -262,7 +262,7 @@ onMounted(() => {
 }
 
 .search-container {
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 8px;
   padding: 30px;
   flex: 1;
@@ -273,7 +273,7 @@ onMounted(() => {
 
 .search-header h2 {
   margin: 0 0 10px 0;
-  color: #2c3e50;
+  color: var(--text);
 }
 
 .search-header p {
@@ -291,9 +291,9 @@ onMounted(() => {
   height: 100%;
   overflow-y: auto;
   padding: 20px;
-  background: white;
+  background: var(--surface);
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
 }
 
 .message {
@@ -324,7 +324,7 @@ onMounted(() => {
 
 .message.assistant .message-content {
   background: #f1f3f4;
-  color: #333;
+  color: var(--text);
   border-bottom-left-radius: 4px;
 }
 
@@ -335,14 +335,14 @@ onMounted(() => {
 .grants-preview {
   margin-top: 15px;
   padding: 15px;
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
 }
 
 .grants-preview h4 {
   margin: 0 0 10px 0;
-  color: #2c3e50;
+  color: var(--text);
 }
 
 .grants-list {
@@ -353,14 +353,14 @@ onMounted(() => {
 
 .grant-item {
   padding: 10px;
-  background: white;
+  background: var(--surface);
   border-radius: 6px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
 }
 
 .grant-item h5 {
   margin: 0 0 5px 0;
-  color: #2c3e50;
+  color: var(--text);
   font-size: 14px;
 }
 
@@ -373,7 +373,7 @@ onMounted(() => {
 
 .grant-synopsis {
   margin: 0 0 8px 0;
-  color: #666;
+  color: var(--text-2);
   font-size: 12px;
   line-height: 1.3;
 }
@@ -410,7 +410,7 @@ onMounted(() => {
 
 .suggestions h4 {
   margin: 0 0 10px 0;
-  color: #2c3e50;
+  color: var(--text);
   font-size: 14px;
 }
 
@@ -422,7 +422,7 @@ onMounted(() => {
 
 .suggestion-tag {
   padding: 6px 12px;
-  background: #e9ecef;
+  background: var(--border);
   color: #495057;
   border-radius: 16px;
   font-size: 12px;
@@ -479,7 +479,7 @@ onMounted(() => {
 .search-input {
   flex: 1;
   padding: 12px 16px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--border);
   border-radius: 24px;
   font-size: 16px;
   transition: border-color 0.3s;
@@ -524,7 +524,7 @@ onMounted(() => {
 }
 
 .suggestion-tag {
-  background: #e9ecef;
+  background: var(--border);
   color: #495057;
   padding: 6px 12px;
   border-radius: 20px;
@@ -534,7 +534,7 @@ onMounted(() => {
 }
 
 .suggestion-tag:hover {
-  background: #dee2e6;
+  background: var(--border);
 }
 
 .results-container {
@@ -547,7 +547,7 @@ onMounted(() => {
 
 .results-header h3 {
   margin: 0 0 5px 0;
-  color: #2c3e50;
+  color: var(--text);
 }
 
 .results-header p {
@@ -561,8 +561,8 @@ onMounted(() => {
 }
 
 .grant-card {
-  background: white;
-  border: 1px solid #e9ecef;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -582,7 +582,7 @@ onMounted(() => {
 
 .grant-title {
   margin: 0;
-  color: #2c3e50;
+  color: var(--text);
   font-size: 18px;
   line-height: 1.4;
   flex: 1;
@@ -633,7 +633,7 @@ onMounted(() => {
 
 .category-tag {
   display: inline-block;
-  background: #f8f9fa;
+  background: var(--surface-2);
   color: #495057;
   padding: 3px 8px;
   border-radius: 12px;

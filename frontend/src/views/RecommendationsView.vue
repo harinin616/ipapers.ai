@@ -184,7 +184,7 @@ export default {
 
 .header-section h1 {
   font-size: 2.5rem;
-  color: #2c3e50;
+  color: var(--text);
   margin-bottom: 0.5rem;
 }
 
@@ -195,7 +195,7 @@ export default {
 }
 
 .recommendation-controls {
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -214,17 +214,17 @@ export default {
 
 .control-group label {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text);
   font-size: 0.9rem;
 }
 
 .folder-select,
 .sort-select {
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.9rem;
-  background: white;
+  background: var(--surface);
 }
 
 .generate-btn {
@@ -282,7 +282,7 @@ export default {
 }
 
 .welcome-content h3 {
-  color: #2c3e50;
+  color: var(--text);
   margin-bottom: 1rem;
 }
 
@@ -310,7 +310,7 @@ export default {
 }
 
 .results-header h2 {
-  color: #2c3e50;
+  color: var(--text);
   margin: 0;
 }
 
@@ -322,7 +322,7 @@ export default {
 
 .sort-options label {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text);
   font-size: 0.9rem;
 }
 

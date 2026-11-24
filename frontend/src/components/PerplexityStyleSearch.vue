@@ -679,7 +679,7 @@ onMounted(() => {
 <style scoped>
 .perplexity-search {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -703,7 +703,7 @@ onMounted(() => {
 }
 
 .welcome-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface);
   border-radius: 16px;
   padding: 3rem 2rem;
   text-align: center;
@@ -714,7 +714,7 @@ onMounted(() => {
 .welcome-card h2 {
   font-size: 2rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text);
   margin: 0 0 0.5rem;
 }
 
@@ -728,19 +728,19 @@ onMounted(() => {
 }
 
 .example-card {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem 1.25rem;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.95rem;
-  color: #4a5568;
+  color: var(--text-2);
 }
 
 .example-card:hover {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
   transform: translateY(-2px);
 }
@@ -759,7 +759,7 @@ onMounted(() => {
 }
 
 .query-content {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
   backdrop-filter: blur(10px);
@@ -769,11 +769,11 @@ onMounted(() => {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text);
 }
 
 .ai-response {
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--surface);
   border-radius: 16px;
   padding: 2rem;
   backdrop-filter: blur(10px);
@@ -784,15 +784,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: #718096;
+  color: var(--text-3);
   font-size: 0.95rem;
 }
 
 .loading-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #e2e8f0;
-  border-top: 2px solid #667eea;
+  border: 2px solid var(--border);
+  border-top: 2px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -803,7 +803,7 @@ onMounted(() => {
 }
 
 .response-text {
-  color: #2d3748;
+  color: var(--text);
   line-height: 1.6;
 }
 
@@ -811,14 +811,14 @@ onMounted(() => {
 .papers-section {
   margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
 }
 
 .papers-section h4 {
   margin: 0 0 1.5rem;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text);
 }
 
 /* Comparative Summary Section */
@@ -834,7 +834,7 @@ onMounted(() => {
   margin: 0 0 1rem;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #2563eb;
+  color: var(--brand-600);
 }
 
 .full-paper-analysis-section {
@@ -849,22 +849,22 @@ onMounted(() => {
   margin: 0 0 1rem;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #16a34a;
+  color: var(--success);
 }
 
 .analysis-content {
   line-height: 1.6;
-  color: #374151;
+  color: var(--text);
   margin-bottom: 1rem;
 }
 
 .analysis-meta {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 0.875rem;
 }
 
 .comparative-summary {
-  color: #374151;
+  color: var(--text);
   line-height: 1.6;
   font-size: 0.95rem;
 }
@@ -886,7 +886,7 @@ onMounted(() => {
   margin: 0 0 1rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text);
 }
 
 .papers-grid {
@@ -896,8 +896,8 @@ onMounted(() => {
 }
 
 .paper-card {
-  background: #f7fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
   transition: all 0.2s ease;
@@ -905,7 +905,7 @@ onMounted(() => {
 }
 
 .paper-card:hover {
-  border-color: #667eea;
+  border-color: var(--accent);
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
 }
 
@@ -929,7 +929,7 @@ onMounted(() => {
   gap: 0.5rem;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #4a5568;
+  color: var(--text-2);
 }
 
 .checkbox-container input[type="checkbox"] {
@@ -939,17 +939,17 @@ onMounted(() => {
 .checkmark {
   width: 18px;
   height: 18px;
-  border: 2px solid #cbd5e0;
+  border: 2px solid var(--border);
   border-radius: 3px;
   display: inline-block;
   position: relative;
-  background: white;
+  background: var(--surface);
   transition: all 0.2s ease;
 }
 
 .checkbox-container input[type="checkbox"]:checked + .checkmark {
-  background: #667eea;
-  border-color: #667eea;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .checkbox-container input[type="checkbox"]:checked + .checkmark::after {
@@ -965,11 +965,11 @@ onMounted(() => {
 
 .selection-text {
   font-size: 0.85rem;
-  color: #718096;
+  color: var(--text-3);
 }
 
 .paper-actions {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   padding-top: 1rem;
 }
 
@@ -980,7 +980,7 @@ onMounted(() => {
 }
 
 .analyze-btn {
-  background: #38a169;
+  background: var(--success);
   color: white;
   border: none;
   border-radius: 4px;
@@ -994,11 +994,11 @@ onMounted(() => {
 }
 
 .analyze-btn:hover {
-  background: #2f855a;
+  background: var(--brand-600);
 }
 
 .analyze-btn:disabled {
-  background: #a0aec0;
+  background: var(--text-3);
   cursor: not-allowed;
 }
 
@@ -1008,7 +1008,7 @@ onMounted(() => {
 
 .paper-title {
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text);
   font-size: 0.9rem;
   line-height: 1.4;
   margin-bottom: 0.5rem;
@@ -1029,7 +1029,7 @@ onMounted(() => {
 }
 
 .analysis-modal {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   width: 90%;
   max-width: 800px;
@@ -1043,15 +1043,15 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f7fafc;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text);
 }
 
 .close-btn {
@@ -1059,14 +1059,14 @@ onMounted(() => {
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #718096;
+  color: var(--text-3);
   padding: 0.25rem;
   border-radius: 4px;
   transition: background-color 0.2s ease;
 }
 
 .close-btn:hover {
-  background: #e2e8f0;
+  background: var(--border);
 }
 
 .modal-content {
@@ -1082,7 +1082,7 @@ onMounted(() => {
 
 .loading-analysis p {
   margin-top: 1rem;
-  color: #718096;
+  color: var(--text-3);
 }
 
 .error-analysis {
@@ -1093,7 +1093,7 @@ onMounted(() => {
 
 .analysis-content {
   line-height: 1.6;
-  color: #2d3748;
+  color: var(--text);
 }
 
 .analysis-content h1,
@@ -1104,28 +1104,28 @@ onMounted(() => {
 .analysis-content h6 {
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
-  color: #1a202c;
+  color: var(--text);
 }
 
 .analysis-content strong {
-  color: #1a202c;
+  color: var(--text);
   font-weight: 600;
 }
 
 .paper-authors {
-  color: #718096;
+  color: var(--text-3);
   font-size: 0.8rem;
   margin-bottom: 0.25rem;
 }
 
 .paper-date {
-  color: #a0aec0;
+  color: var(--text-3);
   font-size: 0.75rem;
 }
 
 .show-more-btn {
   margin-top: 1rem;
-  background: #667eea;
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 6px;
@@ -1136,21 +1136,21 @@ onMounted(() => {
 }
 
 .show-more-btn:hover {
-  background: #5a67d8;
+  background: var(--brand-600);
 }
 
 /* Follow-up */
 .follow-up {
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
 }
 
 .follow-up h5 {
   margin: 0 0 1rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #4a5568;
+  color: var(--text-2);
 }
 
 .suggestions {
@@ -1160,20 +1160,20 @@ onMounted(() => {
 }
 
 .suggestion-btn {
-  background: #edf2f7;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
-  color: #4a5568;
+  color: var(--text-2);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .suggestion-btn:hover {
-  background: #667eea;
+  background: var(--accent);
   color: white;
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 /* Fixed Search Input */
@@ -1182,9 +1182,9 @@ onMounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid var(--border);
   padding: 1.5rem;
 }
 
@@ -1195,8 +1195,8 @@ onMounted(() => {
 
 .input-box {
   display: flex;
-  background: white;
-  border: 2px solid #e2e8f0;
+  background: var(--surface);
+  border: 2px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -1204,7 +1204,7 @@ onMounted(() => {
 }
 
 .input-box:focus-within {
-  border-color: #667eea;
+  border-color: var(--accent);
 }
 
 .search-textarea {
@@ -1221,7 +1221,7 @@ onMounted(() => {
 }
 
 .search-button {
-  background: #667eea;
+  background: var(--accent);
   border: none;
   padding: 0 1.25rem;
   cursor: pointer;
@@ -1232,11 +1232,11 @@ onMounted(() => {
 }
 
 .search-button:hover:not(:disabled) {
-  background: #5a67d8;
+  background: var(--brand-600);
 }
 
 .search-button:disabled {
-  background: #cbd5e0;
+  background: var(--border);
   cursor: not-allowed;
 }
 
@@ -1246,7 +1246,7 @@ onMounted(() => {
 
 .input-hint {
   text-align: center;
-  color: #718096;
+  color: var(--text-3);
   font-size: 0.8rem;
   margin-top: 0.75rem;
 }

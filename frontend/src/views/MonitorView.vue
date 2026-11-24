@@ -181,11 +181,11 @@ export default defineComponent({
 }
 
 .search-container {
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -199,7 +199,7 @@ export default defineComponent({
 
 .add-label {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-2);
   user-select: none;
 }
 .search-form {
@@ -210,18 +210,18 @@ export default defineComponent({
   flex: 1;
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px 0 0 4px;
   outline: none;
 }
 
 .search-input:focus {
-  border-color: #3f51b5;
+  border-color: var(--accent);
 }
 
 .search-button {
   padding: 0.75rem 1.5rem;
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
   border: none;
   border-radius: 0 4px 4px 0;
@@ -231,11 +231,11 @@ export default defineComponent({
 }
 
 .search-button:hover {
-  background-color: #303f9f;
+  background-color: var(--brand-600);
 }
 
 .search-button:disabled {
-  background-color: #c5cae9;
+  background-color: var(--accent-soft);
   cursor: not-allowed;
 }
 
@@ -251,24 +251,24 @@ export default defineComponent({
 }
 
 .primary-button {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
   border: none;
 }
 
 .primary-button:hover {
-  background-color: #303f9f;
+  background-color: var(--brand-600);
 }
 
 .primary-button:disabled {
-  background-color: #c5cae9;
+  background-color: var(--accent-soft);
   cursor: not-allowed;
 }
 
 .secondary-button {
   background-color: transparent;
-  color: #3f51b5;
-  border: 1px solid #3f51b5;
+  color: var(--accent);
+  border: 1px solid var(--accent);
 }
 
 .secondary-button:hover {
@@ -291,8 +291,8 @@ export default defineComponent({
   font-size: 0.9rem;
 }
 .add-list-placeholder {
-  background-color: #f8f9fa;
-  border: 2px dashed #cbd5e1;
+  background-color: var(--surface-2);
+  border: 2px dashed var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -308,13 +308,13 @@ export default defineComponent({
 .add-label {
   margin-top: 0.4rem;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-2);
   user-select: none;
 }
 .add-icon {
   width: 32px;     /* 或 24px */
   height: 32px;
-  fill: #6b7280;   /* 跟文字配色保持一致 */
+  fill: var(--text-2);   /* 跟文字配色保持一致 */
   flex-shrink: 0;  /* 避免 flex 环境下被压扁 */
 }
 </style> 

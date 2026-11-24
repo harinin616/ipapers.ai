@@ -738,7 +738,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: #3f51b5;
+  background: var(--accent);
   color: white;
   text-decoration: none;
   border-radius: 8px;
@@ -769,14 +769,14 @@ onUnmounted(() => {
   font-size: 2.5rem;
   font-weight: 700;
   text-align: center;
-  color: #3f51b5;
+  color: var(--text);
   margin: 0;
 }
 
 .subtitle {
   text-align: center;
   font-size: 1.1rem;
-  color: #666;
+  color: var(--text-2);
   margin-bottom: 1rem;
 }
 
@@ -787,9 +787,9 @@ onUnmounted(() => {
   gap: 1rem;
   margin-bottom: 2rem;
   padding: 1rem;
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
 }
 
 .display-controls label {
@@ -802,19 +802,19 @@ onUnmounted(() => {
   padding: 0.5rem 1rem;
   border: 1px solid #ced4da;
   border-radius: 4px;
-  background: white;
+  background: var(--surface);
   font-size: 0.9rem;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .summaries-select:hover {
-  border-color: #3f51b5;
+  border-color: var(--accent);
 }
 
 .summaries-select:focus {
   outline: none;
-  border-color: #3f51b5;
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
 }
 
@@ -830,7 +830,7 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #3f51b5;
+  border-top: 4px solid var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -842,12 +842,12 @@ onUnmounted(() => {
 
 .error {
   text-align: center;
-  color: #d32f2f;
+  color: var(--danger);
   padding: 2rem 0;
 }
 
 .retry-btn {
-  background-color: #3f51b5;
+  background-color: var(--accent);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -876,7 +876,7 @@ onUnmounted(() => {
   grid-template-columns: 1fr 1fr; /* Two columns */
   gap: 2rem; /* Space between columns */
   align-items: start; /* Allow different heights */
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -887,10 +887,10 @@ onUnmounted(() => {
 .left-column {
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 8px;
   padding: 1.5rem;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
   min-height: 0; /* Allow proper flex behavior */
   max-height: 80vh; /* Match right column height */
   overflow-y: auto; /* Enable scrolling for the entire left column */
@@ -899,10 +899,10 @@ onUnmounted(() => {
 .right-column {
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 8px;
   padding: 1.5rem;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border);
   max-height: 80vh; /* Limit height to viewport for scrolling */
   overflow: hidden; /* Prevent overflow from expanding the column */
 }
@@ -921,10 +921,10 @@ onUnmounted(() => {
 .category-title {
   font-size: 1.3rem;
   font-weight: 600;
-  color: #3f51b5;
+  color: var(--accent);
   margin-bottom: 1rem;
   text-align: center;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--border);
   padding-bottom: 0.5rem;
 }
 
@@ -941,7 +941,7 @@ onUnmounted(() => {
   max-width: 100%;
   height: auto;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
 }
 
 .no-wordcloud {
@@ -951,18 +951,18 @@ onUnmounted(() => {
 }
 
 .placeholder-cloud {
-  color: #999;
+  color: var(--text-3);
 }
 
 .cloud-icon {
   width: 48px;
   height: 48px;
-  fill: #ccc;
+  fill: var(--border);
   margin-bottom: 0.5rem;
 }
 
 .summaries-section {
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border);
   padding-top: 1rem;
   flex: 1;
   min-height: 0; /* Important for flex children */
@@ -971,7 +971,7 @@ onUnmounted(() => {
 .summaries-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin-bottom: 1rem;
 }
 
@@ -982,9 +982,9 @@ onUnmounted(() => {
 }
 
 .summary-accordion-item {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   overflow: hidden;
   transition: box-shadow 0.2s ease;
 }
@@ -999,30 +999,30 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 1rem;
   cursor: pointer;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
   transition: background-color 0.2s ease;
 }
 
 .summary-header:hover {
-  background: #f0f0f0;
+  background: var(--surface-2);
 }
 
 .summary-header.expanded {
-  background: #e8eaf6;
-  border-bottom-color: #3f51b5;
+  background: var(--accent-soft);
+  border-bottom-color: var(--accent);
 }
 
 .summary-title {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   flex: 1;
 }
 
 .summary-header.expanded .summary-title {
-  color: #3f51b5;
+  color: var(--accent);
 }
 
 .header-controls {
@@ -1066,7 +1066,7 @@ onUnmounted(() => {
 .toggle-icon svg {
   width: 24px;
   height: 24px;
-  fill: #666;
+  fill: var(--text-2);
   transition: transform 0.3s ease, fill 0.2s ease;
 }
 
@@ -1075,7 +1075,7 @@ onUnmounted(() => {
 }
 
 .summary-header.expanded .toggle-icon svg {
-  fill: #3f51b5;
+  fill: var(--accent);
 }
 
 .summary-content-wrapper {
@@ -1088,9 +1088,9 @@ onUnmounted(() => {
   max-height: 400px; /* Fixed maximum height */
   padding: 1rem;
   overflow-y: auto; /* Add vertical scroll bar */
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-top: none;
-  background: #fafafa;
+  background: var(--surface-2);
   border-radius: 0 0 8px 8px;
 }
 
@@ -1122,16 +1122,16 @@ onUnmounted(() => {
 
 .summary-content {
   line-height: 1.6;
-  color: #333;
+  color: var(--text);
   max-height: 100%;
 }
 
 .summary-content strong {
-  color: #3f51b5;
+  color: var(--accent);
 }
 
 .summary-content code {
-  background: #e3f2fd;
+  background: var(--accent-soft);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
@@ -1139,11 +1139,11 @@ onUnmounted(() => {
 }
 
 .summary-content pre {
-  background: #f5f5f5;
+  background: var(--surface-2);
   padding: 1rem;
   border-radius: 6px;
   overflow-x: auto;
-  border-left: 4px solid #3f51b5;
+  border-left: 4px solid var(--accent);
   margin: 1rem 0;
 }
 
@@ -1151,13 +1151,13 @@ onUnmounted(() => {
   background: transparent;
   padding: 0;
   font-size: 0.85em;
-  color: #333;
+  color: var(--text);
 }
 
 .summary-content a {
-  color: #3f51b5;
+  color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid #3f51b5;
+  border-bottom: 1px solid var(--accent);
   transition: all 0.2s ease;
 }
 
@@ -1179,21 +1179,21 @@ onUnmounted(() => {
 .summary-content blockquote {
   margin: 1rem 0;
   padding: 1rem;
-  background: #f8f9fa;
-  border-left: 4px solid #3f51b5;
+  background: var(--surface-2);
+  border-left: 4px solid var(--accent);
   font-style: italic;
-  color: #555;
+  color: var(--text-2);
 }
 
 .summary-content h2 {
-  color: #3f51b5;
+  color: var(--accent);
   font-size: 1.3rem;
   margin: 1.5rem 0 0.5rem 0;
   font-weight: 600;
 }
 
 .summary-content h3 {
-  color: #333;
+  color: var(--text);
   font-size: 1.1rem;
   margin: 1rem 0 0.5rem 0;
   font-weight: 600;
@@ -1210,12 +1210,12 @@ onUnmounted(() => {
 
 .no-summaries {
   text-align: center;
-  color: #666;
+  color: var(--text-2);
   font-style: italic;
   padding: 1rem 0;
-  background: #f9f9f9;
+  background: var(--surface-2);
   border-radius: 8px;
-  border: 2px dashed #ddd;
+  border: 2px dashed var(--border);
 }
 
 .papers-section {
@@ -1229,7 +1229,7 @@ onUnmounted(() => {
 .papers-title {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
@@ -1239,8 +1239,8 @@ onUnmounted(() => {
 .papers-count {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #666;
-  background: #e3f2fd;
+  color: var(--text-2);
+  background: var(--accent-soft);
   padding: 0.2rem 0.6rem;
   border-radius: 12px;
   border: 1px solid #bbdefb;
@@ -1250,12 +1250,12 @@ onUnmounted(() => {
 
 .no-papers {
   text-align: center;
-  color: #666;
+  color: var(--text-2);
   font-style: italic;
   padding: 2rem 1rem;
-  background: #f9f9f9;
+  background: var(--surface-2);
   border-radius: 8px;
-  border: 2px dashed #ddd;
+  border: 2px dashed var(--border);
   margin: 1rem 0;
   flex: 1;
   display: flex;
@@ -1342,7 +1342,7 @@ onUnmounted(() => {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface);
   padding: 10px 20px;
   border-radius: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -1384,7 +1384,7 @@ onUnmounted(() => {
 }
 
 .global-close-btn {
-  background: #f44336;
+  background: var(--danger);
   color: white;
   border: none;
   padding: 8px;
@@ -1400,7 +1400,7 @@ onUnmounted(() => {
 }
 
 .global-close-btn:hover {
-  background: #d32f2f;
+  background: var(--danger);
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
 }
@@ -1420,7 +1420,7 @@ onUnmounted(() => {
 
 .audio-time-display {
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-2);
   font-weight: 500;
   min-width: 35px;
 }
@@ -1442,10 +1442,10 @@ onUnmounted(() => {
 .audio-progress-bar {
   width: 100%;
   height: 8px;
-  background: #e0e0e0;
+  background: var(--border);
   border-radius: 4px;
   position: relative;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   transition: all 0.2s ease;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -1457,7 +1457,7 @@ onUnmounted(() => {
 
 .audio-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4caf50, #45a049);
+  background: var(--success);
   border-radius: 3px;
   transition: width 0.1s ease;
   position: relative;
@@ -1466,7 +1466,7 @@ onUnmounted(() => {
 .audio-progress-handle {
   width: 18px;
   height: 18px;
-  background: #3f51b5;
+  background: var(--accent);
   border: 3px solid white;
   border-radius: 50%;
   position: absolute;

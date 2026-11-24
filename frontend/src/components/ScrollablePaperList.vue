@@ -56,9 +56,9 @@ export default defineComponent({
 <style scoped>
 .scrollable-paper-list {
   position: relative;
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-1);
   padding: 1rem;
   padding-top: 2.5rem; /* leave space for fixed title badge */
   display: flex;
@@ -70,8 +70,8 @@ export default defineComponent({
   position: absolute;
   top: 8px;
   left: 12px;
-  background-color: #e8eaf6; /* lighter indigo */
-  color: #3f51b5; /* primary blue text */
+  background-color: var(--accent-soft); /* lighter indigo */
+  color: var(--accent); /* primary blue text */
   font-size: 0.8rem;
   font-weight: 600;
   padding: 2px 10px;
@@ -93,7 +93,7 @@ export default defineComponent({
 .loading,
 .no-papers {
   text-align: center;
-  color: #666;
+  color: var(--text-2);
   padding: 2rem 0;
 }
 
@@ -116,7 +116,7 @@ export default defineComponent({
 .close-icon {
   width: 18px;
   height: 18px;
-  stroke: #9ca3af; /* gray-400 */
+  stroke: var(--text-3); /* gray-400 */
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
