@@ -438,15 +438,15 @@ onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onWindowMouseMove)
   window.removeEventListener('mouseup', onWindowMouseUp)
   window.removeEventListener('keydown', onKeydown)
-  
+
   // 清理拖拽相关事件
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
-  
+
   // 清理评论区拖拽事件
   document.removeEventListener('mousemove', handleCommentResize)
   document.removeEventListener('mouseup', stopCommentResize)
-  
+
   // 清理侧边栏拖拽事件
   document.removeEventListener('mousemove', handleSidebarResize)
   document.removeEventListener('mouseup', stopSidebarResize)
@@ -663,32 +663,32 @@ function startCommentResize(event: MouseEvent) {
   isCommentResizing.value = true
   commentResizeStartX.value = event.clientX
   commentResizeStartWidth.value = commentAreaWidth.value
-  
+
   // 禁用过渡效果，避免拖拽延迟
   const contentWrap = document.querySelector('.content-wrap') as HTMLElement
   if (contentWrap) {
     contentWrap.style.transition = 'none'
   }
-  
+
   document.addEventListener('mousemove', handleCommentResize)
   document.addEventListener('mouseup', stopCommentResize)
   document.body.style.cursor = 'ew-resize'
-  
+
   event.preventDefault()
 }
 
 function handleCommentResize(event: MouseEvent) {
   if (!isCommentResizing.value) return
-  
+
   // 使用 requestAnimationFrame 确保平滑更新
   requestAnimationFrame(() => {
     const deltaX = commentResizeStartX.value - event.clientX // 向左拖拽为正值
     const newWidth = commentResizeStartWidth.value + deltaX
-    
+
       // 设置最小和最大宽度限制
   const minWidth = 8 // 最小宽度改为只显示拖拽线
   const maxWidth = window.innerWidth * 0.5 // 最大宽度为屏幕宽度的50%
-    
+
     commentAreaWidth.value = Math.max(minWidth, Math.min(maxWidth, newWidth))
   })
 }
@@ -698,7 +698,7 @@ function stopCommentResize() {
   document.removeEventListener('mousemove', handleCommentResize)
   document.removeEventListener('mouseup', stopCommentResize)
   document.body.style.cursor = ''
-  
+
   // 恢复过渡效果
   const contentWrap = document.querySelector('.content-wrap') as HTMLElement
   if (contentWrap) {
@@ -710,37 +710,37 @@ function startSidebarResize(event: MouseEvent) {
   isSidebarResizing.value = true
   sidebarResizeStartX.value = event.clientX
   sidebarResizeStartWidth.value = sidebarWidth.value
-  
+
   // 禁用过渡效果，避免拖拽延迟
   const sidebarContainer = document.querySelector('.sidebar-container') as HTMLElement
   const sharedSidebar = document.querySelector('.shared-sidebar') as HTMLElement
-  
+
   if (sidebarContainer) {
     sidebarContainer.style.transition = 'none'
   }
   if (sharedSidebar) {
     sharedSidebar.style.transition = 'none'
   }
-  
+
   document.addEventListener('mousemove', handleSidebarResize)
   document.addEventListener('mouseup', stopSidebarResize)
   document.body.style.cursor = 'ew-resize'
-  
+
   event.preventDefault()
 }
 
 function handleSidebarResize(event: MouseEvent) {
   if (!isSidebarResizing.value) return
-  
+
   // 使用 requestAnimationFrame 确保平滑更新
   requestAnimationFrame(() => {
     const deltaX = event.clientX - sidebarResizeStartX.value // 向右拖拽为正值
     const newWidth = sidebarResizeStartWidth.value + deltaX
-    
+
     // 设置最小和最大宽度限制
     const minWidth = 200 // 最小宽度
     const maxWidth = window.innerWidth * 0.4 // 最大宽度为屏幕宽度的40%
-    
+
     sidebarWidth.value = Math.max(minWidth, Math.min(maxWidth, newWidth))
   })
 }
@@ -750,11 +750,11 @@ function stopSidebarResize() {
   document.removeEventListener('mousemove', handleSidebarResize)
   document.removeEventListener('mouseup', stopSidebarResize)
   document.body.style.cursor = ''
-  
+
   // 恢复过渡效果
   const sidebarContainer = document.querySelector('.sidebar-container') as HTMLElement
   const sharedSidebar = document.querySelector('.shared-sidebar') as HTMLElement
-  
+
   if (sidebarContainer) {
     sidebarContainer.style.transition = 'flex 0.3s ease'
   }
@@ -773,25 +773,25 @@ function startResize(event: MouseEvent) {
   isResizing.value = true
   initialMouseY.value = event.clientY
   initialHeight.value = bottomAreaHeight.value
-  
+
   document.addEventListener('mousemove', handleResize)
   document.addEventListener('mouseup', stopResize)
   document.body.style.cursor = 'ns-resize'
-  
+
   // 防止文本选择
   event.preventDefault()
 }
 
 function handleResize(event: MouseEvent) {
   if (!isResizing.value) return
-  
+
   const deltaY = initialMouseY.value - event.clientY // 向上拖拽为正值
   const newHeight = initialHeight.value + deltaY
-  
+
   // 设置最小和最大高度限制
   const minHeight = 80 // 降低最小高度，只保留标签页导航的空间
   const maxHeight = window.innerHeight * 0.8 // 增加最大高度到80%
-  
+
   bottomAreaHeight.value = Math.max(minHeight, Math.min(maxHeight, newHeight))
 }
 
@@ -885,12 +885,12 @@ async function handleUpdateMode(p: { folder_id: number; is_public: boolean }) {
 async function handleRemove(folderId: number) {
     await api.delete_shared_folder(folderId)
     await loadShares()
-    
+
     // 清理对应的推荐缓存
     if (recommendationsMap[folderId]) {
       delete recommendationsMap[folderId]
     }
-    
+
     // 如果删除的正是当前 active，清空右侧
     if (activeId.value === folderId) activeId.value = null
 }
@@ -1023,7 +1023,7 @@ onBeforeUnmount(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('popstate', onPopState)
 })
-  
+
 async function onPopState() {
   const fid = Number(location.pathname.split('/').pop())
   if (fid) await handleSelectFolder(fid)
@@ -1606,6 +1606,9 @@ watch(detailPaper, async (p) => {
 
 .empty-placeholder {
   flex: 1;
+  padding: var(--sp-5);
+  text-align: center;
+  font-size: var(--fs-sm);
   display: flex;
   align-items: center;
   justify-content: center;

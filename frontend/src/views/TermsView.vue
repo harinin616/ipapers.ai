@@ -75,5 +75,15 @@
 </script>
 
 <style scoped>
-/* Optional custom styles. Tailwind handles most typography. */
+main { max-width: 760px; margin: 0 auto; padding: var(--sp-7) var(--sp-5); box-sizing: border-box; color: var(--text); line-height: 1.75; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin: 0 0 var(--sp-3); letter-spacing: -.015em; }
+h2 { font-family: var(--font-sans); font-size: var(--fs-xl); margin: var(--sp-6) 0 var(--sp-2); }
+p, li { color: var(--text-2); font-size: var(--fs-md); }
+p { margin: 0 0 var(--sp-3); }
+ul { margin: 0 0 var(--sp-3); padding-left: 1.3rem; }
+li { margin-bottom: var(--sp-1); }
+strong { color: var(--text); }
+a { color: var(--link); }
+.text-sm { font-size: var(--fs-sm); }
+.text-gray-500 { color: var(--text-3); }
 </style>

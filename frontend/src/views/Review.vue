@@ -3082,4 +3082,11 @@ body {
   --app-max-width: none !important;
   /* overflow-x: hidden; */ /* Remove as we now control via JavaScript */
 }
+
+/* Responsive: stack panels on small screens */
+@media (max-width: 900px) {
+  .full-layout { flex-direction: column; height: auto; padding: 8px; }
+  .two-panel-layout { flex-direction: column; height: auto; padding-left: 0; }
+  .left-panel, .right-panel { flex: 0 0 auto; width: 100%; min-height: 420px; }
+}
 </style>

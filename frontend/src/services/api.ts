@@ -111,6 +111,7 @@ export interface IApiService {
  */
 class ApiService implements IApiService {
   private api: AxiosInstance;
+  private guestSession: Promise<string> | null = null;
   
   constructor() {
     // Create axios instance
@@ -124,7 +125,12 @@ class ApiService implements IApiService {
 
     // Add a request interceptor to include user_id in headers
     this.api.interceptors.request.use(
-      (config) => {
+      async (config) => {
+        // First visit: requests that need a login wait for the guest session instead of racing it (-> 401).
+        const url = config.url || '';
+        if (!localStorage.getItem('access_token') && !/^\/api\/(user\/guest|auth\/|papers|search|metrics)/.test(url)) {
+          try { await this.getUserId(); } catch (e) { /* proceed unauthenticated; the server will answer 401 */ }
+        }
         const userId = localStorage.getItem('X-User-ID');
         if (userId) {
           config.headers['X-User-ID'] = userId;
@@ -255,18 +261,24 @@ async get_shared_folders(): Promise<any[]> {
    * Get a new user ID
    * @returns Promise with user ID data
    */
-  async getUserId(): Promise<string> {
-    try {
-      // Server issues a guest identity plus a signed token; the token is what authenticates later calls.
-      const response = await this.api.post('/api/user/guest');
-      const { user_id, access_token } = response.data;
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('X-User-ID', user_id);
-      return user_id;
-    } catch (error) {
-      console.error('Failed to get user ID:', error);
-      throw error;
+  getUserId(): Promise<string> {
+    // De-duplicated: concurrent callers (app start, file list, first API call) share one guest session.
+    if (!this.guestSession) {
+      this.guestSession = (async () => {
+        try {
+          // Server issues a guest identity plus a signed token; the token is what authenticates later calls.
+          const response = await this.api.post('/api/user/guest');
+          const { user_id, access_token } = response.data;
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('X-User-ID', user_id);
+          return user_id as string;
+        } catch (error) {
+          console.error('Failed to get user ID:', error);
+          throw error;
+        }
+      })().finally(() => { this.guestSession = null; });
     }
+    return this.guestSession;
   }
 
   async attach_paper(paperId: string, platform?: string): Promise<boolean> {
@@ -724,7 +736,7 @@ async get_shared_folders(): Promise<any[]> {
   }
  async getUserTopics(): Promise<string[]> {
     try {
-      const resp = await this.api.get('/api/topics');
+      const resp = await this.api.get('/api/topics/');
       return resp.data?.topics ?? [];
     } catch (err) {
       console.error('Failed to get user topics:', err);
@@ -735,7 +747,7 @@ async get_shared_folders(): Promise<any[]> {
   /** POST /api/topics  body: { topic } */
   async addUserTopic(topic: string): Promise<void> {
     try {
-      await this.api.post('/api/topics', { topic });
+      await this.api.post('/api/topics/', { topic });
     } catch (err) {
       console.error(`Failed to add topic "${topic}":`, err);
       throw err;

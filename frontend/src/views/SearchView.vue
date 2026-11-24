@@ -1,5 +1,6 @@
 <template>
   <div class="search">
+    <h1 class="sr-only">Search papers</h1>
     <section class="hero-section">
       <SearchBox
         v-model="searchQuery"
@@ -97,7 +98,7 @@ export default {
       handler(newQuery, oldQuery) {
         if (newQuery) {
           this.searchQuery = newQuery;
-          
+
           // check if returning from a detail page and have cached results
           if (searchStore.hasCachedResults(newQuery)) {
             // use cached results instead of searching again
@@ -106,7 +107,7 @@ export default {
             // Note: we don't restore loading states as cache implies completion
             return;
           }
-          
+
           // only perform search if query actually changed or don't have cached results
           if (oldQuery !== newQuery || !searchStore.getHasSearched()) {
             // Check if this is an AI search request from the home page
@@ -161,21 +162,21 @@ export default {
       this.summary = null;
       this.performSearch(includeSummary);
     },
-    
+
     async performSearch(includeSummary = false) {
       if (!this.searchQuery.trim()) return;
-      
+
       console.log('🔍 Starting search with includeSummary:', includeSummary);
-      
+
       this.isLoading = true;
       this.results = [];
       this.summary = null;
-      
+
       // update store
       searchStore.setQuery(this.searchQuery.trim());
       searchStore.setSummary(null);
       searchStore.setSummaryError(null);
-      
+
       try {
         // Step 1: Get paper results immediately (no summary)
         const data = await api.searchPapers({
@@ -184,9 +185,9 @@ export default {
           include_summary: false,  // Always false now
           summary_type: 'full'
         });
-        
+
         console.log('📊 API response data:', { resultsCount: data.results?.length || 0 });
-        
+
         if (data && Array.isArray(data.results)) {
           this.results = data.results.map(paper => ({
             ...paper,
@@ -198,10 +199,10 @@ export default {
             categories: Array.isArray(paper.categories) ? paper.categories : 
                        (paper.categories ? [paper.categories] : [])
           }));
-          
+
           // update store with results
           searchStore.setResults(this.results);
-          
+
           // Step 2: Generate summary separately if requested
           if (includeSummary && this.results.length > 0) {
             this.generateSummary();
@@ -211,7 +212,7 @@ export default {
           this.results = [];
           searchStore.setResults([]);
         }
-        
+
         this.$router.replace({ 
           query: { q: this.searchQuery.trim() } 
         });
@@ -226,19 +227,19 @@ export default {
 
     async generateSummary() {
       if (!this.results.length) return;
-      
+
       searchStore.setIsSummaryLoading(true);
       searchStore.setSummaryError(null);
-      
+
       try {
         console.log('🤖 Generating AI summary for', this.results.length, 'papers');
-        
+
         const summaryData = await api.generateSearchSummary({
           query: this.searchQuery.trim(),
           papers: this.results,
           summary_type: 'full'
         });
-        
+
         if (summaryData && summaryData.summary) {
           this.summary = summaryData.summary;
           searchStore.setSummary(summaryData.summary);

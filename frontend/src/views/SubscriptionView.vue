@@ -20,14 +20,14 @@
             <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
           </svg>
         </div>
-        
+
         <h1>Subscribe to receive Daily Feed emails.</h1>
-        
+
         <div class="description">
           <p>Emails from iPapers is the best way to find out about the latest research trends, curated papers, and other information that may be of interest to you.</p>
-          
+
           <p>Enter your email address to receive daily feed email from iPapers. You can unsubscribe at any time.</p>
-          
+
           <p>Please refer to <router-link to="/privacy-policy" class="link">Privacy Policy</router-link> or <router-link to="/contact" class="link">contact us</router-link> for more details.</p>
         </div>
       </div>
@@ -38,7 +38,7 @@
           <label for="email" class="email-label">
             Email address <span class="required">*</span>
           </label>
-          
+
           <div class="email-input-container">
             <span class="email-prefix">@</span>
             <input 
@@ -50,7 +50,7 @@
               :disabled="isLoading"
             />
           </div>
-          
+
           <div class="button-group">
             <button 
               @click="handleSubscribe"
@@ -60,7 +60,7 @@
               <span v-if="isLoading && actionType === 'subscribe'" class="loading-spinner"></span>
               <template v-else>Subscribe to Daily Feed</template>
             </button>
-            
+
             <button 
               @click="handleUnsubscribe"
               :disabled="!isValidEmail || isLoading"
@@ -70,14 +70,14 @@
               <template v-else>Unsubscribe from Daily Feed</template>
             </button>
           </div>
-          
+
           <!-- Status Messages -->
           <div v-if="statusMessage" :class="['status-message', statusType]">
             {{ statusMessage }}
           </div>
         </div>
       </div>
-      
+
       <!-- Back to Daily Feed -->
       <div class="back-section">
         <router-link to="/daily-feed" class="back-link">
@@ -107,7 +107,7 @@ const isValidEmail = computed(() => {
 // Check subscription status function
 const checkSubscriptionStatus = async (emailToCheck: string) => {
   if (!emailToCheck) return false
-  
+
   try {
     const response = await fetch(`/api/user/subscription-status?email=${encodeURIComponent(emailToCheck)}`)
     if (response.ok) {
@@ -127,11 +127,11 @@ const updateSubscriptionStatus = async (subscribed: boolean) => {
     statusType.value = 'error'
     return false
   }
-  
+
   isLoading.value = true
   actionType.value = subscribed ? 'subscribe' : 'unsubscribe'
   statusMessage.value = ''
-  
+
   try {
     const response = await fetch('/api/user/subscription', {
       method: 'POST',
@@ -143,7 +143,7 @@ const updateSubscriptionStatus = async (subscribed: boolean) => {
         subscribed 
       })
     })
-    
+
     if (response.ok) {
       const data = await response.json()
       statusMessage.value = subscribed 
@@ -184,10 +184,10 @@ onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const emailParam = urlParams.get('email')
   const actionParam = urlParams.get('action')
-  
+
   if (emailParam) {
     email.value = emailParam
-    
+
     // If it's an unsubscribe action, automatically perform it
     if (actionParam === 'unsubscribe') {
       handleUnsubscribe()
@@ -199,7 +199,7 @@ onMounted(() => {
 <style scoped>
 .subscription-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--surface-2) 0%, #c3cfe2 100%);
+  background: var(--bg);
   padding: 2rem 1rem;
   display: flex;
   align-items: center;
@@ -308,6 +308,7 @@ onMounted(() => {
 
 .email-input {
   width: 100%;
+  box-sizing: border-box;
   padding: 1rem 1rem 1rem 3rem;
   font-size: 1.1rem;
   border: 2px solid var(--border);
@@ -435,27 +436,27 @@ onMounted(() => {
   .subscription-page {
     padding: 1rem 0.5rem;
   }
-  
+
   .subscription-container h1 {
     font-size: 1.8rem;
   }
-  
+
   .header-section {
     padding: 2rem 1.5rem 1.5rem;
   }
-  
+
   .form-section {
     padding: 2rem 1.5rem;
   }
-  
+
   .description p {
     font-size: 1rem;
   }
-  
+
   .icon-section {
     gap: 0.75rem;
   }
-  
+
   .mail-icon, .calendar-icon, .plus-icon {
     width: 36px;
     height: 36px;
@@ -466,7 +467,7 @@ onMounted(() => {
   .button-group {
     gap: 0.75rem;
   }
-  
+
   .action-btn {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;

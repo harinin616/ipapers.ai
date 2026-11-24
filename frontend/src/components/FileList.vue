@@ -736,7 +736,17 @@ const cancelEditFolder = () => {
       await loadFolders()  
       const shareId = route.params.share_id as string
       if (shareId) {
-        const { files } = await api.getShare(shareId)
+        let shared: { files: string[] } | null = null
+        try {
+          shared = await api.getShare(shareId)
+        } catch (e) {
+          // Invalid/expired/unavailable link: say so instead of silently landing on the home page.
+          console.warn('Share link could not be loaded', e)
+          alert('This shared link is no longer available.')
+          router.replace({ name: 'home' })
+          return
+        }
+        const files = shared.files
     //    pendingShared.value = files.map(id => ({
       //    paper_id: id,
         //  filename: id,

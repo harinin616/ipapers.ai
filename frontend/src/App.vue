@@ -36,7 +36,7 @@
           <div class="user-info" v-show="user">
             <div class="relative">
               <button class="user-name" type="button" :class="{ open: showUserMenu }" :aria-expanded="showUserMenu" aria-haspopup="menu" @click="toggleUserMenu">
-                <img :src="user?.picture" alt="" class="avatar" referrerpolicy="no-referrer" />
+                <img v-if="user?.picture" :src="user.picture" alt="" class="avatar" referrerpolicy="no-referrer" />
                 <span class="user-label">{{ user?.name }}</span>
                 <svg class="chevron" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7l4 4 4-4"/></svg>
               </button>

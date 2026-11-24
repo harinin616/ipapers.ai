@@ -635,6 +635,8 @@ function confirmDelete(){
 }
 
 /* “没有数据”提示也隐藏文字，留空白即可 */
+.shared-sidebar__empty { padding: var(--sp-5) var(--sp-4); color: var(--text-3); font-size: var(--fs-sm); }
+@media (max-width: 700px) { .shared-sidebar { width: min(280px, 46vw); } }
 .shared-sidebar__empty.collapsed {
   display: none;
 }

@@ -498,12 +498,12 @@ const RingProgress = defineComponent({
 
 <style scoped>
 .ideation-app { position: relative; min-height: 100vh; color: var(--text); }
-.bg-gradient { position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, #c7d2fe 0%, #f5f3ff 50%, #ffe4e6 100%); }
+.bg-gradient { position: fixed; inset: 0; z-index: -1; background: var(--bg); }
 
-.container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 20px; grid-template-columns: 1fr; }
-@media (min-width: 1024px) { .container { grid-template-columns: 2fr 1fr; } }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .container { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
 
-.card { border: 1px solid rgba(0,0,0,0.05); border-radius: 16px; background: rgba(255,255,255,0.7); box-shadow: 0 10px 30px rgba(0,0,0,0.06); overflow: hidden; }
+.card { border: 1px solid rgba(0,0,0,0.05); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-1); overflow: hidden; }
 .card-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid rgba(0,0,0,0.06); }
 .header-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #111; color: #fff; font-size: 18px; }
 .header-text h2, .header-text h3 { margin: 0; font-size: 18px; font-weight: 800; }
@@ -594,4 +594,9 @@ const RingProgress = defineComponent({
 .log-list { margin-top: 8px; max-height: 140px; overflow: auto; font-size: 12px; color: #334155; display: grid; gap: 4px; }
 .log-stage { font-weight: 700; margin-right: 6px; }
 .log-msg { opacity: .9; }
+
+.search-box { flex-wrap: wrap; }
+.search-input { min-width: 0; flex: 1 1 180px; }
+.search-box .btn { flex: 0 0 auto; }
+@media (max-width: 480px) { .search-box .btn { width: 100%; } }
 </style>

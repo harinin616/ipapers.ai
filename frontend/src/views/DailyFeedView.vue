@@ -12,7 +12,7 @@
       </router-link>
     </div>
     <p class="subtitle">Explore trending papers across different disciplines</p>
-    
+
     <!-- Display Control -->
     <div class="display-controls">
       <label for="summaries-limit">Show summaries per category:</label>
@@ -40,7 +40,7 @@
           <path d="M8 5v14l11-7z" fill="currentColor"/>
         </svg>
       </button>
-      
+
       <div class="audio-progress-section">
         <div class="audio-time-display">
           <span class="current-time">{{ formatTime(audioCurrentTime) }}</span>
@@ -65,7 +65,7 @@
           <span class="total-time">{{ formatTime(audioDuration) }}</span>
         </div>
       </div>
-      
+
       <button 
         @click="stopAllPlayback" 
         class="global-close-btn"
@@ -82,7 +82,14 @@
       <p>Loading daily feed...</p>
     </div>
 
-    <div v-else-if="error" class="error">
+    <div v-else-if="unavailable" class="empty-feed" role="status">
+      <div class="empty-feed-icon" aria-hidden="true">🗞️</div>
+      <h2>Today's feed isn't ready yet</h2>
+      <p>The daily digest is generated automatically and hasn't been published for this site yet. Check back soon, or browse the latest papers meanwhile.</p>
+      <router-link to="/" class="subscription-manage-btn">Browse recent papers</router-link>
+    </div>
+
+    <div v-else-if="error" class="error" role="alert">
       <p>{{ error }}</p>
       <button @click="loadDailyFeed" class="retry-btn">Retry</button>
     </div>
@@ -169,7 +176,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Right Column: Paper Cards -->
         <div class="right-column">
           <div class="papers-section">
@@ -239,6 +246,7 @@ interface AudioState {
 // Reactive data
 const loading = ref(true)
 const error = ref<string | null>(null)
+const unavailable = ref(false)
 const maxSummaries = ref(3) // 🎯 Control how many summaries to show per category
 const dailyFeedData = ref<DailyFeedData>({
   categories: []
@@ -313,14 +321,14 @@ const getAudioButtonTitle = (categoryId: string, summaryIndex: number): string =
 const startAudio = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
   const audioUrl = getAudioUrl(summary)
   if (!audioUrl) return
-  
+
   // Stop any current audio
   stopAudio()
-  
+
   const audio = new Audio(audioUrl)
   audio.volume = audioVolume.value
   audio.playbackRate = audioPlaybackRate.value
-  
+
   // Set up event handlers
   audio.onloadstart = () => {
     currentAudioId.value = getAudioId(categoryId, summaryIndex)
@@ -333,14 +341,14 @@ const startAudio = (categoryId: string, summaryIndex: number, summary: SummaryDa
       currentTime: 0
     }
   }
-  
+
   audio.onloadedmetadata = () => {
     if (audioState.value) {
       audioState.value.duration = audio.duration
       audioDuration.value = audio.duration
     }
   }
-  
+
   audio.ontimeupdate = () => {
     if (audioState.value) {
       audioState.value.currentTime = audio.currentTime
@@ -348,19 +356,19 @@ const startAudio = (categoryId: string, summaryIndex: number, summary: SummaryDa
       audioProgress.value = audioDuration.value > 0 ? (audio.currentTime / audioDuration.value) * 100 : 0
     }
   }
-  
+
   audio.onplay = () => {
     if (audioState.value) {
       audioState.value.isPaused = false
     }
   }
-  
+
   audio.onpause = () => {
     if (audioState.value) {
       audioState.value.isPaused = true
     }
   }
-  
+
   audio.onended = () => {
     currentAudioId.value = null
     audioState.value = null
@@ -368,7 +376,7 @@ const startAudio = (categoryId: string, summaryIndex: number, summary: SummaryDa
     audioDuration.value = 0
     audioCurrentTime.value = 0
   }
-  
+
   audio.onerror = (event) => {
     console.error('Audio playback error:', event)
     currentAudioId.value = null
@@ -377,7 +385,7 @@ const startAudio = (categoryId: string, summaryIndex: number, summary: SummaryDa
     audioDuration.value = 0
     audioCurrentTime.value = 0
   }
-  
+
   // Start playing
   audio.play().catch(error => {
     console.error('Failed to play audio:', error)
@@ -423,27 +431,27 @@ const stopAudio = () => {
 // Handle seeking in audio
 const seekAudio = (event: MouseEvent) => {
   if (!audioState.value?.audio || audioDuration.value <= 0) return
-  
+
   event.preventDefault()
   event.stopPropagation()
-  
+
   try {
     const progressContainer = event.currentTarget as HTMLElement
     const rect = progressContainer.getBoundingClientRect()
     const clickX = event.clientX - rect.left
     const percentage = Math.max(0, Math.min(1, clickX / rect.width))
     const newTime = percentage * audioDuration.value
-    
+
     console.log('Seeking to:', newTime, 'seconds (', percentage * 100, '%)')
-    
+
     // Store current play state
     const wasPlaying = !audioState.value.audio.paused && !audioState.value.isPaused
-    
+
     // Update audio time
     audioState.value.audio.currentTime = newTime
     audioCurrentTime.value = newTime
     audioProgress.value = percentage * 100
-    
+
     // Maintain the play state
     if (wasPlaying && audioState.value.audio.paused) {
       // If it was playing, make sure it continues playing
@@ -461,7 +469,7 @@ const seekAudio = (event: MouseEvent) => {
 // Global play/pause toggle for current audio
 const toggleGlobalPlayPause = () => {
   if (!audioState.value?.audio) return
-  
+
   if (audioState.value.audio.paused || audioState.value.isPaused) {
     resumeAudio()
   } else {
@@ -487,7 +495,7 @@ const formatTime = (seconds: number): string => {
 // Toggle audio for a summary
 const toggleAudio = (categoryId: string, summaryIndex: number, summary: SummaryData | string) => {
   const audioId = getAudioId(categoryId, summaryIndex)
-  
+
   if (currentAudioId.value === audioId) {
     if (audioState.value?.isPaused || audioState.value?.audio?.paused) {
       resumeAudio()
@@ -528,7 +536,7 @@ const getSummaryTitle = (summary: SummaryData | string): string => {
     // Legacy format - extract title from markdown
     return extractSummaryTitle(summary)
   }
-  
+
   // New format with metadata
   if (summary.paper_count !== undefined) {
     const paperText = summary.paper_count === 1 ? 'paper' : 'papers'
@@ -561,13 +569,13 @@ const expectedCategories = [
 const getAllCategories = (): CategoryData[] => {
   const actualCategories = dailyFeedData.value.categories || []
   const actualCategoryKeys = new Set(actualCategories.map(cat => cat.category))
-  
+
   const allCategories: CategoryData[] = []
-  
+
   // Add all expected categories
   for (const expectedCat of expectedCategories) {
     const actualCategory = actualCategories.find(cat => cat.category === expectedCat.key)
-    
+
     if (actualCategory) {
       // Use actual category data but override display name to remove abbreviations
       allCategories.push({
@@ -585,7 +593,7 @@ const getAllCategories = (): CategoryData[] => {
       })
     }
   }
-  
+
   return allCategories
 }
 
@@ -595,9 +603,16 @@ const getAllCategories = (): CategoryData[] => {
 const loadDailyFeed = async () => {
   loading.value = true
   error.value = null
-  
+  unavailable.value = false
+
   try {
     const response = await fetch(`/daily_feed/daily_feed.json?v=${Date.now()}`)
+    // A missing file is answered with the SPA's index.html (200, text/html) or a 404: treat both as "not published yet".
+    const contentType = response.headers.get('content-type') || ''
+    if (response.status === 404 || (response.ok && !contentType.includes('json'))) {
+      unavailable.value = true
+      return
+    }
     if (!response.ok) {
       throw new Error(`Failed to load daily feed data: ${response.status}`)
     }
@@ -621,30 +636,30 @@ const handleImageError = (event: Event) => {
 // Simple markdown rendering function
 const renderMarkdown = (text: string): string => {
   if (!text) return ''
-  
+
   // Enhanced markdown parsing with better feature support
   let html = text
-    
+
   // Handle headers (# ## ###)
   html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>')
   html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>')
   html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>')
-  
+
   // Handle bold and italic text
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
-  
+
   // Handle code blocks and inline code
   html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
   html = html.replace(/`(.*?)`/g, '<code>$1</code>')
-  
+
   // Handle links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-  
+
   // Handle unordered lists (- or *)
   html = html.replace(/^[\s]*[-\*]\s+(.*$)/gm, '<li>$1</li>')
   html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-  
+
   // Handle ordered lists (1. 2. etc.)
   html = html.replace(/^[\s]*\d+\.\s+(.*$)/gm, '<li>$1</li>')
   html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
@@ -654,10 +669,10 @@ const renderMarkdown = (text: string): string => {
     }
     return '<ol>' + match + '</ol>';
   })
-  
+
   // Handle blockquotes (> text)
   html = html.replace(/^>\s+(.*$)/gm, '<blockquote>$1</blockquote>')
-  
+
   // Handle line breaks and paragraphs
   // Split by double newlines for paragraphs
   const paragraphs = html.split(/\n\s*\n/);
@@ -670,7 +685,7 @@ const renderMarkdown = (text: string): string => {
     paragraph = paragraph.replace(/\n/g, '<br>');
     return paragraph.trim() ? `<p>${paragraph}</p>` : '';
   }).join('\n');
-  
+
   return html
 }
 
@@ -689,7 +704,7 @@ const formatDate = (dateString: string): string => {
 // Extract title from markdown content (for backward compatibility)
 const extractSummaryTitle = (markdownContent: string): string => {
   if (!markdownContent) return 'Summary'
-  
+
   // Extract H1 title from markdown
   const h1Match = markdownContent.match(/^#\s+(.+)/m)
   if (h1Match) {
@@ -699,7 +714,7 @@ const extractSummaryTitle = (markdownContent: string): string => {
     title = title.replace(/:\s*.+$/, '')
     return title
   }
-  
+
   return 'Summary'
 }
 
@@ -1489,11 +1504,11 @@ onUnmounted(() => {
   .daily-feed-content {
     gap: 1.5rem;
   }
-  
+
   .daily-feed-page h1 {
     font-size: 1.8rem;
   }
-  
+
   .category-row {
     grid-template-columns: 1fr; /* Stack columns on mobile */
     gap: 1rem;
@@ -1514,18 +1529,18 @@ onUnmounted(() => {
   .papers-list {
     /* Let paper cards use natural size on mobile too */
   }
-  
+
   .display-controls {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .subscription-manage-btn {
     padding: 0.6rem 1rem;
     font-size: 0.8rem;
     border-radius: 6px;
   }
-  
+
   .manage-icon {
     width: 16px;
     height: 16px;
@@ -1600,4 +1615,9 @@ onUnmounted(() => {
     height: 18px;
   }
 }
+
+.empty-feed { max-width: 460px; margin: var(--sp-7) auto; padding: var(--sp-6) var(--sp-5); text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.empty-feed-icon { font-size: 2rem; }
+.empty-feed h2 { margin: var(--sp-2) 0; font-size: var(--fs-xl); }
+.empty-feed p { margin: 0 0 var(--sp-4); color: var(--text-2); font-size: var(--fs-sm); }
 </style> 
